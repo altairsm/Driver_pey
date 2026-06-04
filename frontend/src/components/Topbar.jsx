@@ -23,6 +23,9 @@ export default function Topbar({ user }) {
             <span style={styles.navLink} onClick={() => navigate('/admin/pagamentos')}>
               Pagamentos
             </span>
+            <span style={styles.navLink} onClick={() => navigate('/admin/listas')}>
+              Importar Listas
+            </span>
           </>
         ) : (
           <span style={styles.navLink} onClick={() => navigate('/driver')}>

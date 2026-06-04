@@ -6,6 +6,7 @@ import authRoutes from './routes/auth.js';
 import driverRoutes from './routes/driver.js';
 import adminRoutes from './routes/admin.js';
 import uploadRoutes from './routes/upload.js';
+import listasRoutes from './routes/listas.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -22,6 +23,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/driver', driverRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/admin', listasRoutes);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);

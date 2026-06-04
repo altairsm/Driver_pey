@@ -3,6 +3,7 @@ import Login from './pages/Login'
 import DriverDashboard from './pages/DriverDashboard'
 import AdminPagamentos from './pages/AdminPagamentos'
 import AdminUpload from './pages/AdminUpload'
+import AdminImportarListas from './pages/AdminImportarListas'
 
 function ProtectedRoute({ children, adminOnly }) {
   const token = localStorage.getItem('token')
@@ -27,6 +28,7 @@ function App() {
       />
       <Route path="/admin/pagamentos" element={<AdminPagamentos />} />
       <Route path="/admin/upload" element={<AdminUpload />} />
+      <Route path="/admin/listas" element={<AdminImportarListas />} />
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

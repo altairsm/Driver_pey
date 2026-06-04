@@ -90,4 +90,39 @@ export async function previewXLSX(file) {
   return data;
 }
 
+export async function importListas(listas) {
+  const { data } = await api.post('/admin/listas', listas);
+  return data;
+}
+
+export async function getListasPendentes() {
+  const { data } = await api.get('/admin/listas/pendentes');
+  return data;
+}
+
+export async function setListaMetrica(numero, metrica) {
+  const { data } = await api.post(`/admin/listas/${numero}/metrica`, { metrica });
+  return data;
+}
+
+export async function setListaMotorista(numero, matricula) {
+  const { data } = await api.post(`/admin/listas/${numero}/motorista`, { matricula });
+  return data;
+}
+
+export async function importCtesDaLista(numero, ctes) {
+  const { data } = await api.post(`/admin/listas/${numero}/ctes`, ctes);
+  return data;
+}
+
+export async function resetLista(numero) {
+  const { data } = await api.post(`/admin/listas/${numero}/reset`);
+  return data;
+}
+
+export async function deleteLista(numero) {
+  const { data } = await api.delete(`/admin/listas/${numero}`);
+  return data;
+}
+
 export default api;
