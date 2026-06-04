@@ -1,0 +1,25 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: driver-pey-backend
+    ports:
+      - "3001:3001"
+    environment:
+      - DB_HOST=host.docker.internal
+      - DB_PORT=5432
+      - DB_NAME=jadlog
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - JWT_SECRET=driver-pey-secret-key-2026
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: driver-pey-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
