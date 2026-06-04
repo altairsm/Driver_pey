@@ -71,6 +71,21 @@ export async function getMotoristas() {
   return data;
 }
 
+export async function createMotorista(dados) {
+  const { data } = await api.post('/admin/motoristas', dados);
+  return data;
+}
+
+export async function updateMotorista(matricula, dados) {
+  const { data } = await api.put(`/admin/motoristas/${matricula}`, dados);
+  return data;
+}
+
+export async function deleteMotorista(matricula) {
+  const { data } = await api.delete(`/admin/motoristas/${matricula}`);
+  return data;
+}
+
 export async function uploadXLSX(file, onProgress) {
   const formData = new FormData();
   formData.append('file', file);

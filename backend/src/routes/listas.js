@@ -1,10 +1,7 @@
 import { Router } from 'express';
 import { pool } from '../db/index.js';
-import { authenticateToken } from '../middleware/auth.js';
 
 const router = Router();
-
-router.use(authenticateToken);
 
 router.post('/listas', async (req, res) => {
   try {

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { calcularPagamentos, confirmarPagamento, listarMotoristas } from '../services/paymentService.js';
+import { calcularPagamentos, confirmarPagamento, listarMotoristas, criarMotorista, atualizarMotorista, deletarMotorista } from '../services/paymentService.js';
 
 const router = Router();
 
@@ -40,6 +40,47 @@ router.post('/confirmar-pagamento', async (req, res) => {
   } catch (err) {
     console.error('Erro ao confirmar pagamento:', err);
     res.status(500).json({ error: 'Erro ao confirmar pagamento' });
+  }
+});
+
+router.post('/motoristas', async (req, res) => {
+  try {
+    const { matricula, nome_completo, cpf, telefone, pgro } = req.body;
+    if (!matricula || !nome_completo || !cpf) {
+      return res.status(400).json({ error: 'Matrícula, nome e CPF são obrigatórios' });
+    }
+    const motorista = await criarMotorista(req.body);
+    res.status(201).json(motorista);
+  } catch (err) {
+    if (err.code === '23505') {
+      return res.status(409).json({ error: 'Matrícula já cadastrada' });
+    }
+    console.error('Erro ao criar motorista:', err);
+    res.status(500).json({ error: 'Erro ao criar motorista' });
+  }
+});
+
+router.put('/motoristas/:matricula', async (req, res) => {
+  try {
+    const { matricula } = req.params;
+    const atualizado = await atualizarMotorista(matricula, req.body);
+    if (!atualizado) return res.status(404).json({ error: 'Motorista não encontrado' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Erro ao atualizar motorista:', err);
+    res.status(500).json({ error: 'Erro ao atualizar motorista' });
+  }
+});
+
+router.delete('/motoristas/:matricula', async (req, res) => {
+  try {
+    const { matricula } = req.params;
+    const deletado = await deletarMotorista(matricula);
+    if (!deletado) return res.status(404).json({ error: 'Motorista não encontrado' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Erro ao deletar motorista:', err);
+    res.status(500).json({ error: 'Erro ao deletar motorista' });
   }
 });
 
