@@ -1,9 +1,0 @@
-# Linux: descomente e ajuste DB_HOST para o IP do PostgreSQL
-# Salve como docker-compose.override.yml (já fica ativo automático)
-
-services:
-  backend:
-    environment:
-      - DB_HOST=192.168.1.100    # <- IP do servidor PostgreSQL
-      # ou use o nome do host Docker:
-      # - DB_HOST=host.docker.internal

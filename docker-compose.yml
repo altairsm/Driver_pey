@@ -1,4 +1,23 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: driver-pey-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: jadlog
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   backend:
     build:
       context: ./backend
@@ -6,12 +25,15 @@ services:
     ports:
       - "3001:3001"
     environment:
-      - DB_HOST=host.docker.internal
-      - DB_PORT=5432
-      - DB_NAME=jadlog
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - JWT_SECRET=driver-pey-secret-key-2026
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: jadlog
+      DB_USER: postgres
+      DB_PASS: postgres
+      JWT_SECRET: driver-pey-secret-key-2026
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   frontend:
@@ -23,3 +45,6 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+
+volumes:
+  pgdata:
