@@ -1,0 +1,25 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #0d0f14;
+  color: #e8eaf0;
+  font-family: 'IBM Plex Sans', sans-serif;
+  min-height: 100vh;
+  line-height: 1.5;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(240,192,64,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(240,192,64,.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+#root { position: relative; z-index: 1; }
+
+input, button, textarea, select { font-family: inherit; }
+input:focus { outline: none; border-color: #f0c040 !important; }
