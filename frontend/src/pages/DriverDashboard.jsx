@@ -412,12 +412,9 @@ export default function DriverDashboard() {
                     <table style={s.table}>
                       <thead>
                         <tr>
-                          <th style={s.th}>#</th>
-                          <th style={s.th}>CTe</th>
                           <th style={s.th}>Lista</th>
                           <th style={s.th}>Data Entrega</th>
                           <th style={s.th}>Endereço</th>
-                          <th style={s.th}>Motivo</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -428,8 +425,6 @@ export default function DriverDashboard() {
                             : r.cep ? `CEP ${r.cep.replace(/\D/g, '')}, Salvador, BA` : '';
                           return (
                             <tr key={r.id || i}>
-                              <td style={{ ...s.td, color: '#6b7280' }}>{i + 1}</td>
-                              <td style={{ ...s.td, fontSize: '0.7rem' }}>{r.ncte}</td>
                               <td style={s.td}>{r.lista}</td>
                               <td style={s.td}>{formatDate(r.data_entrega || r.data_criacao)}</td>
                               <td style={{ ...s.td, fontSize: '0.65rem' }}>
@@ -447,7 +442,6 @@ export default function DriverDashboard() {
                                   </a>
                                 )}
                               </td>
-                              <td style={s.td}>{r.motivo}</td>
                             </tr>
                           );
                         })}
