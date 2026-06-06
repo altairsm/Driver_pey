@@ -59,6 +59,7 @@ export default function DriverDashboard() {
   const [solicitando, setSolicitando] = useState({});
   const [msgSolicitacao, setMsgSolicitacao] = useState('');
   const [ultimaImportacao, setUltimaImportacao] = useState(null);
+  const [cepCache, setCepCache] = useState({});
 
   const qzAtual = quinzenas[qzIdx] || null;
 
@@ -112,6 +113,25 @@ export default function DriverDashboard() {
     };
     init();
   }, [fetchQuinzenaData]);
+
+  useEffect(() => {
+    const cepsUnicos = [...new Set(reclamacoes.map(r => r.cep).filter(Boolean))];
+    const novos = cepsUnicos.filter(c => !cepCache[c]);
+    if (novos.length === 0) return;
+    novos.forEach(async (c) => {
+      try {
+        const res = await fetch(`https://viacep.com.br/ws/${c.replace(/\D/g, '')}/json/`);
+        const d = await res.json();
+        if (!d.erro) {
+          setCepCache(prev => ({ ...prev, [c]: d }));
+        } else {
+          setCepCache(prev => ({ ...prev, [c]: {} }));
+        }
+      } catch {
+        setCepCache(prev => ({ ...prev, [c]: {} }));
+      }
+    });
+  }, [reclamacoes]);
 
   const handlePrev = async () => {
     if (qzIdx < quinzenas.length - 1) {
@@ -395,20 +415,42 @@ export default function DriverDashboard() {
                           <th style={s.th}>#</th>
                           <th style={s.th}>CTe</th>
                           <th style={s.th}>Lista</th>
+                          <th style={s.th}>Data Entrega</th>
+                          <th style={s.th}>Endereço</th>
                           <th style={s.th}>Motivo</th>
-                          <th style={s.th}>Data</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {reclamacoes.map((r, i) => (
-                          <tr key={r.id || i}>
-                            <td style={{ ...s.td, color: '#6b7280' }}>{i + 1}</td>
-                            <td style={{ ...s.td, fontSize: '0.7rem' }}>{r.ncte}</td>
-                            <td style={s.td}>{r.lista}</td>
-                            <td style={s.td}>{r.motivo}</td>
-                            <td style={s.td}>{formatDate(r.data_criacao)}</td>
-                          </tr>
-                        ))}
+                        {reclamacoes.map((r, i) => {
+                          const addr = r.cep ? cepCache[r.cep] : null;
+                          const mapsQ = addr?.logradouro || addr?.bairro
+                            ? `${addr.logradouro || ''}, ${addr.bairro || ''}, Salvador, BA`
+                            : r.cep ? `CEP ${r.cep.replace(/\D/g, '')}, Salvador, BA` : '';
+                          return (
+                            <tr key={r.id || i}>
+                              <td style={{ ...s.td, color: '#6b7280' }}>{i + 1}</td>
+                              <td style={{ ...s.td, fontSize: '0.7rem' }}>{r.ncte}</td>
+                              <td style={s.td}>{r.lista}</td>
+                              <td style={s.td}>{formatDate(r.data_entrega || r.data_criacao)}</td>
+                              <td style={{ ...s.td, fontSize: '0.65rem' }}>
+                                {!r.cep ? (
+                                  <em style={{ color: '#6b7280' }}>—</em>
+                                ) : !addr ? (
+                                  <span style={{ color: '#ff9f40' }}>carregando...</span>
+                                ) : addr.logradouro ? (
+                                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQ)}`} target="_blank" rel="noopener noreferrer" style={{ color: '#5ab4ff', textDecoration: 'none' }}>
+                                    {addr.logradouro}, {addr.bairro} <span style={{ fontSize: '0.6rem' }}>📍</span>
+                                  </a>
+                                ) : (
+                                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQ)}`} target="_blank" rel="noopener noreferrer" style={{ color: '#5ab4ff', textDecoration: 'none' }}>
+                                    {addr.bairro} <span style={{ fontSize: '0.6rem' }}>📍</span>
+                                  </a>
+                                )}
+                              </td>
+                              <td style={s.td}>{r.motivo}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

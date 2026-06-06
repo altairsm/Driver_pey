@@ -224,7 +224,8 @@ export async function getReclamacoes(matricula, inicio, fim) {
       a.motivo,
       a.data_criacao,
       re."Lista" AS lista,
-      re."Data"::date AS data_entrega
+      re."Data"::date AS data_entrega,
+      re."Cep" AS cep
     FROM acareacaojad a
     JOIN relatorioentrega_export re ON re."NCTE" = a."NCTE"
     WHERE re."OperadorMatricula"::bigint = $1
