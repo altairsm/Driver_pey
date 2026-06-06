@@ -220,6 +220,11 @@ export async function getQuinzenas() {
   return data;
 }
 
+export async function getAdminQuinzenas() {
+  const { data } = await api.get('/admin/quinzenas');
+  return data;
+}
+
 export async function getProdutividade(inicio, fim) {
   const { data } = await api.get('/driver/produtividade', { params: { inicio, fim } });
   return data;

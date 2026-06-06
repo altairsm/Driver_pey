@@ -1,7 +1,17 @@
 import { Router } from 'express';
-import { calcularPagamentos, confirmarPagamento, listarMotoristas, criarMotorista, atualizarMotorista, deletarMotorista } from '../services/paymentService.js';
+import { calcularPagamentos, confirmarPagamento, listarMotoristas, criarMotorista, atualizarMotorista, deletarMotorista, getQuinzenasAdmin } from '../services/paymentService.js';
 
 const router = Router();
+
+router.get('/quinzenas', async (req, res) => {
+  try {
+    const quinzenas = await getQuinzenasAdmin();
+    res.json(quinzenas);
+  } catch (err) {
+    console.error('Erro ao buscar quinzenas:', err);
+    res.status(500).json({ error: 'Erro ao buscar quinzenas' });
+  }
+});
 
 router.get('/pagamentos', async (req, res) => {
   try {

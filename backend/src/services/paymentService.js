@@ -100,6 +100,28 @@ export async function listarMotoristas() {
   return result.rows;
 }
 
+export async function getQuinzenasAdmin() {
+  const result = await pool.query(`
+    SELECT DISTINCT
+      CASE
+        WHEN EXTRACT(DAY FROM re."Data"::date) <= 15 THEN
+          date_trunc('month', re."Data"::date)::date
+        ELSE
+          (date_trunc('month', re."Data"::date) + INTERVAL '15 days')::date
+      END AS inicio,
+      CASE
+        WHEN EXTRACT(DAY FROM re."Data"::date) <= 15 THEN
+          (date_trunc('month', re."Data"::date) + INTERVAL '14 days')::date
+        ELSE
+          (date_trunc('month', re."Data"::date) + INTERVAL '1 month' - INTERVAL '1 day')::date
+      END AS fim
+    FROM relatorioentrega_export re
+    WHERE re."Data" IS NOT NULL
+    ORDER BY inicio DESC
+  `);
+  return result.rows;
+}
+
 export async function criarMotorista(dados) {
   const { matricula, nome_completo, cpf, telefone, pgro } = dados;
   await pool.query(`

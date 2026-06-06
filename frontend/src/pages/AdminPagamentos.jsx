@@ -1,20 +1,36 @@
-import { useState, useEffect } from 'react';
-import { getResumo, confirmarPagamento } from '../services/api';
+import { useState, useEffect, useCallback } from 'react';
+import { getResumo, confirmarPagamento, getAdminQuinzenas } from '../services/api';
 import Topbar from '../components/Topbar';
 
-export default function AdminPagamentos() {
-  const hoje = new Date().toISOString().split('T')[0];
-  const mesPassado = new Date(Date.now() - 32 * 86400000).toISOString().split('T')[0];
+function formatQuinzena(inicio, fim) {
+  const i = String(inicio).slice(0, 10).split('-');
+  const f = String(fim).slice(0, 10).split('-');
+  return `${i[2]}/${i[1]} a ${f[2]}/${f[1]}/${f[0]}`;
+}
 
-  const [inicio, setInicio] = useState(mesPassado);
-  const [fim, setFim] = useState(hoje);
+function calcPagamento(endDate) {
+  const d = new Date(endDate);
+  d.setUTCDate(d.getUTCDate() + 1);
+  let uteis = 0;
+  while (uteis < 5) {
+    const dow = d.getUTCDay();
+    if (dow !== 0 && dow !== 6) uteis++;
+    if (uteis < 5) d.setUTCDate(d.getUTCDate() + 1);
+  }
+  return d;
+}
+
+export default function AdminPagamentos() {
+  const [quinzenas, setQuinzenas] = useState([]);
+  const [qzIdx, setQzIdx] = useState(0);
   const [resumo, setResumo] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [confirmando, setConfirmando] = useState(null);
 
-  const buscar = async () => {
-    if (!inicio || !fim) return;
+  const qzAtual = quinzenas[qzIdx] || null;
+
+  const fetchResumo = useCallback(async (inicio, fim) => {
     setLoading(true);
     setError('');
     try {
@@ -25,17 +41,51 @@ export default function AdminPagamentos() {
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    buscar();
   }, []);
 
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const qzs = await getAdminQuinzenas();
+        setQuinzenas(qzs);
+        if (qzs.length > 0) {
+          const q = qzs[0];
+          await fetchResumo(q.inicio.slice(0, 10), q.fim.slice(0, 10));
+        }
+      } catch (e) {
+        setError('Erro ao carregar quinzenas');
+      } finally {
+        setLoading(false);
+      }
+    };
+    init();
+  }, [fetchResumo]);
+
+  const handlePrev = async () => {
+    if (qzIdx < quinzenas.length - 1) {
+      const newIdx = qzIdx + 1;
+      setQzIdx(newIdx);
+      const q = quinzenas[newIdx];
+      await fetchResumo(q.inicio.slice(0, 10), q.fim.slice(0, 10));
+    }
+  };
+
+  const handleNext = async () => {
+    if (qzIdx > 0) {
+      const newIdx = qzIdx - 1;
+      setQzIdx(newIdx);
+      const q = quinzenas[newIdx];
+      await fetchResumo(q.inicio.slice(0, 10), q.fim.slice(0, 10));
+    }
+  };
+
   const handleConfirmar = async (matricula) => {
+    if (!qzAtual) return;
     setConfirmando(matricula);
     try {
-      await confirmarPagamento(matricula, inicio, fim);
-      buscar();
+      await confirmarPagamento(matricula, qzAtual.inicio.slice(0, 10), qzAtual.fim.slice(0, 10));
+      const data = await getResumo(qzAtual.inicio.slice(0, 10), qzAtual.fim.slice(0, 10));
+      setResumo(data);
     } catch (err) {
       setError('Erro ao confirmar pagamento');
     } finally {
@@ -53,27 +103,20 @@ export default function AdminPagamentos() {
         <h2 style={styles.title}>Pagamentos a Motoristas</h2>
 
         <div style={styles.filterRow}>
-          <div style={styles.filterGroup}>
-            <label style={styles.filterLabel}>Início</label>
-            <input
-              type="date"
-              value={inicio}
-              onChange={(e) => setInicio(e.target.value)}
-              style={styles.dateInput}
-            />
-          </div>
-          <div style={styles.filterGroup}>
-            <label style={styles.filterLabel}>Fim</label>
-            <input
-              type="date"
-              value={fim}
-              onChange={(e) => setFim(e.target.value)}
-              style={styles.dateInput}
-            />
-          </div>
-          <button onClick={buscar} style={styles.filterBtn} disabled={loading}>
-            {loading ? 'Buscando...' : 'Buscar'}
+          <button onClick={handlePrev} disabled={qzIdx >= quinzenas.length - 1} style={styles.navBtn}>
+            &lt; Anterior
           </button>
+          <div style={styles.quinzenaLabel}>
+            {qzAtual ? formatQuinzena(qzAtual.inicio, qzAtual.fim) : '—'}
+          </div>
+          <button onClick={handleNext} disabled={qzIdx <= 0} style={styles.navBtn}>
+            Próximo &gt;
+          </button>
+          {qzAtual && (
+            <div style={styles.pagDateLabel}>
+              Pagamento: {calcPagamento(qzAtual.fim.slice(0, 10)).toLocaleDateString('pt-BR')}
+            </div>
+          )}
         </div>
 
         {error && <div style={styles.error}>{error}</div>}
@@ -196,39 +239,33 @@ const styles = {
   filterRow: {
     display: 'flex',
     gap: 12,
-    alignItems: 'flex-end',
+    alignItems: 'center',
     marginBottom: 24,
     flexWrap: 'wrap',
   },
-  filterGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 4,
-  },
-  filterLabel: {
-    fontSize: '0.75rem',
-    color: '#6b7280',
-    textTransform: 'uppercase',
-    letterSpacing: '1px',
-  },
-  dateInput: {
+  navBtn: {
     background: '#1e2230',
     border: '1px solid #2a2f3e',
     color: '#e8eaf0',
-    padding: '8px 12px',
-    borderRadius: 4,
-    fontFamily: "'IBM Plex Mono', monospace",
-    fontSize: '0.85rem',
-  },
-  filterBtn: {
-    background: '#f0c040',
-    color: '#0d0f14',
-    border: 'none',
-    padding: '8px 24px',
+    padding: '8px 16px',
     borderRadius: 4,
     cursor: 'pointer',
+    fontSize: '0.82rem',
+    fontFamily: "'IBM Plex Mono', monospace",
+  },
+  quinzenaLabel: {
+    fontSize: '1.1rem',
     fontWeight: 600,
-    fontSize: '0.85rem',
+    color: '#f0c040',
+    fontFamily: "'Bebas Neue', sans-serif",
+    letterSpacing: '2px',
+    minWidth: 180,
+    textAlign: 'center',
+  },
+  pagDateLabel: {
+    fontSize: '0.78rem',
+    color: '#3de8a0',
+    fontFamily: "'IBM Plex Mono', monospace",
   },
   error: {
     background: '#2a1a1a',
