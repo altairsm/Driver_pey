@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_DB: jadlog
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: PUhgB0AZWAfhfm9qFe0sDcLzQG09hTGLkSC3eOa66e333b7b
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -29,7 +29,7 @@ services:
       DB_PORT: 5432
       DB_NAME: jadlog
       DB_USER: postgres
-      DB_PASS: postgres
+      DB_PASS: PUhgB0AZWAfhfm9qFe0sDcLzQG09hTGLkSC3eOa66e333b7b
       JWT_SECRET: driver-pey-secret-key-2026
     depends_on:
       postgres:
