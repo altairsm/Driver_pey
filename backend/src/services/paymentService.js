@@ -55,6 +55,7 @@ export async function calcularPagamentos(inicio, fim) {
       m.nome_completo,
       m.cpf,
       m.telefone,
+      m.pgro,
       COALESCE(rm.total_ctes, 0)   AS total_ctes,
       COALESCE(rm.total_listas, 0) AS total_listas,
       COALESCE(rm.peso_total, 0)   AS peso_total,

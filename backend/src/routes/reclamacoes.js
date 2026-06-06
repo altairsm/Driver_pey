@@ -1,13 +1,24 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { uploadReclamacoes, listarReclamacoes, atualizarCte, deletarReclamacao, listarReclamacoesSemMotorista } from '../services/reclamacoesService.js';
+import { uploadReclamacoes, listarReclamacoes, atualizarCte, deletarReclamacao, listarReclamacoesSemMotorista, getQuinzenasReclamacoes } from '../services/reclamacoesService.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
+router.get('/reclamacoes/quinzenas', async (req, res) => {
+  try {
+    const quinzenas = await getQuinzenasReclamacoes();
+    res.json(quinzenas);
+  } catch (err) {
+    console.error('Erro ao buscar quinzenas:', err);
+    res.status(500).json({ error: 'Erro ao buscar quinzenas' });
+  }
+});
+
 router.get('/reclamacoes', async (req, res) => {
   try {
-    const { rows, atualizadas } = await listarReclamacoes();
+    const { inicio, fim } = req.query;
+    const { rows, atualizadas } = await listarReclamacoes(inicio, fim);
     res.json({ reclamacoes: rows, atualizadas });
   } catch (err) {
     console.error('Erro ao listar reclamações:', err);

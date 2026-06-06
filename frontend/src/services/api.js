@@ -249,8 +249,16 @@ export async function uploadReclamacoes(file) {
   return data;
 }
 
-export async function getAdminReclamacoes() {
-  const { data } = await api.get('/admin/reclamacoes');
+export async function getAdminReclamacoes(inicio, fim) {
+  const params = {};
+  if (inicio) params.inicio = inicio;
+  if (fim) params.fim = fim;
+  const { data } = await api.get('/admin/reclamacoes', { params });
+  return data;
+}
+
+export async function getReclamacoesQuinzenas() {
+  const { data } = await api.get('/admin/reclamacoes/quinzenas');
   return data;
 }
 

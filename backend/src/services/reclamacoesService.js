@@ -122,10 +122,40 @@ export async function atualizarMatriculasPendentes() {
   return result.rowCount || 0;
 }
 
-export async function listarReclamacoes() {
+export async function getQuinzenasReclamacoes() {
+  const result = await pool.query(`
+    SELECT DISTINCT
+      CASE
+        WHEN EXTRACT(DAY FROM a.data_criacao) <= 15 THEN
+          date_trunc('month', a.data_criacao)::date
+        ELSE
+          (date_trunc('month', a.data_criacao) + INTERVAL '15 days')::date
+      END AS inicio,
+      CASE
+        WHEN EXTRACT(DAY FROM a.data_criacao) <= 15 THEN
+          (date_trunc('month', a.data_criacao) + INTERVAL '14 days')::date
+        ELSE
+          (date_trunc('month', a.data_criacao) + INTERVAL '1 month' - INTERVAL '1 day')::date
+      END AS fim
+    FROM acareacaojad a
+    WHERE a.data_criacao IS NOT NULL
+    ORDER BY inicio DESC
+  `);
+  return result.rows;
+}
+
+export async function listarReclamacoes(inicio, fim) {
   const atualizadas = await atualizarMatriculasPendentes();
 
-  const result = await pool.query(`
+  let whereClause = '';
+  const params = [];
+
+  if (inicio && fim) {
+    params.push(inicio, fim);
+    whereClause = `WHERE a.data_criacao BETWEEN $1::date AND $2::date`;
+  }
+
+  const query = `
     SELECT
       a.id,
       a.ticket_id,
@@ -137,8 +167,13 @@ export async function listarReclamacoes() {
       m.nome_completo AS motorista_nome
     FROM acareacaojad a
     LEFT JOIN matriculos_jad m ON m."OperadorMatricula"::bigint = a."OperadorMatricula"
-    ORDER BY a.data_criacao DESC, a.id DESC
-  `);
+    ${whereClause}
+    ORDER BY
+      CASE WHEN a."NCTE" IS NULL OR a."OperadorMatricula" IS NULL THEN 0 ELSE 1 END,
+      a.data_criacao DESC,
+      a.id DESC
+  `;
+  const result = await pool.query(query, params);
   return { rows: result.rows, atualizadas };
 }
 
