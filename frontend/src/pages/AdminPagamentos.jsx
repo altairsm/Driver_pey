@@ -191,13 +191,19 @@ export default function AdminPagamentos() {
                         {formatBRL(m.margem_bruta)}
                       </td>
                       <td style={styles.td}>
-                        <button
-                          onClick={() => handleConfirmar(m.matricula)}
-                          disabled={confirmando === m.matricula}
-                          style={styles.confirmBtn}
-                        >
-                          {confirmando === m.matricula ? '...' : 'Pago'}
-                        </button>
+                        {m.pgro === false || m.pgro === 'false' || m.pgro === 'FALSE' ? (
+                          <span style={{ color: '#ff5a5a', fontWeight: 600, fontSize: '0.78rem' }}>
+                            Bloqueado
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleConfirmar(m.matricula)}
+                            disabled={confirmando === m.matricula}
+                            style={styles.confirmBtn}
+                          >
+                            {confirmando === m.matricula ? '...' : 'Pago'}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}

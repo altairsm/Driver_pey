@@ -1,6 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Topbar from '../components/Topbar';
-import { uploadReclamacoes, getAdminReclamacoes, updateReclamacaoCte, deleteReclamacao } from '../services/api';
+import { uploadReclamacoes, getAdminReclamacoes, updateReclamacaoCte, deleteReclamacao, getReclamacoesQuinzenas } from '../services/api';
+
+function formatQuinzena(inicio, fim) {
+  const i = String(inicio).slice(0, 10).split('-');
+  const f = String(fim).slice(0, 10).split('-');
+  return `${i[2]}/${i[1]} a ${f[2]}/${f[1]}/${f[0]}`;
+}
 
 export default function AdminReclamacoes() {
   const [file, setFile] = useState(null);
@@ -13,9 +19,15 @@ export default function AdminReclamacoes() {
   const [editCteId, setEditCteId] = useState(null);
   const [editCteVal, setEditCteVal] = useState('');
 
-  const carregar = async () => {
+  const [quinzenas, setQuinzenas] = useState([]);
+  const [qzIdx, setQzIdx] = useState(0);
+
+  const qzAtual = quinzenas[qzIdx] || null;
+
+  const carregar = useCallback(async (inicio, fim) => {
+    setLoading(true);
     try {
-      const data = await getAdminReclamacoes();
+      const data = await getAdminReclamacoes(inicio, fim);
       setReclamacoes(data.reclamacoes || data);
       if (data.atualizadas && data.atualizadas > 0) {
         setMsgAuto(`${data.atualizadas} matrícula(s) atualizada(s) automaticamente com base no relatório JadLog.`);
@@ -26,9 +38,43 @@ export default function AdminReclamacoes() {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const qzs = await getReclamacoesQuinzenas();
+        setQuinzenas(qzs);
+        if (qzs.length > 0) {
+          const q = qzs[0];
+          await carregar(q.inicio.slice(0, 10), q.fim.slice(0, 10));
+        } else {
+          await carregar();
+        }
+      } catch (e) {
+        await carregar();
+      }
+    };
+    init();
+  }, [carregar]);
+
+  const handlePrev = async () => {
+    if (qzIdx < quinzenas.length - 1) {
+      const newIdx = qzIdx + 1;
+      setQzIdx(newIdx);
+      const q = quinzenas[newIdx];
+      await carregar(q.inicio.slice(0, 10), q.fim.slice(0, 10));
+    }
   };
 
-  useEffect(() => { carregar(); }, []);
+  const handleNext = async () => {
+    if (qzIdx > 0) {
+      const newIdx = qzIdx - 1;
+      setQzIdx(newIdx);
+      const q = quinzenas[newIdx];
+      await carregar(q.inicio.slice(0, 10), q.fim.slice(0, 10));
+    }
+  };
 
   const handleUpload = async () => {
     if (!file) { setMsgUpload('Selecione um arquivo.'); return; }
@@ -42,7 +88,8 @@ export default function AdminReclamacoes() {
       if (r.erros?.length > 0) msg += ` | ⚠️ ${r.erros.length} erro(s): ${r.erros.join('; ')}`;
       setMsgUpload(msg);
       setFile(null);
-      carregar();
+      if (qzAtual) await carregar(qzAtual.inicio.slice(0, 10), qzAtual.fim.slice(0, 10));
+      else await carregar();
     } catch (err) {
       setMsgUpload(`❌ ${err.response?.data?.error || err.message}`);
     } finally {
@@ -56,7 +103,8 @@ export default function AdminReclamacoes() {
       await updateReclamacaoCte(id, editCteVal.trim());
       setEditCteId(null);
       setEditCteVal('');
-      carregar();
+      if (qzAtual) await carregar(qzAtual.inicio.slice(0, 10), qzAtual.fim.slice(0, 10));
+      else await carregar();
     } catch (err) {
       alert('Erro ao atualizar CTE: ' + (err.response?.data?.error || err.message));
     }
@@ -66,7 +114,8 @@ export default function AdminReclamacoes() {
     if (!confirm('Remover esta reclamação?')) return;
     try {
       await deleteReclamacao(id);
-      carregar();
+      if (qzAtual) await carregar(qzAtual.inicio.slice(0, 10), qzAtual.fim.slice(0, 10));
+      else await carregar();
     } catch (err) {
       alert('Erro ao remover: ' + (err.response?.data?.error || err.message));
     }
@@ -98,6 +147,8 @@ export default function AdminReclamacoes() {
     td: { padding: '8px 10px', borderBottom: '1px solid rgba(42,47,62,.6)', color: '#e8eaf0', fontSize: '0.72rem' },
     badge: (bg, fg) => ({ display: 'inline-block', padding: '2px 8px', fontSize: '0.58rem', letterSpacing: '1px', borderRadius: 2, background: bg, color: fg }),
     empty: { textAlign: 'center', padding: '40px 0', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem', color: '#6b7280' },
+    navBtn: { background: '#1e2230', border: '1px solid #2a2f3e', color: '#e8eaf0', padding: '6px 14px', borderRadius: 4, cursor: 'pointer', fontSize: '0.78rem', fontFamily: "'IBM Plex Mono', monospace" },
+    qzLabel: { fontSize: '1rem', fontWeight: 600, color: '#f0c040', fontFamily: "'Bebas Neue', sans-serif", letterSpacing: '2px', minWidth: 170, textAlign: 'center' },
   };
 
   return (
@@ -105,6 +156,18 @@ export default function AdminReclamacoes() {
       <Topbar user={{ nome: 'Admin' }} />
       <div style={s.content}>
         <h2 style={s.title}>Reclamações (Solicitações Status)</h2>
+
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 20, flexWrap: 'wrap' }}>
+          <button onClick={handlePrev} disabled={qzIdx >= quinzenas.length - 1} style={s.navBtn}>
+            &lt; Anterior
+          </button>
+          <div style={s.qzLabel}>
+            {qzAtual ? formatQuinzena(qzAtual.inicio, qzAtual.fim) : 'Todas'}
+          </div>
+          <button onClick={handleNext} disabled={qzIdx <= 0} style={s.navBtn}>
+            Próximo &gt;
+          </button>
+        </div>
 
         <div style={s.card}>
           <div style={s.cardHeader('#0d6efd')}>
@@ -153,9 +216,10 @@ export default function AdminReclamacoes() {
                     {reclamacoes.map((r) => {
                       const semCte = !r.cte;
                       const semMotorista = !r.matricula;
+                      const pendente = semCte || semMotorista;
                       const situacao = semCte ? 'pendente' : semMotorista ? 'nao_encontrado' : 'ok';
                       return (
-                        <tr key={r.id}>
+                        <tr key={r.id} style={pendente ? { background: '#1e1520' } : {}}>
                           <td style={s.td}>{r.ticket_id}</td>
                           <td style={s.td}>
                             {editCteId === r.id ? (
