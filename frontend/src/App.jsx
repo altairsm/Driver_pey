@@ -1,10 +1,18 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Login from './pages/Login'
 import DriverDashboard from './pages/DriverDashboard'
+import DriverRegrasPagamento from './pages/DriverRegrasPagamento'
 import AdminPagamentos from './pages/AdminPagamentos'
 import AdminUpload from './pages/AdminUpload'
 import AdminImportarListas from './pages/AdminImportarListas'
 import AdminMotoristas from './pages/AdminMotoristas'
+import AdminTabelas from './pages/AdminTabelas'
+import AdminCeps from './pages/AdminCeps'
+import AdminCepsSemRange from './pages/AdminCepsSemRange'
+import AdminCtesSemFaixa from './pages/AdminCtesSemFaixa'
+import AdminCepsConflitos from './pages/AdminCepsConflitos'
+import AdminReclamacoes from './pages/AdminReclamacoes'
+import AdminSolicitacoesPagamento from './pages/AdminSolicitacoesPagamento'
 
 function ProtectedRoute({ children, adminOnly }) {
   const token = localStorage.getItem('token')
@@ -27,10 +35,25 @@ function App() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/driver/regras-pagamento"
+        element={
+          <ProtectedRoute>
+            <DriverRegrasPagamento />
+          </ProtectedRoute>
+        }
+      />
       <Route path="/admin/pagamentos" element={<AdminPagamentos />} />
       <Route path="/admin/upload" element={<AdminUpload />} />
       <Route path="/admin/listas" element={<AdminImportarListas />} />
       <Route path="/admin/motoristas" element={<AdminMotoristas />} />
+      <Route path="/admin/tabelas" element={<AdminTabelas />} />
+      <Route path="/admin/ceps" element={<AdminCeps />} />
+      <Route path="/admin/ceps/sem-range" element={<AdminCepsSemRange />} />
+      <Route path="/admin/ceps/ctes-sem-faixa" element={<AdminCtesSemFaixa />} />
+      <Route path="/admin/ceps/conflitos" element={<AdminCepsConflitos />} />
+      <Route path="/admin/reclamacoes" element={<AdminReclamacoes />} />
+      <Route path="/admin/solicitacoes-pagamento" element={<AdminSolicitacoesPagamento />} />
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

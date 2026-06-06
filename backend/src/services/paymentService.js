@@ -5,7 +5,7 @@ export async function calcularPagamentos(inicio, fim) {
     WITH quinzena_params AS (
       SELECT $1::date AS inicio, $2::date AS fim
     ),
-    entregas_base AS (
+    entregas_raw AS (
       SELECT
         re."OperadorMatricula"::bigint AS matricula,
         re."OperadorNome"              AS nome_entrega,
@@ -13,17 +13,30 @@ export async function calcularPagamentos(inicio, fim) {
         re."Lista"                     AS lista,
         re."Peso"::numeric             AS peso_cte,
         re."Cep",
-        COALESCE(fb.valor_peso, 0)     AS valor_peso
+        COALESCE(fb.valor_peso, 0)     AS valor_peso,
+        COALESCE(tf.valor_fixo + GREATEST(re."Peso"::numeric - 15, 0) * tf.valor_excedente_kg, 0) AS valor_faturamento
       FROM relatorioentrega_export re
       CROSS JOIN quinzena_params qp
       LEFT JOIN ceps_bairros cb
-        ON CAST(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g') AS BIGINT)
+        ON CAST(NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '') AS BIGINT)
            BETWEEN CAST(cb.cep_ini AS BIGINT) AND CAST(cb.cep_fim AS BIGINT)
       LEFT JOIN faixas_peso_entrega_bairro fb
         ON re."Peso"::numeric BETWEEN fb.peso_de AND fb.peso_ate
         AND fb.nome_tabela = cb.tabela_motorista
+      LEFT JOIN tabela_faturamento tf
+        ON re."Peso"::numeric BETWEEN tf.peso_de AND tf.peso_ate
+      JOIN lista_entregas le ON le."Número"::text = re."Lista"
       WHERE LOWER(re."Evento") = 'entrega'
+        AND le.status = 'Finalizado'
+        AND (le.pago IS NULL OR le.pago = false)
         AND re."Data"::date BETWEEN qp.inicio AND qp.fim
+    ),
+    entregas_base AS (
+      SELECT DISTINCT ON (ncte, lista) *
+      FROM entregas_raw
+      ORDER BY ncte, lista,
+        CASE WHEN valor_peso > 0 THEN 0 ELSE 1 END,
+        valor_peso ASC
     ),
     resumo_motorista AS (
       SELECT
@@ -32,7 +45,8 @@ export async function calcularPagamentos(inicio, fim) {
         COUNT(*)              AS total_ctes,
         COUNT(DISTINCT lista) AS total_listas,
         SUM(peso_cte)         AS peso_total,
-        SUM(valor_peso)       AS total_quinzena
+        SUM(valor_peso)       AS total_quinzena,
+        SUM(valor_faturamento) AS total_faturamento
       FROM entregas_base
       GROUP BY matricula, nome_entrega
     )
@@ -45,8 +59,8 @@ export async function calcularPagamentos(inicio, fim) {
       COALESCE(rm.total_listas, 0) AS total_listas,
       COALESCE(rm.peso_total, 0)   AS peso_total,
       COALESCE(rm.total_quinzena, 0)::numeric(10,2) AS total_quinzena,
-      COALESCE(rm.total_quinzena, 0)::numeric(10,2) AS receita_total,
-      0::numeric(10,2) AS margem_bruta
+      COALESCE(rm.total_faturamento, 0)::numeric(10,2) AS receita_total,
+      COALESCE(rm.total_faturamento - rm.total_quinzena, 0)::numeric(10,2) AS margem_bruta
     FROM matriculos_jad m
     LEFT JOIN resumo_motorista rm ON rm.matricula = m."OperadorMatricula"::bigint
     WHERE COALESCE(rm.total_quinzena, 0) > 0
@@ -65,6 +79,7 @@ export async function confirmarPagamento(matricula, periodo) {
     WHERE le."Número"::text = re."Lista"
       AND re."OperadorMatricula"::bigint = $1
       AND LOWER(re."Evento") = 'entrega'
+      AND (le.pago IS NULL OR le.pago = false)
       AND re."Data"::date BETWEEN $2 AND $3
   `;
   await pool.query(query, [matricula, periodo.inicio, periodo.fim]);

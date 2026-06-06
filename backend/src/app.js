@@ -7,6 +7,10 @@ import driverRoutes from './routes/driver.js';
 import adminRoutes from './routes/admin.js';
 import uploadRoutes from './routes/upload.js';
 import listasRoutes from './routes/listas.js';
+import tabelasRoutes from './routes/tabelas.js';
+import cepsRoutes from './routes/ceps.js';
+import reclamacoesRoutes from './routes/reclamacoes.js';
+import solicitacoesRoutes from './routes/solicitacoes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -24,12 +28,27 @@ app.use('/api/driver', driverRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/admin', listasRoutes);
+app.use('/api/admin', tabelasRoutes);
+app.use('/api/admin', cepsRoutes);
+app.use('/api/admin', reclamacoesRoutes);
+app.use('/api/admin', solicitacoesRoutes);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ error: err.message || 'Erro interno do servidor' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Driver_Pey API running on http://localhost:${PORT}`);
-});
+import { runMigrations } from './db/migrate.js';
+
+async function start() {
+  try {
+    await runMigrations();
+  } catch (err) {
+    console.error('Migration failed, starting anyway:', err);
+  }
+  app.listen(PORT, () => {
+    console.log(`Driver_Pey API running on http://localhost:${PORT}`);
+  });
+}
+
+start();

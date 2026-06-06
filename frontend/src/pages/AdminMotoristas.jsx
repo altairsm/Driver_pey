@@ -8,7 +8,7 @@ export default function AdminMotoristas() {
   const [error, setError] = useState('');
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState(null);
-  const [form, setForm] = useState({ matricula: '', nome_completo: '', cpf: '', telefone: '', pgro: '' });
+  const [form, setForm] = useState({ matricula: '', nome_completo: '', cpf: '', telefone: '' });
   const [salvando, setSalvando] = useState(false);
 
   const carregar = async () => {
@@ -22,7 +22,7 @@ export default function AdminMotoristas() {
 
   const abrirNovo = () => {
     setEditando(null);
-    setForm({ matricula: '', nome_completo: '', cpf: '', telefone: '', pgro: '' });
+    setForm({ matricula: '', nome_completo: '', cpf: '', telefone: '' });
     setError('');
     setModalAberto(true);
   };
@@ -34,7 +34,6 @@ export default function AdminMotoristas() {
       nome_completo: m.nome_completo || '',
       cpf: m.cpf || '',
       telefone: m.telefone || '',
-      pgro: m.pgro || '',
     });
     setError('');
     setModalAberto(true);
@@ -127,7 +126,6 @@ export default function AdminMotoristas() {
                     <th style={s.th}>Nome</th>
                     <th style={s.th}>CPF</th>
                     <th style={s.th}>Telefone</th>
-                    <th style={s.th}>PGRO</th>
                     <th style={s.th}>Ações</th>
                   </tr></thead>
                   <tbody>
@@ -137,7 +135,6 @@ export default function AdminMotoristas() {
                         <td style={s.td}>{m.nome_completo}</td>
                         <td style={s.td}>{m.cpf}</td>
                         <td style={s.td}>{m.telefone || '—'}</td>
-                        <td style={s.td}>{m.pgro || '—'}</td>
                         <td style={{ ...s.td, whiteSpace: 'nowrap' }}>
                           <button style={s.btnSm('#ffc107', '#0d0f14')} onClick={() => abrirEditar(m)}>Editar</button>
                           <button style={s.btnSm('#dc3545', '#fff')} onClick={() => handleExcluir(m)}>Excluir</button>
@@ -183,21 +180,7 @@ export default function AdminMotoristas() {
                   <input style={s.input} name="telefone" value={form.telefone}
                     onChange={(e) => setForm({...form, telefone: e.target.value.replace(/\D/g, '')})} />
                 </div>
-                <div style={s.field}>
-                  <label style={s.label}>PGRO (Tipo de Pagamento)</label>
-                  <select style={s.select} name="pgro" value={form.pgro} onChange={handleChange}>
-                    <option value="">Selecione...</option>
-                    <option value="Por Entrega">Por Entrega</option>
-                    <option value="Peso 12">Peso 12</option>
-                    <option value="Diária">Diária</option>
-                    <option value="Diária 30pc">Diária 30pc</option>
-                    <option value="Diária 40pc">Diária 40pc</option>
-                    <option value="Casa">Casa</option>
-                    <option value="Volumoso">Volumoso</option>
-                    <option value="Alpha">Alpha</option>
-                    <option value="Baixa">Baixa</option>
-                  </select>
-                </div>
+
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
                   <button type="button" style={s.btnSm('#6c757d', '#fff')} onClick={fecharModal}>Cancelar</button>
                   <button type="submit" style={s.btnSm('#198754', '#fff')} disabled={salvando}>

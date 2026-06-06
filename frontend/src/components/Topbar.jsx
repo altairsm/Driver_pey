@@ -26,6 +26,27 @@ export default function Topbar({ user }) {
             <span style={styles.navLink} onClick={() => navigate('/admin/listas')}>
               Importar Listas
             </span>
+            <span style={styles.navLink} onClick={() => navigate('/admin/tabelas')}>
+              Tabelas
+            </span>
+            <span style={styles.navLink} onClick={() => navigate('/admin/ceps')}>
+              CEPs
+            </span>
+            <span style={styles.navLink} onClick={() => navigate('/admin/ceps/sem-range')}>
+              CEPs sem Range
+            </span>
+            <span style={styles.navLink} onClick={() => navigate('/admin/ceps/ctes-sem-faixa')}>
+              CTEs sem Faixa
+            </span>
+            <span style={styles.navLink} onClick={() => navigate('/admin/ceps/conflitos')}>
+              Conflitos CEPs
+            </span>
+            <span style={styles.navLink} onClick={() => navigate('/admin/reclamacoes')}>
+              Reclamações
+            </span>
+            <span style={styles.navLink} onClick={() => navigate('/admin/solicitacoes-pagamento')}>
+              Adiantamentos
+            </span>
             <span style={styles.navLink} onClick={() => navigate('/admin/motoristas')}>
               Motoristas
             </span>

@@ -36,13 +36,23 @@ export async function getMe() {
   return data;
 }
 
-export async function getDriverDashboard() {
-  const { data } = await api.get('/driver/dashboard');
+export async function getDriverDashboard(inicio, fim) {
+  const { data } = await api.get('/driver/dashboard', { params: { inicio, fim } });
   return data;
 }
 
-export async function getDriverTrips() {
-  const { data } = await api.get('/driver/trips');
+export async function getDriverTrips(inicio, fim) {
+  const { data } = await api.get('/driver/trips', { params: { inicio, fim } });
+  return data;
+}
+
+export async function getDriverTripsFaixas(inicio, fim) {
+  const { data } = await api.get('/driver/trips/faixas', { params: { inicio, fim } });
+  return data;
+}
+
+export async function solicitarPagamento(lista_numero, valor_solicitado) {
+  const { data } = await api.post('/driver/solicitar-pagamento', { lista_numero, valor_solicitado });
   return data;
 }
 
@@ -137,6 +147,135 @@ export async function resetLista(numero) {
 
 export async function deleteLista(numero) {
   const { data } = await api.delete(`/admin/listas/${numero}`);
+  return data;
+}
+
+export async function getTabelas() {
+  const { data } = await api.get('/admin/tabelas');
+  return data;
+}
+
+export async function createTabela(nome, faixas) {
+  const { data } = await api.post('/admin/tabelas', { nome, faixas });
+  return data;
+}
+
+export async function updateFaixa(id, dados) {
+  const { data } = await api.put(`/admin/tabelas/faixas/${id}`, dados);
+  return data;
+}
+
+export async function deleteFaixa(id) {
+  const { data } = await api.delete(`/admin/tabelas/faixas/${id}`);
+  return data;
+}
+
+export async function deleteTabela(nome) {
+  const { data } = await api.delete(`/admin/tabelas/${encodeURIComponent(nome)}`);
+  return data;
+}
+
+export async function getBairros(termo) {
+  const { data } = await api.get('/admin/ceps/bairros', { params: { q: termo } });
+  return data;
+}
+
+export async function getCepsPorBairro(bairro) {
+  const { data } = await api.get('/admin/ceps', { params: { bairro } });
+  return data;
+}
+
+export async function atribuirTabelaParaBairro(bairro, tabela_motorista) {
+  const { data } = await api.put('/admin/ceps/atribuir-tabela', { bairro, tabela_motorista });
+  return data;
+}
+
+export async function getCepsSemRange() {
+  const { data } = await api.get('/admin/ceps/sem-range');
+  return data;
+}
+
+export async function adicionarCepRange(dados) {
+  const { data } = await api.post('/admin/ceps/adicionar', dados);
+  return data;
+}
+
+export async function getRangesSemTabela() {
+  const { data } = await api.get('/admin/ceps/ranges-sem-tabela');
+  return data;
+}
+
+export async function getCtesSemFaixa() {
+  const { data } = await api.get('/admin/ceps/ctes-sem-faixa');
+  return data;
+}
+
+export async function getCepsConflitos() {
+  const { data } = await api.get('/admin/ceps/conflitos');
+  return data;
+}
+
+export async function getQuinzenas() {
+  const { data } = await api.get('/driver/quinzenas');
+  return data;
+}
+
+export async function getProdutividade(inicio, fim) {
+  const { data } = await api.get('/driver/produtividade', { params: { inicio, fim } });
+  return data;
+}
+
+export async function getEficiencia(inicio, fim) {
+  const { data } = await api.get('/driver/eficiencia', { params: { inicio, fim } });
+  return data;
+}
+
+export async function getReclamacoes(inicio, fim) {
+  const { data } = await api.get('/driver/reclamacoes', { params: { inicio, fim } });
+  return data;
+}
+
+export async function uploadReclamacoes(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const { data } = await api.post('/admin/reclamacoes/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data;
+}
+
+export async function getAdminReclamacoes() {
+  const { data } = await api.get('/admin/reclamacoes');
+  return data;
+}
+
+export async function getReclamacoesPendentes() {
+  const { data } = await api.get('/admin/reclamacoes/pendentes');
+  return data;
+}
+
+export async function updateReclamacaoCte(id, cte) {
+  const { data } = await api.put(`/admin/reclamacoes/${id}/cte`, { cte });
+  return data;
+}
+
+export async function deleteReclamacao(id) {
+  const { data } = await api.delete(`/admin/reclamacoes/${id}`);
+  return data;
+}
+
+export async function getSolicitacoes(status) {
+  const { data } = await api.get('/admin/solicitacoes', { params: { status } });
+  return data;
+}
+
+export async function aprovarSolicitacao(id) {
+  const { data } = await api.post(`/admin/solicitacoes/${id}/aprovar`);
+  return data;
+}
+
+export async function recusarSolicitacao(id) {
+  const { data } = await api.post(`/admin/solicitacoes/${id}/recusar`);
   return data;
 }
 
