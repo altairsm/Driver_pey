@@ -171,7 +171,8 @@ CREATE TABLE IF NOT EXISTS acareacaojad (
     assunto VARCHAR(100),
     motivo TEXT,
     status_original VARCHAR(50),
-    data_criacao DATE DEFAULT CURRENT_DATE
+    data_criacao DATE DEFAULT CURRENT_DATE,
+    importado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 8. TABELA CEP → BAIRRO → TABELA_MOTORISTA

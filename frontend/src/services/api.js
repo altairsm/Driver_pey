@@ -51,6 +51,11 @@ export async function getDriverTripsFaixas(inicio, fim) {
   return data;
 }
 
+export async function getUltimaImportacaoReclamacoes() {
+  const { data } = await api.get('/driver/ultima-importacao');
+  return data;
+}
+
 export async function solicitarPagamento(lista_numero, valor_solicitado) {
   const { data } = await api.post('/driver/solicitar-pagamento', { lista_numero, valor_solicitado });
   return data;

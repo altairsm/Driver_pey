@@ -236,6 +236,11 @@ export async function getReclamacoes(matricula, inicio, fim) {
   return result.rows;
 }
 
+export async function getUltimaImportacao() {
+  const { rows } = await pool.query(`SELECT MAX(importado_em) AS ultima_importacao FROM acareacaojad`);
+  return rows[0]?.ultima_importacao || null;
+}
+
 function calcQuinzenaFim(data) {
   const d = new Date(data);
   const dia = d.getUTCDate();
@@ -331,6 +336,16 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
 
   const ef = eficienciaData[0];
   const pctEf = ef.total > 0 ? Math.round((Number(ef.entregas) / Number(ef.total)) * 100) : 0;
+
+  const { rows: ultimaImport } = await pool.query(`SELECT MAX(importado_em) AS ultima FROM acareacaojad`);
+  const ultima = ultimaImport[0]?.ultima;
+  if (!ultima) {
+    return { success: false, motivo: 'Nenhuma reclamação importada ainda' };
+  }
+  const horasDesdeImport = (Date.now() - new Date(ultima).getTime()) / (1000 * 60 * 60);
+  if (horasDesdeImport > 4) {
+    return { success: false, motivo: 'Reclamações desatualizadas — última importação há mais de 4 horas' };
+  }
 
   if (pctEf < 98) {
     return { success: false, motivo: 'Eficiência abaixo de 98% nos últimos 30 dias' };
