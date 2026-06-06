@@ -3,7 +3,7 @@ import { authenticateToken } from '../middleware/auth.js';
 import {
   getDriverData, getDriverDashboard, getDriverTrips, getDriverTripsFaixas,
   getQuinzenasDisponiveis, getProdutividade, getEficiencia, getReclamacoes,
-  solicitarPagamento
+  solicitarPagamento, getUltimaImportacao
 } from '../services/driverService.js';
 
 const router = Router();
@@ -97,6 +97,15 @@ router.get('/reclamacoes', async (req, res) => {
     res.json(reclamacoes);
   } catch (err) {
     console.error(err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+router.get('/ultima-importacao', async (req, res) => {
+  try {
+    const ultima = await getUltimaImportacao();
+    res.json({ ultima_importacao: ultima });
+  } catch (err) {
     res.status(500).json({ error: 'Erro interno' });
   }
 });

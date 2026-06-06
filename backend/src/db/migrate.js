@@ -538,6 +538,7 @@ export async function runMigrations() {
     await pool.query('ALTER TABLE acareacaojad ADD COLUMN IF NOT EXISTS ticket_id VARCHAR(50)');
     await pool.query('ALTER TABLE acareacaojad ADD COLUMN IF NOT EXISTS assunto VARCHAR(100)');
     await pool.query('ALTER TABLE acareacaojad ADD COLUMN IF NOT EXISTS status_original VARCHAR(50)');
+    await pool.query('ALTER TABLE acareacaojad ADD COLUMN IF NOT EXISTS importado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
     console.log('  acareacaojad columns expanded');
 
     await pool.query(`

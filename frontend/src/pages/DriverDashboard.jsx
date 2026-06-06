@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getDriverDashboard, getDriverTrips, getDriverMe, getDriverTripsFaixas, getQuinzenas, getProdutividade, getEficiencia, getReclamacoes, solicitarPagamento } from '../services/api';
+import { getDriverDashboard, getDriverTrips, getDriverMe, getDriverTripsFaixas, getQuinzenas, getProdutividade, getEficiencia, getReclamacoes, solicitarPagamento, getUltimaImportacaoReclamacoes } from '../services/api';
 
 const EVENTOS_INSUCESSO = [
   'tentativa de entrega', 'ausente', 'recusado',
@@ -58,6 +58,7 @@ export default function DriverDashboard() {
   const [expandido, setExpandido] = useState({});
   const [solicitando, setSolicitando] = useState({});
   const [msgSolicitacao, setMsgSolicitacao] = useState('');
+  const [ultimaImportacao, setUltimaImportacao] = useState(null);
 
   const qzAtual = quinzenas[qzIdx] || null;
 
@@ -94,6 +95,8 @@ export default function DriverDashboard() {
         setDriver(me);
         const qzs = await getQuinzenas();
         setQuinzenas(qzs);
+        const ultima = await getUltimaImportacaoReclamacoes();
+        setUltimaImportacao(ultima.ultima_importacao);
         if (qzs.length > 0) {
           const q = qzs[0];
           await fetchQuinzenaData(
@@ -447,7 +450,9 @@ export default function DriverDashboard() {
                     const temSolicitacao = t.solicitacao_status && t.solicitacao_status !== 'recusado';
                     const solicitacaoStatus = t.solicitacao_status || null;
 
-                    const elegivel = !t.pago && pctEficiencia >= 98 && dataBaixaOk && !t.tem_reclamacao_aberta && totalValorLista > 0 && totalValorLista <= 400 && !emSuspensao && !temSolicitacao;
+                    const reclamacoesDesatualizadas = !ultimaImportacao || (Date.now() - new Date(ultimaImportacao).getTime()) > 4 * 60 * 60 * 1000;
+
+                    const elegivel = !t.pago && pctEficiencia >= 98 && dataBaixaOk && !t.tem_reclamacao_aberta && totalValorLista > 0 && totalValorLista <= 400 && !emSuspensao && !temSolicitacao && !reclamacoesDesatualizadas;
                     const motivos = [];
                     if (pctEficiencia < 98) motivos.push('Eficiência abaixo de 98%');
                     if (!dataBaixaOk) motivos.push('Data Baixa deve ser anterior a hoje');
@@ -457,6 +462,7 @@ export default function DriverDashboard() {
                     if (emSuspensao) motivos.push('Período de pagamento da quinzena em processamento');
                     if (t.pago) motivos.push('Lista já foi paga');
                     if (temSolicitacao) motivos.push(solicitacaoStatus === 'pendente' ? 'Adiantamento já solicitado (pendente)' : 'Adiantamento já aprovado');
+                    if (reclamacoesDesatualizadas) motivos.push('Reclamações desatualizadas — aguardando análise');
                     return (
                       <div key={lista} style={s.listaCard}>
                         <div style={s.listaCardHeader}>
@@ -478,9 +484,9 @@ export default function DriverDashboard() {
                               onClick={() => handleSolicitarPagamento(lista, totalValorLista)}
                               disabled={!elegivel || solicitando[lista]}
                               title={!elegivel ? motivos.join('; ') : ''}
-                              style={elegivel ? s.btnSolicitar : s.btnSolicitarDisabled}
+                              style={reclamacoesDesatualizadas ? s.btnSolicitarDisabled : elegivel ? s.btnSolicitar : s.btnSolicitarDisabled}
                             >
-                              {solicitando[lista] ? '...' : 'Solicitar Pagamento Antecipado'}
+                              {solicitando[lista] ? '...' : reclamacoesDesatualizadas ? 'Adiantamento em análise' : 'Solicitar Pagamento Antecipado'}
                             </button>
                           </div>
                         </div>
