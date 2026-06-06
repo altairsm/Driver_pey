@@ -106,7 +106,25 @@ function parseDataBr(str) {
   return str.slice(0, 10);
 }
 
+export async function atualizarMatriculasPendentes() {
+  const result = await pool.query(`
+    UPDATE acareacaojad a
+    SET "OperadorMatricula" = (
+      SELECT r."OperadorMatricula"::bigint
+      FROM relatorioentrega_export r
+      WHERE r."NCTE" = a."NCTE"
+        AND LOWER(r."Evento") = 'entrega'
+      LIMIT 1
+    )
+    WHERE a."OperadorMatricula" IS NULL
+      AND a."NCTE" IS NOT NULL
+  `);
+  return result.rowCount || 0;
+}
+
 export async function listarReclamacoes() {
+  const atualizadas = await atualizarMatriculasPendentes();
+
   const result = await pool.query(`
     SELECT
       a.id,
@@ -121,7 +139,7 @@ export async function listarReclamacoes() {
     LEFT JOIN matriculos_jad m ON m."OperadorMatricula"::bigint = a."OperadorMatricula"
     ORDER BY a.data_criacao DESC, a.id DESC
   `);
-  return result.rows;
+  return { rows: result.rows, atualizadas };
 }
 
 export async function atualizarCte(id, cte) {
