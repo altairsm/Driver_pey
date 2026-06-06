@@ -6,6 +6,7 @@ export default function AdminReclamacoes() {
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [msgUpload, setMsgUpload] = useState('');
+  const [msgAuto, setMsgAuto] = useState('');
 
   const [reclamacoes, setReclamacoes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,7 +16,11 @@ export default function AdminReclamacoes() {
   const carregar = async () => {
     try {
       const data = await getAdminReclamacoes();
-      setReclamacoes(data);
+      setReclamacoes(data.reclamacoes || data);
+      if (data.atualizadas && data.atualizadas > 0) {
+        setMsgAuto(`${data.atualizadas} matrícula(s) atualizada(s) automaticamente com base no relatório JadLog.`);
+        setTimeout(() => setMsgAuto(''), 6000);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -123,6 +128,7 @@ export default function AdminReclamacoes() {
         <div style={s.card}>
           <div style={s.cardHeader('#dc3545')}>
             <h5 style={s.cardTitle}>Reclamações Importadas ({reclamacoes.length})</h5>
+            {msgAuto && <span style={{ fontSize: '0.72rem', color: '#3de8a0', fontFamily: "'IBM Plex Mono', monospace" }}>{msgAuto}</span>}
           </div>
           <div style={s.cardBody}>
             {loading ? (

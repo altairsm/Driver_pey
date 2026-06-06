@@ -7,8 +7,8 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 router.get('/reclamacoes', async (req, res) => {
   try {
-    const reclamacoes = await listarReclamacoes();
-    res.json(reclamacoes);
+    const { rows, atualizadas } = await listarReclamacoes();
+    res.json({ reclamacoes: rows, atualizadas });
   } catch (err) {
     console.error('Erro ao listar reclamações:', err);
     res.status(500).json({ error: 'Erro ao listar reclamações' });
