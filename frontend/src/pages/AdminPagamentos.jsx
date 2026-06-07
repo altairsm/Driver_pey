@@ -195,13 +195,17 @@ export default function AdminPagamentos() {
                           <span style={{ color: '#ff5a5a', fontWeight: 600, fontSize: '0.78rem' }}>
                             Bloqueado
                           </span>
+                        ) : m.pago ? (
+                          <span style={{ color: '#3de8a0', fontWeight: 600, fontSize: '0.78rem' }}>
+                            Pago
+                          </span>
                         ) : (
                           <button
                             onClick={() => handleConfirmar(m.matricula)}
                             disabled={confirmando === m.matricula}
-                            style={styles.confirmBtn}
+                            style={styles.pendenteBtn}
                           >
-                            {confirmando === m.matricula ? '...' : 'Pago'}
+                            {confirmando === m.matricula ? '...' : 'Pendente'}
                           </button>
                         )}
                       </td>
@@ -339,6 +343,15 @@ const styles = {
     background: '#1a3a2a',
     border: '1px solid #3de8a0',
     color: '#3de8a0',
+    padding: '4px 14px',
+    borderRadius: 4,
+    cursor: 'pointer',
+    fontSize: '0.75rem',
+  },
+  pendenteBtn: {
+    background: '#3a2a1a',
+    border: '1px solid #f0c040',
+    color: '#f0c040',
     padding: '4px 14px',
     borderRadius: 4,
     cursor: 'pointer',

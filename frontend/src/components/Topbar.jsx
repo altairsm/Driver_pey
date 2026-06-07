@@ -18,7 +18,7 @@ export default function Topbar({ user }) {
         {isAdmin ? (
           <>
             <span style={styles.navLink} onClick={() => navigate('/admin/upload')}>
-              Upload XLSX
+              Entregas
             </span>
             <span style={styles.navLink} onClick={() => navigate('/admin/pagamentos')}>
               Pagamentos

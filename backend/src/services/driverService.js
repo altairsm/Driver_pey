@@ -28,7 +28,6 @@ export async function getDriverDashboard(matricula, inicio = null, fim = null) {
       WHERE re."OperadorMatricula"::bigint = $1
         AND LOWER(re."Evento") = 'entrega'
         AND le.status = 'Finalizado'
-        AND (le.pago IS NULL OR le.pago = false)
         AND ($2::date IS NULL OR le."Data Baixa" >= $2)
         AND ($3::date IS NULL OR le."Data Baixa" <= $3)
     ),
