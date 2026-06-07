@@ -3,7 +3,8 @@ import { getConfig } from './configuracaoService.js';
 
 export async function getDriverData(matricula) {
   const result = await pool.query(`
-    SELECT "OperadorMatricula"::bigint AS matricula, nome_completo, cpf, telefone
+    SELECT "OperadorMatricula"::bigint AS matricula, nome_completo, cpf, telefone,
+           leu_regras, cnpj_mei, pix_tipo
     FROM matriculos_jad
     WHERE "OperadorMatricula"::bigint = $1
   `, [matricula]);
@@ -389,4 +390,31 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
     }
     throw err;
   }
+}
+
+export async function getDriverDados(matricula) {
+  const result = await pool.query(`
+    SELECT "OperadorMatricula"::bigint AS matricula, nome_completo, cpf, telefone,
+           leu_regras, cnpj_mei, pix_tipo
+    FROM matriculos_jad
+    WHERE "OperadorMatricula"::bigint = $1
+  `, [matricula]);
+  return result.rows[0] || null;
+}
+
+export async function atualizarDriverDados(matricula, dados) {
+  const { cnpj_mei, telefone, pix_tipo } = dados;
+  await pool.query(`
+    UPDATE matriculos_jad
+    SET cnpj_mei = $1, telefone = $2, pix_tipo = $3
+    WHERE "OperadorMatricula"::bigint = $4
+  `, [cnpj_mei || null, telefone || null, pix_tipo || 'CPF', matricula]);
+  return { success: true };
+}
+
+export async function confirmarRegras(matricula) {
+  await pool.query(`
+    UPDATE matriculos_jad SET leu_regras = true WHERE "OperadorMatricula"::bigint = $1
+  `, [matricula]);
+  return { success: true };
 }

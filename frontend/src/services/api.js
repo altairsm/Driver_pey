@@ -307,4 +307,19 @@ export async function updateConfig(dados) {
   return data;
 }
 
+export async function getDriverDados() {
+  const { data } = await api.get('/driver/dados');
+  return data;
+}
+
+export async function updateDriverDados(dados) {
+  const { data } = await api.put('/driver/dados', dados);
+  return data;
+}
+
+export async function confirmarRegras() {
+  const { data } = await api.post('/driver/confirmar-regras');
+  return data;
+}
+
 export default api;

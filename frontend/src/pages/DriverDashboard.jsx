@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getDriverDashboard, getDriverTrips, getDriverMe, getDriverTripsFaixas, getQuinzenas, getProdutividade, getEficiencia, getReclamacoes, solicitarPagamento, getUltimaImportacaoReclamacoes, getConfig } from '../services/api';
 
 const EVENTOS_INSUCESSO = [
@@ -50,6 +51,7 @@ function calcQuinzenaFim(dataStr) {
 }
 
 export default function DriverDashboard() {
+  const navigate = useNavigate();
   const [driver, setDriver] = useState(null);
   const [quinzenas, setQuinzenas] = useState([]);
   const [qzIdx, setQzIdx] = useState(0);
@@ -102,6 +104,10 @@ export default function DriverDashboard() {
       try {
         const me = await getDriverMe();
         setDriver(me);
+        if (!me.leu_regras) {
+          navigate('/driver/regras-pagamento');
+          return;
+        }
         const [qzs, cfg] = await Promise.all([getQuinzenas(), getConfig()]);
         setQuinzenas(qzs);
         setConfig(cfg);

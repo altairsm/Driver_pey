@@ -493,5 +493,9 @@ ON CONFLICT (id) DO NOTHING;
 
 ALTER TABLE solicitacoes_pagamento ADD COLUMN IF NOT EXISTS taxa_aplicada NUMERIC(5,2);
 
+ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS leu_regras BOOLEAN DEFAULT false;
+ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS cnpj_mei VARCHAR(18);
+ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS pix_tipo VARCHAR(3) DEFAULT 'CPF';
+
 CREATE INDEX IF NOT EXISTS idx_ceps_bairros_cep ON ceps_bairros (cep_ini, cep_fim);
 CREATE INDEX IF NOT EXISTS idx_faixas_peso_bairro_tabela ON faixas_peso_entrega_bairro (nome_tabela, peso_de, peso_ate);

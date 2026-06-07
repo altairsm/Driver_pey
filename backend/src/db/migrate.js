@@ -566,7 +566,13 @@ export async function runMigrations() {
     await pool.query('ALTER TABLE solicitacoes_pagamento ADD COLUMN IF NOT EXISTS taxa_aplicada NUMERIC(5,2)');
     console.log('  solicitacoes_pagamento columns expanded');
 
-    // ── Step 7: Seeds ──
+    // ── Step 7: matriculos_jad column migrations ──
+    await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS leu_regras BOOLEAN DEFAULT false');
+    await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS cnpj_mei VARCHAR(18)');
+    await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS pix_tipo VARCHAR(3) DEFAULT \'CPF\'');
+    console.log('  matriculos_jad columns expanded (leu_regras, cnpj_mei, pix_tipo)');
+
+    // ── Step 8: Seeds ──
     console.log('Migrations: checking seed data...');
 
     await seedIfEmpty('faixas_peso', seedFaixasPeso);
