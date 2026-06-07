@@ -104,7 +104,8 @@ export default function DriverDashboard() {
       try {
         const me = await getDriverMe();
         setDriver(me);
-        if (!me.leu_regras) {
+        const userLS = JSON.parse(localStorage.getItem('user') || '{}');
+        if (!me.leu_regras && !userLS.leu_regras) {
           navigate('/driver/regras-pagamento');
           return;
         }
@@ -219,7 +220,9 @@ export default function DriverDashboard() {
     <div style={s.container}>
       <div style={s.topbar}>
         <div style={s.brand}>DRIVER PEY - INTUITIVA LOG</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={s.navLink} onClick={() => navigate('/driver/regras-pagamento')}>Regras</span>
+          <span style={s.navLink} onClick={() => navigate('/driver/meus-dados')}>Meus Dados</span>
           <div style={s.topbarInfo}>
             MOTORISTA <span style={s.topbarInfoVal}>{driver?.nome_completo?.toUpperCase() || '—'}</span><br />
             MATRÍCULA <span style={s.topbarInfoVal}>{driver?.matricula || '—'}</span>
@@ -650,6 +653,7 @@ const s = {
 
   topbar: { background: '#161920', borderBottom: '1px solid #2a2f3e', padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 60, position: 'sticky', top: 0, zIndex: 50 },
   brand: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.5rem', letterSpacing: '3px', color: '#f0c040' },
+  navLink: { color: '#6b7280', cursor: 'pointer', fontSize: '0.72rem', fontFamily: "'IBM Plex Mono', monospace", letterSpacing: '1px', padding: '6px 10px', border: '1px solid #2a2f3e', borderRadius: 4 },
   topbarInfo: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.62rem', color: '#6b7280', textAlign: 'right', lineHeight: 1.6 },
   topbarInfoVal: { color: '#e8eaf0', fontWeight: 600 },
   logoutBtn: { background: 'transparent', border: '1px solid #2a2f3e', color: '#6b7280', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.65rem', letterSpacing: '1px', padding: '6px 12px', cursor: 'pointer', marginLeft: 24 },
