@@ -1,7 +1,7 @@
 import { pool } from './index.js';
 
 const seedMatriculas = `
-  INSERT INTO matriculos_jad ("OperadorMatricula", nome_completo, cpf, telefone, pgro) VALUES
+  INSERT INTO matriculos_jad ("OperadorMatricula", nome_completo, cpf, telefone, pgto) VALUES
   (127704, 'ALESSANDRO MELO DE OLIVEIRA',    '12345678901', '5571999999991', 'Por Entrega'),
   (130354, 'BRUNO CESAR BARBOSA DOS SANTOS', '04791538501', '5571984242886', 'Por Entrega'),
   (133209, 'CARLOS DANIEL SANTOS LIMA',      '98765432101', '5571999999992', 'Alpha'),
@@ -380,7 +380,7 @@ export async function runMigrations() {
       nome_completo VARCHAR(200) NOT NULL,
       cpf VARCHAR(11) NOT NULL,
       telefone VARCHAR(20),
-      pgro VARCHAR(100)
+      pgto VARCHAR(100)
     )`);
     console.log('  -> matriculos_jad');
 
