@@ -79,7 +79,7 @@ export default function DriverDashboard() {
   const [ultimaImportacao, setUltimaImportacao] = useState(null);
   const [cepCache, setCepCache] = useState({});
   const [config, setConfig] = useState(null);
-  const [activeTab, setActiveTab] = useState('resumo');
+  const [activeTab, setActiveTab] = useState('reclamacoes');
   const [menuOpen, setMenuOpen] = useState(false);
 
   const qzAtual = quinzenas[qzIdx] || null;
