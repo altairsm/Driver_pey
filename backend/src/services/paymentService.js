@@ -42,11 +42,11 @@ export async function calcularPagamentos(inicio, fim) {
       SELECT
         matricula,
         nome_entrega,
-        COUNT(*)              AS total_ctes,
-        COUNT(DISTINCT lista) AS total_listas,
-        SUM(peso_cte)         AS peso_total,
-        SUM(valor_peso)       AS total_quinzena,
-        SUM(valor_faturamento) AS total_faturamento,
+        COUNT(CASE WHEN COALESCE(pago_raw, false) = false THEN 1 END) AS total_ctes,
+        COUNT(DISTINCT CASE WHEN COALESCE(pago_raw, false) = false THEN lista END) AS total_listas,
+        SUM(CASE WHEN COALESCE(pago_raw, false) = false THEN peso_cte ELSE 0 END) AS peso_total,
+        SUM(CASE WHEN COALESCE(pago_raw, false) = false THEN valor_peso ELSE 0 END) AS total_quinzena,
+        SUM(CASE WHEN COALESCE(pago_raw, false) = false THEN valor_faturamento ELSE 0 END) AS total_faturamento,
         BOOL_AND(COALESCE(pago_raw, false)) AS pago
       FROM entregas_base
       GROUP BY matricula, nome_entrega
@@ -66,7 +66,7 @@ export async function calcularPagamentos(inicio, fim) {
       COALESCE(rm.pago, false) AS pago
     FROM matriculos_jad m
     LEFT JOIN resumo_motorista rm ON rm.matricula = m."OperadorMatricula"::bigint
-    WHERE COALESCE(rm.total_quinzena, 0) > 0
+    WHERE rm.matricula IS NOT NULL
     ORDER BY m.nome_completo;
   `;
 
