@@ -107,16 +107,16 @@ export default function MeusDados() {
 
         <div style={s.card}>
           <div style={s.field}>
-            <div style={s.infoRow}>
-              <span style={s.infoLabel}>Matrícula:</span>
+            <div className="info-row" style={s.infoRow}>
+              <span className="info-label" style={s.infoLabel}>Matrícula:</span>
               <span style={s.infoValue}>{dados?.matricula || '-'}</span>
             </div>
-            <div style={s.infoRow}>
-              <span style={s.infoLabel}>Nome:</span>
+            <div className="info-row" style={s.infoRow}>
+              <span className="info-label" style={s.infoLabel}>Nome:</span>
               <span style={s.infoValue}>{dados?.nome_completo || '-'}</span>
             </div>
-            <div style={s.infoRow}>
-              <span style={s.infoLabel}>CPF:</span>
+            <div className="info-row" style={s.infoRow}>
+              <span className="info-label" style={s.infoLabel}>CPF:</span>
               <span style={s.infoValue}>{dados?.cpf || '-'}</span>
             </div>
           </div>

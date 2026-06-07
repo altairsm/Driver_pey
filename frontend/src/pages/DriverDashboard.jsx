@@ -220,7 +220,7 @@ export default function DriverDashboard() {
     <div style={s.container}>
       <div style={s.topbar}>
         <div style={s.brand}>DRIVER PEY - INTUITIVA LOG</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div className="topbar-driver-row" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={s.navLink} onClick={() => navigate('/driver/regras-pagamento')}>Regras</span>
           <span style={s.navLink} onClick={() => navigate('/driver/meus-dados')}>Meus Dados</span>
           <div style={s.topbarInfo}>
@@ -231,10 +231,10 @@ export default function DriverDashboard() {
         </div>
       </div>
 
-      <div style={s.content}>
+      <div className="driver-content" style={s.content}>
         {error && <div style={s.error}>{error}</div>}
 
-        <div style={s.hero}>
+        <div className="hero" style={s.hero}>
           <div>
             <div style={s.heroName}>
               <em style={s.heroNameEm}>{driver?.nome_completo?.split(' ').slice(0, 2).join(' ')?.toUpperCase() || 'MOTORISTA'}</em>
@@ -245,7 +245,7 @@ export default function DriverDashboard() {
             <div style={s.qzLabelSmall}>Selecionar Quinzena</div>
             <div style={s.qzNavRow}>
               <button onClick={handlePrev} disabled={qzIdx >= quinzenas.length - 1} style={{ ...s.qzBtn, opacity: qzIdx >= quinzenas.length - 1 ? 0.3 : 1 }}>&#8249;</button>
-              <div style={s.qzBadge}>{qzLabel}{qzPos}</div>
+              <div className="qz-badge" style={s.qzBadge}>{qzLabel}{qzPos}</div>
               <button onClick={handleNext} disabled={qzIdx <= 0} style={{ ...s.qzBtn, opacity: qzIdx <= 0 ? 0.3 : 1 }}>&#8250;</button>
             </div>
             {pagamentoDate && (
@@ -256,38 +256,38 @@ export default function DriverDashboard() {
           </div>
         </div>
 
-        <div style={s.kpiStrip}>
+        <div className="kpi-strip" style={s.kpiStrip}>
           <div style={{ ...s.kpi, borderBottom: '2px solid #3de8a0' }}>
-            <div style={s.kpiLabel}>CTes Entregues</div>
+            <div className="kpi-label" style={s.kpiLabel}>CTes Entregues</div>
             <div style={{ ...s.kpiValue, color: '#3de8a0' }}>{dashboard?.total_ctes || 0}</div>
-            <div style={s.kpiDetail}>na quinzena</div>
+            <div className="kpi-detail" style={s.kpiDetail}>na quinzena</div>
           </div>
           <div style={{ ...s.kpi, borderBottom: '2px solid #f0c040' }}>
-            <div style={s.kpiLabel}>Dias Trabalhados</div>
+            <div className="kpi-label" style={s.kpiLabel}>Dias Trabalhados</div>
             <div style={{ ...s.kpiValue, color: '#f0c040' }}>{produtividade.length}</div>
-            <div style={s.kpiDetail}>com registros</div>
+            <div className="kpi-detail" style={s.kpiDetail}>com registros</div>
           </div>
           <div style={{ ...s.kpi, borderBottom: '2px solid #ff9f40' }}>
-            <div style={s.kpiLabel}>Insucessos</div>
+            <div className="kpi-label" style={s.kpiLabel}>Insucessos</div>
             <div style={{ ...s.kpiValue, color: '#ff9f40' }}>{totalInsucessos}</div>
-            <div style={s.kpiDetail}>{totalEventos > 0 ? ((totalInsucessos / totalEventos) * 100).toFixed(1) : '0.0'}% dos eventos</div>
+            <div className="kpi-detail" style={s.kpiDetail}>{totalEventos > 0 ? ((totalInsucessos / totalEventos) * 100).toFixed(1) : '0.0'}% dos eventos</div>
           </div>
           <div style={{ ...s.kpi, borderBottom: '2px solid #ff5a5a' }}>
-            <div style={s.kpiLabel}>Reclamações</div>
+            <div className="kpi-label" style={s.kpiLabel}>Reclamações</div>
             <div style={{ ...s.kpiValue, color: '#ff5a5a' }}>{totalReclamacoes}</div>
-            <div style={s.kpiDetail}>{pctReclamacao.toFixed(2)}% das entregas</div>
+            <div className="kpi-detail" style={s.kpiDetail}>{pctReclamacao.toFixed(2)}% das entregas</div>
           </div>
           <div style={{ ...s.kpi, borderBottom: '2px solid #3de8a0' }}>
-            <div style={s.kpiLabel}>Total a Receber</div>
+            <div className="kpi-label" style={s.kpiLabel}>Total a Receber</div>
             <div style={{ ...s.kpiValue, color: '#3de8a0', fontSize: '1.6rem' }}>{formatMoney(dashboard?.receita_total)}</div>
-            <div style={s.kpiDetail}>faixa de peso</div>
+            <div className="kpi-detail" style={s.kpiDetail}>faixa de peso</div>
           </div>
         </div>
 
-        <div style={s.sections}>
+        <div className="sections-grid" style={s.sections}>
           <div style={{ ...s.section, gridColumn: '1 / -1' }}>
-            <div style={s.sectionTitle}><span style={s.sectionIcon}>📦</span> RELATÓRIO DE PRODUTIVIDADE</div>
-            <div style={s.sectionSub}>SUAS ENTREGAS — por data</div>
+            <div className="section-title" style={s.sectionTitle}><span style={s.sectionIcon}>📦</span> RELATÓRIO DE PRODUTIVIDADE</div>
+            <div className="section-sub" style={s.sectionSub}>SUAS ENTREGAS — por data</div>
 
             <div style={s.barChart}>
               {produtividade.map(p => {
@@ -305,7 +305,7 @@ export default function DriverDashboard() {
               {produtividade.length === 0 && <div style={s.empty}>Nenhum registro na quinzena</div>}
             </div>
 
-            <div style={s.tableWrap}>
+            <div className="table-wrap" style={s.tableWrap}>
               <table style={s.table}>
                 <thead>
                   <tr>
@@ -336,8 +336,8 @@ export default function DriverDashboard() {
           </div>
 
           <div style={s.section}>
-            <div style={s.sectionTitle}><span style={s.sectionIcon}>📊</span> EFICIÊNCIA</div>
-            <div style={s.sectionSub}>Proporção de entregas × insucessos</div>
+            <div className="section-title" style={s.sectionTitle}><span style={s.sectionIcon}>📊</span> EFICIÊNCIA</div>
+            <div className="section-sub" style={s.sectionSub}>Proporção de entregas × insucessos</div>
 
             <div style={s.gaugeWrap}>
               <div style={s.gaugeRing}>
@@ -356,7 +356,7 @@ export default function DriverDashboard() {
                     ...s.gaugePct,
                     color: pctEficiencia < 70 ? '#ff5a5a' : pctEficiencia < 85 ? '#ff9f40' : '#3de8a0'
                   }}>{pctEficiencia}%</div>
-                  <div style={s.gaugeSubLabel}>eficiência</div>
+                  <div className="gauge-sub-label" style={s.gaugeSubLabel}>eficiência</div>
                 </div>
               </div>
               <div style={s.gaugeDetail}>
@@ -375,7 +375,7 @@ export default function DriverDashboard() {
               </div>
             </div>
 
-            <div style={s.tableWrap}>
+            <div className="table-wrap" style={s.tableWrap}>
               <table style={s.table}>
                 <thead>
                   <tr>
@@ -409,8 +409,8 @@ export default function DriverDashboard() {
           </div>
 
           <div style={s.section}>
-            <div style={s.sectionTitle}><span style={s.sectionIcon}>⚠️</span> RECLAMAÇÕES</div>
-            <div style={s.sectionSub}>Acareações geradas</div>
+            <div className="section-title" style={s.sectionTitle}><span style={s.sectionIcon}>⚠️</span> RECLAMAÇÕES</div>
+            <div className="section-sub" style={s.sectionSub}>Acareações geradas</div>
             <div id="rec-content">
               {reclamacoes.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '32px 0' }}>
@@ -426,7 +426,7 @@ export default function DriverDashboard() {
                       <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.2rem', color: '#ff9f40' }}>{pctReclamacao.toFixed(2)}%</div>
                     </div>
                   </div>
-                  <div style={s.tableWrap}>
+            <div className="table-wrap" style={s.tableWrap}>
                     <table style={s.table}>
                       <thead>
                         <tr>
@@ -472,11 +472,11 @@ export default function DriverDashboard() {
           </div>
 
           <div style={{ ...s.section, gridColumn: '1 / -1' }}>
-            <div style={{ ...s.sectionTitle, justifyContent: 'space-between' }}>
+            <div className="section-title" style={{ ...s.sectionTitle, justifyContent: 'space-between' }}>
               <span><span style={s.sectionIcon}>🚚</span> LISTAS / VIAGENS DA QUINZENA</span>
               <a href="/driver/regras-pagamento" target="_blank" rel="noopener noreferrer" style={s.regrasLink}>📋 Regras p/ Pagamento Antecipado</a>
             </div>
-            <div style={s.sectionSub}>Status da lista + valor calculado por faixa de peso e bairro</div>
+            <div className="section-sub" style={s.sectionSub}>Status da lista + valor calculado por faixa de peso e bairro</div>
             {msgSolicitacao && <div style={s.solicMsg}>{msgSolicitacao}</div>}
 
             {trips.length === 0 ? (
@@ -527,14 +527,14 @@ export default function DriverDashboard() {
                     if (temSolicitacao) motivos.push(solicitacaoStatus === 'pendente' ? 'Adiantamento já solicitado (pendente)' : 'Adiantamento já aprovado');
                     if (reclamacoesDesatualizadas) motivos.push('Reclamações desatualizadas — aguardando análise');
                     return (
-                      <div key={lista} style={s.listaCard}>
-                        <div style={s.listaCardHeader}>
+                      <div key={lista} className="lista-card" style={s.listaCard}>
+                        <div className="lista-card-header" style={s.listaCardHeader}>
                           <div>
-                            <div style={s.listaNumero}>#{lista}</div>
+                            <div className="lista-numero" style={s.listaNumero}>#{lista}</div>
                             <div style={s.listaRota}>{t.ctes_vinculados} CTEs</div>
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                            <span style={s.badgeStatus(statusColor)}>{status}</span>
+                            <span className="badge-status" style={s.badgeStatus(statusColor)}>{status}</span>
                             {solicitacaoStatus && (
                               <span style={{
                                 ...s.badgeStatus(solicitacaoStatus === 'aprovado' ? '#3de8a0' : '#ff9f40'),
@@ -547,6 +547,7 @@ export default function DriverDashboard() {
                               onClick={() => handleSolicitarPagamento(lista, totalValorLista)}
                               disabled={!elegivel || solicitando[lista]}
                               title={!elegivel ? motivos.join('; ') : ''}
+                              className={reclamacoesDesatualizadas ? 'btn-solicitar-disabled' : 'btn-solicitar'}
                               style={reclamacoesDesatualizadas ? s.btnSolicitarDisabled : elegivel ? s.btnSolicitar : s.btnSolicitarDisabled}
                             >
                               {solicitando[lista] ? '...' : reclamacoesDesatualizadas ? 'Adiantamento em análise' : 'Solicitar Pagamento Antecipado'}
@@ -557,15 +558,15 @@ export default function DriverDashboard() {
                         <div style={s.listaStats}>
                           <div style={s.listaStat}>
                             <div style={s.listaStatVal}>{totalEntregasLista}</div>
-                            <div style={s.listaStatLbl}>Entregues</div>
+                            <div className="lista-stat-lbl" style={s.listaStatLbl}>Entregues</div>
                           </div>
                           <div style={s.listaStat}>
                             <div style={s.listaStatVal}>{t.qtd || '-'}</div>
-                            <div style={s.listaStatLbl}>Na Lista</div>
+                            <div className="lista-stat-lbl" style={s.listaStatLbl}>Na Lista</div>
                           </div>
                           <div style={s.listaStat}>
                             <div style={s.listaStatVal}>{t.ctes_vinculados || 0}</div>
-                            <div style={s.listaStatLbl}>CTEs</div>
+                            <div className="lista-stat-lbl" style={s.listaStatLbl}>CTEs</div>
                           </div>
                         </div>
 
@@ -609,7 +610,7 @@ export default function DriverDashboard() {
                               faixa de peso
                             </div>
                           </div>
-                          <div style={totalValorLista > 0 ? s.listaValorNum : { ...s.listaValorNum, color: '#6b7280' }}>
+                          <div className="lista-valor-num" style={totalValorLista > 0 ? s.listaValorNum : { ...s.listaValorNum, color: '#6b7280' }}>
                             {totalValorLista > 0 ? formatMoney(totalValorLista) : '—'}
                           </div>
                         </div>
@@ -618,7 +619,7 @@ export default function DriverDashboard() {
                             <div>
                               <div style={s.listaValorLbl}>Líquido (taxa {taxaAdiantamento}%)</div>
                             </div>
-                            <div style={{ ...s.listaValorNum, color: '#3de8a0', fontSize: '0.95rem' }}>
+                            <div className="lista-valor-num" style={{ ...s.listaValorNum, color: '#3de8a0', fontSize: '0.95rem' }}>
                               {formatMoney(valorLiquido)}
                             </div>
                           </div>
@@ -628,7 +629,7 @@ export default function DriverDashboard() {
                   })}
                 </div>
 
-                <div style={s.totalRodape}>
+                <div className="total-rodape" style={s.totalRodape}>
                   <div style={s.totalRodapeLbl}>Total das Listas na Quinzena</div>
                   <div style={s.totalRodapeVal}>{formatMoney(trips.reduce((s2, t) => {
                     const fl = faixas[t.numero_lista] || [];
@@ -692,7 +693,7 @@ const s = {
   barFill: { height: '100%', background: '#f0c040', transition: 'width 1s cubic-bezier(.23,1,.32,1)' },
   barVal: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.65rem', color: '#e8eaf0', width: 30, flexShrink: 0 },
 
-  tableWrap: { overflow: 'hidden' },
+  tableWrap: { overflowX: 'auto' },
   table: { width: '100%', borderCollapse: 'collapse', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem' },
   th: { textAlign: 'left', fontSize: '0.6rem', letterSpacing: '2px', textTransform: 'uppercase', color: '#6b7280', padding: '8px 12px', borderBottom: '1px solid #2a2f3e' },
   td: { padding: '10px 12px', borderBottom: '1px solid rgba(42,47,62,.6)', color: '#e8eaf0', fontSize: '0.75rem' },

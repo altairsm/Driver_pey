@@ -1,0 +1,96 @@
+@media (max-width: 768px) {
+  .topbar-driver-row {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    justify-content: flex-end !important;
+  }
+  .topbar-driver-row > * {
+    font-size: 0.68rem !important;
+  }
+  .qz-badge {
+    min-width: auto !important;
+    font-size: 0.6rem !important;
+    padding: 6px 10px !important;
+  }
+  .sections-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .sections-grid .kpi-label {
+    font-size: 0.7rem !important;
+  }
+  .sections-grid .kpi-detail {
+    font-size: 0.65rem !important;
+  }
+  .sections-grid .section-sub {
+    font-size: 0.7rem !important;
+  }
+  .sections-grid .gauge-sub-label {
+    font-size: 0.6rem !important;
+  }
+  .sections-grid .lista-card-header {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  .sections-grid .total-rodape {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  .sections-grid .lista-stat-lbl {
+    font-size: 0.6rem !important;
+  }
+  .sections-grid .btn-solicitar,
+  .sections-grid .btn-solicitar-disabled {
+    font-size: 0.6rem !important;
+    white-space: normal !important;
+  }
+  .sections-grid .badge-status {
+    font-size: 0.55rem !important;
+  }
+  .sections-grid .table-wrap {
+    overflow-x: auto !important;
+  }
+  .sections-grid .table-wrap table {
+    font-size: 0.7rem !important;
+  }
+  .sections-grid .table-wrap th {
+    font-size: 0.55rem !important;
+  }
+  .driver-content {
+    padding: 0 12px 60px !important;
+  }
+  .info-row {
+    flex-wrap: wrap !important;
+    gap: 2px !important;
+  }
+  .info-label {
+    min-width: auto !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero {
+    padding: 24px 16px 0 !important;
+    gap: 16px !important;
+  }
+  .kpi-strip {
+    margin: 20px 12px 0 !important;
+  }
+  .kpi-strip .kpi {
+    padding: 16px 14px !important;
+  }
+  .sections-grid > div {
+    padding: 16px !important;
+  }
+  .sections-grid .section-title {
+    font-size: 1rem !important;
+  }
+  .sections-grid .lista-numero {
+    font-size: 1.1rem !important;
+  }
+  .sections-grid .lista-card {
+    padding: 12px !important;
+  }
+  .sections-grid .lista-valor-num {
+    font-size: 0.95rem !important;
+  }
+}
