@@ -56,7 +56,7 @@ export async function calcularPagamentos(inicio, fim) {
       m.nome_completo,
       m.cpf,
       m.telefone,
-      m.pgro,
+      m.pgto,
       COALESCE(rm.total_ctes, 0)   AS total_ctes,
       COALESCE(rm.total_listas, 0) AS total_listas,
       COALESCE(rm.peso_total, 0)   AS peso_total,
@@ -96,7 +96,7 @@ export async function listarMotoristas() {
       nome_completo,
       cpf,
       telefone,
-      pgro
+      pgto
     FROM matriculos_jad
     ORDER BY nome_completo
   `);
@@ -126,21 +126,21 @@ export async function getQuinzenasAdmin() {
 }
 
 export async function criarMotorista(dados) {
-  const { matricula, nome_completo, cpf, telefone, pgro } = dados;
+  const { matricula, nome_completo, cpf, telefone, pgto } = dados;
   await pool.query(`
-    INSERT INTO matriculos_jad ("OperadorMatricula", nome_completo, cpf, telefone, pgro)
+    INSERT INTO matriculos_jad ("OperadorMatricula", nome_completo, cpf, telefone, pgto)
     VALUES ($1, $2, $3, $4, $5)
-  `, [matricula, nome_completo, cpf, telefone || null, pgro || null]);
-  return { matricula, nome_completo, cpf, telefone, pgro };
+  `, [matricula, nome_completo, cpf, telefone || null, pgto || null]);
+  return { matricula, nome_completo, cpf, telefone, pgto };
 }
 
 export async function atualizarMotorista(matricula, dados) {
-  const { nome_completo, cpf, telefone, pgro } = dados;
+  const { nome_completo, cpf, telefone, pgto } = dados;
   const result = await pool.query(`
     UPDATE matriculos_jad
-    SET nome_completo = $1, cpf = $2, telefone = $3, pgro = $4
+    SET nome_completo = $1, cpf = $2, telefone = $3, pgto = $4
     WHERE "OperadorMatricula" = $5
-  `, [nome_completo, cpf, telefone || null, pgro || null, matricula]);
+  `, [nome_completo, cpf, telefone || null, pgto || null, matricula]);
   return result.rowCount > 0;
 }
 

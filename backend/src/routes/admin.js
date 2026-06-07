@@ -55,7 +55,7 @@ router.post('/confirmar-pagamento', async (req, res) => {
 
 router.post('/motoristas', async (req, res) => {
   try {
-    const { matricula, nome_completo, cpf, telefone, pgro } = req.body;
+    const { matricula, nome_completo, cpf, telefone, pgto } = req.body;
     if (!matricula || !nome_completo || !cpf) {
       return res.status(400).json({ error: 'Matrícula, nome e CPF são obrigatórios' });
     }

@@ -193,7 +193,7 @@ export default function AdminPagamentos() {
                         {formatBRL(m.margem_bruta)}
                       </td>
                       <td style={styles.td}>
-                        {m.pgro === false || m.pgro === 'false' || m.pgro === 'FALSE' ? (
+                        {m.pgto === false || m.pgto === 'false' || m.pgto === 'FALSE' ? (
                           <span style={{ color: '#ff5a5a', fontWeight: 600, fontSize: '0.78rem' }}>
                             Bloqueado
                           </span>
