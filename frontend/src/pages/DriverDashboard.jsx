@@ -50,6 +50,15 @@ function calcQuinzenaFim(dataStr) {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
 }
 
+// ─── Tab navigation ───────────────────────────────────────────────────────────
+const TABS = [
+  { id: 'resumo',       label: 'Resumo',       icon: '📋' },
+  { id: 'produtividade',label: 'Produção',      icon: '📦' },
+  { id: 'eficiencia',   label: 'Eficiência',    icon: '📊' },
+  { id: 'reclamacoes',  label: 'Reclamações',   icon: '⚠️' },
+  { id: 'listas',       label: 'Listas',        icon: '🚚' },
+];
+
 export default function DriverDashboard() {
   const navigate = useNavigate();
   const [driver, setDriver] = useState(null);
@@ -70,6 +79,8 @@ export default function DriverDashboard() {
   const [ultimaImportacao, setUltimaImportacao] = useState(null);
   const [cepCache, setCepCache] = useState({});
   const [config, setConfig] = useState(null);
+  const [activeTab, setActiveTab] = useState('resumo');
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const qzAtual = quinzenas[qzIdx] || null;
 
@@ -116,10 +127,7 @@ export default function DriverDashboard() {
         setUltimaImportacao(ultima.ultima_importacao);
         if (qzs.length > 0) {
           const q = qzs[0];
-          await fetchQuinzenaData(
-            q.inicio.slice(0, 10),
-            q.fim.slice(0, 10)
-          );
+          await fetchQuinzenaData(q.inicio.slice(0, 10), q.fim.slice(0, 10));
         }
       } catch (e) {
         setError('Erro ao carregar dados');
@@ -210,7 +218,7 @@ export default function DriverDashboard() {
       <div style={s.container}>
         <div style={s.loading}>
           <div style={s.spinner}></div>
-          CARREGANDO DADOS DA ÚLTIMA QUINZENA...
+          <span>CARREGANDO...</span>
         </div>
       </div>
     );
@@ -218,272 +226,300 @@ export default function DriverDashboard() {
 
   return (
     <div style={s.container}>
+      {/* ── TOPBAR MOBILE ── */}
       <div style={s.topbar}>
-        <div style={s.brand}>DRIVER PEY - INTUITIVA LOG</div>
-        <div className="topbar-driver-row" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={s.navLink} onClick={() => navigate('/driver/regras-pagamento')}>Regras</span>
-          <span style={s.navLink} onClick={() => navigate('/driver/meus-dados')}>Meus Dados</span>
-          <div style={s.topbarInfo}>
-            MOTORISTA <span style={s.topbarInfoVal}>{driver?.nome_completo?.toUpperCase() || '—'}</span><br />
-            MATRÍCULA <span style={s.topbarInfoVal}>{driver?.matricula || '—'}</span>
-          </div>
-          <button style={s.logoutBtn} onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = '/login'; }}>SAIR</button>
+        <div style={s.brand}>DRIVER PEY</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            style={s.menuBtn}
+            onClick={() => setMenuOpen(o => !o)}
+            aria-label="Menu"
+          >
+            {menuOpen ? '✕' : '☰'}
+          </button>
         </div>
       </div>
 
-      <div className="driver-content" style={s.content}>
+      {/* ── DRAWER MENU ── */}
+      {menuOpen && (
+        <div style={s.drawer}>
+          <div style={s.drawerHeader}>
+            <div style={s.drawerName}>{driver?.nome_completo?.toUpperCase() || 'MOTORISTA'}</div>
+            <div style={s.drawerMat}>MAT. {driver?.matricula || '—'}</div>
+          </div>
+          <div style={s.drawerDivider} />
+          <button style={s.drawerItem} onClick={() => { setMenuOpen(false); navigate('/driver/regras-pagamento'); }}>📋 Regras de Pagamento</button>
+          <button style={s.drawerItem} onClick={() => { setMenuOpen(false); navigate('/driver/meus-dados'); }}>👤 Meus Dados</button>
+          <div style={s.drawerDivider} />
+          <button style={{ ...s.drawerItem, color: '#ff5a5a' }} onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = '/login'; }}>⏻ Sair</button>
+        </div>
+      )}
+      {menuOpen && <div style={s.overlay} onClick={() => setMenuOpen(false)} />}
+
+      <div style={s.content}>
         {error && <div style={s.error}>{error}</div>}
 
-        <div className="hero" style={s.hero}>
-          <div>
-            <div style={s.heroName}>
-              <em style={s.heroNameEm}>{driver?.nome_completo?.split(' ').slice(0, 2).join(' ')?.toUpperCase() || 'MOTORISTA'}</em>
-            </div>
-            <div style={s.heroMat}>MAT. {driver?.matricula || '—'}</div>
+        {/* ── HERO / QUINZENA ── */}
+        <div style={s.hero}>
+          <div style={s.heroName}>
+            <em style={s.heroNameEm}>{driver?.nome_completo?.split(' ').slice(0, 2).join(' ')?.toUpperCase() || 'MOTORISTA'}</em>
           </div>
+          <div style={s.heroMat}>MAT. {driver?.matricula || '—'}</div>
+
+          {/* Quinzena navigator */}
           <div style={s.qzNav}>
             <div style={s.qzLabelSmall}>Selecionar Quinzena</div>
             <div style={s.qzNavRow}>
               <button onClick={handlePrev} disabled={qzIdx >= quinzenas.length - 1} style={{ ...s.qzBtn, opacity: qzIdx >= quinzenas.length - 1 ? 0.3 : 1 }}>&#8249;</button>
-              <div className="qz-badge" style={s.qzBadge}>{qzLabel}{qzPos}</div>
+              <div style={s.qzBadge}>{qzLabel}{qzPos}</div>
               <button onClick={handleNext} disabled={qzIdx <= 0} style={{ ...s.qzBtn, opacity: qzIdx <= 0 ? 0.3 : 1 }}>&#8250;</button>
             </div>
             {pagamentoDate && (
               <div style={s.pagLabel}>
-                💰 PAGAMENTO PREVISTO: <span style={s.pagData}>{pagamentoDate.toLocaleDateString('pt-BR', { timeZone: 'UTC', weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</span>
+                💰 PAGAMENTO: <span style={s.pagData}>{pagamentoDate.toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: 'long' })}</span>
               </div>
             )}
           </div>
         </div>
 
-        <div className="kpi-strip" style={s.kpiStrip}>
-          <div style={{ ...s.kpi, borderBottom: '2px solid #3de8a0' }}>
-            <div className="kpi-label" style={s.kpiLabel}>CTes Entregues</div>
+        {/* ── KPI CARDS SCROLL ── */}
+        <div style={s.kpiScroll}>
+          <div style={{ ...s.kpiCard, borderBottomColor: '#3de8a0' }}>
+            <div style={s.kpiLabel}>CTes Entregues</div>
             <div style={{ ...s.kpiValue, color: '#3de8a0' }}>{dashboard?.total_ctes || 0}</div>
-            <div className="kpi-detail" style={s.kpiDetail}>na quinzena</div>
+            <div style={s.kpiDetail}>na quinzena</div>
           </div>
-          <div style={{ ...s.kpi, borderBottom: '2px solid #f0c040' }}>
-            <div className="kpi-label" style={s.kpiLabel}>Dias Trabalhados</div>
+          <div style={{ ...s.kpiCard, borderBottomColor: '#f0c040' }}>
+            <div style={s.kpiLabel}>Dias Trabalhados</div>
             <div style={{ ...s.kpiValue, color: '#f0c040' }}>{produtividade.length}</div>
-            <div className="kpi-detail" style={s.kpiDetail}>com registros</div>
+            <div style={s.kpiDetail}>com registros</div>
           </div>
-          <div style={{ ...s.kpi, borderBottom: '2px solid #ff9f40' }}>
-            <div className="kpi-label" style={s.kpiLabel}>Insucessos</div>
+          <div style={{ ...s.kpiCard, borderBottomColor: '#ff9f40' }}>
+            <div style={s.kpiLabel}>Insucessos</div>
             <div style={{ ...s.kpiValue, color: '#ff9f40' }}>{totalInsucessos}</div>
-            <div className="kpi-detail" style={s.kpiDetail}>{totalEventos > 0 ? ((totalInsucessos / totalEventos) * 100).toFixed(1) : '0.0'}% dos eventos</div>
+            <div style={s.kpiDetail}>{totalEventos > 0 ? ((totalInsucessos / totalEventos) * 100).toFixed(1) : '0.0'}% eventos</div>
           </div>
-          <div style={{ ...s.kpi, borderBottom: '2px solid #ff5a5a' }}>
-            <div className="kpi-label" style={s.kpiLabel}>Reclamações</div>
+          <div style={{ ...s.kpiCard, borderBottomColor: '#ff5a5a' }}>
+            <div style={s.kpiLabel}>Reclamações</div>
             <div style={{ ...s.kpiValue, color: '#ff5a5a' }}>{totalReclamacoes}</div>
-            <div className="kpi-detail" style={s.kpiDetail}>{pctReclamacao.toFixed(2)}% das entregas</div>
+            <div style={s.kpiDetail}>{pctReclamacao.toFixed(2)}% entregas</div>
           </div>
-          <div style={{ ...s.kpi, borderBottom: '2px solid #3de8a0' }}>
-            <div className="kpi-label" style={s.kpiLabel}>Total a Receber</div>
-            <div style={{ ...s.kpiValue, color: '#3de8a0', fontSize: '1.6rem' }}>{formatMoney(dashboard?.receita_total)}</div>
-            <div className="kpi-detail" style={s.kpiDetail}>faixa de peso</div>
+          <div style={{ ...s.kpiCard, borderBottomColor: '#3de8a0', minWidth: 140 }}>
+            <div style={s.kpiLabel}>Total a Receber</div>
+            <div style={{ ...s.kpiValue, color: '#3de8a0', fontSize: '1.2rem' }}>{formatMoney(dashboard?.receita_total)}</div>
+            <div style={s.kpiDetail}>faixa de peso</div>
           </div>
         </div>
 
-        <div className="sections-grid" style={s.sections}>
-          <div style={{ ...s.section, gridColumn: '1 / -1' }}>
-            <div className="section-title" style={s.sectionTitle}><span style={s.sectionIcon}>📦</span> RELATÓRIO DE PRODUTIVIDADE</div>
-            <div className="section-sub" style={s.sectionSub}>SUAS ENTREGAS — por data</div>
+        {/* ── TAB BAR ── */}
+        <div style={s.tabBar}>
+          {TABS.map(t => (
+            <button
+              key={t.id}
+              style={{ ...s.tabBtn, ...(activeTab === t.id ? s.tabBtnActive : {}) }}
+              onClick={() => setActiveTab(t.id)}
+            >
+              <span style={s.tabIcon}>{t.icon}</span>
+              <span style={s.tabLabel}>{t.label}</span>
+            </button>
+          ))}
+        </div>
 
-            <div style={s.barChart}>
-              {produtividade.map(p => {
-                const pct = (Number(p.ctes) / prodMaxCtes * 100).toFixed(1);
-                return (
-                  <div key={p.data} style={s.barRow}>
-                    <div style={s.barLabel}>{formatDate(p.data)}</div>
-                    <div style={s.barTrack}>
-                      <div style={{ ...s.barFill, width: `${pct}%` }}></div>
+        {/* ── TAB CONTENT ── */}
+        <div style={s.tabContent}>
+
+          {/* RESUMO */}
+          {activeTab === 'resumo' && (
+            <div style={s.section}>
+              <div style={s.sectionTitle}>📋 RESUMO DA QUINZENA</div>
+              <div style={s.sectionSub}>Visão geral do seu desempenho</div>
+              <div style={s.resumoGrid}>
+                <div style={s.resumoItem}>
+                  <div style={s.resumoLbl}>Eficiência</div>
+                  <div style={{ ...s.resumoVal, color: pctEficiencia < 70 ? '#ff5a5a' : pctEficiencia < 85 ? '#ff9f40' : '#3de8a0' }}>{pctEficiencia}%</div>
+                </div>
+                <div style={s.resumoItem}>
+                  <div style={s.resumoLbl}>CTes</div>
+                  <div style={{ ...s.resumoVal, color: '#3de8a0' }}>{dashboard?.total_ctes || 0}</div>
+                </div>
+                <div style={s.resumoItem}>
+                  <div style={s.resumoLbl}>Dias</div>
+                  <div style={{ ...s.resumoVal, color: '#f0c040' }}>{produtividade.length}</div>
+                </div>
+                <div style={s.resumoItem}>
+                  <div style={s.resumoLbl}>Insucessos</div>
+                  <div style={{ ...s.resumoVal, color: '#ff9f40' }}>{totalInsucessos}</div>
+                </div>
+              </div>
+              {pagamentoDate && (
+                <div style={s.pagCard}>
+                  <div style={s.pagCardLbl}>💰 Previsão de Pagamento</div>
+                  <div style={s.pagCardVal}>{pagamentoDate.toLocaleDateString('pt-BR', { timeZone: 'UTC', weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</div>
+                  <div style={s.pagCardTotal}>{formatMoney(dashboard?.receita_total)}</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* PRODUTIVIDADE */}
+          {activeTab === 'produtividade' && (
+            <div style={s.section}>
+              <div style={s.sectionTitle}>📦 PRODUTIVIDADE</div>
+              <div style={s.sectionSub}>Suas entregas por data</div>
+              <div style={s.barChart}>
+                {produtividade.map(p => {
+                  const pct = (Number(p.ctes) / prodMaxCtes * 100).toFixed(1);
+                  return (
+                    <div key={p.data} style={s.barRow}>
+                      <div style={s.barLabel}>{formatDate(p.data)}</div>
+                      <div style={s.barTrack}>
+                        <div style={{ ...s.barFill, width: `${pct}%` }}></div>
+                      </div>
+                      <div style={s.barVal}>{p.ctes}</div>
                     </div>
-                    <div style={s.barVal}>{p.ctes}</div>
+                  );
+                })}
+                {produtividade.length === 0 && <div style={s.empty}>Nenhum registro na quinzena</div>}
+              </div>
+              {/* Tabela como cards no mobile */}
+              {produtividade.map(p => (
+                <div key={p.data} style={s.prodCard}>
+                  <div style={s.prodCardDate}>{formatDate(p.data)}</div>
+                  <div style={s.prodCardRow}>
+                    <div style={s.prodCardItem}><div style={s.prodCardLbl}>CTes</div><div style={{ ...s.prodCardVal, color: '#3de8a0' }}>{p.ctes}</div></div>
+                    <div style={s.prodCardItem}><div style={s.prodCardLbl}>Pacotes</div><div style={s.prodCardVal}>{p.pacotes}</div></div>
+                    <div style={s.prodCardItem}><div style={s.prodCardLbl}>Peso</div><div style={s.prodCardVal}>{Number(p.peso_total).toFixed(1)}kg</div></div>
+                    <div style={s.prodCardItem}><div style={s.prodCardLbl}>Valor</div><div style={{ ...s.prodCardVal, color: '#f0c040' }}>{formatMoney(p.valor_total)}</div></div>
+                  </div>
+                </div>
+              ))}
+              {produtividade.length === 0 && <div style={s.empty}>Nenhum registro encontrado.</div>}
+            </div>
+          )}
+
+          {/* EFICIÊNCIA */}
+          {activeTab === 'eficiencia' && (
+            <div style={s.section}>
+              <div style={s.sectionTitle}>📊 EFICIÊNCIA</div>
+              <div style={s.sectionSub}>Proporção de entregas × insucessos</div>
+              {/* Gauge */}
+              <div style={s.gaugeWrap}>
+                <div style={s.gaugeRing}>
+                  <svg width="120" height="120" viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="50" fill="none" stroke="#2a2f3e" strokeWidth="10" />
+                    <circle cx="60" cy="60" r="50" fill="none"
+                      stroke={pctEficiencia < 70 ? '#ff5a5a' : pctEficiencia < 85 ? '#ff9f40' : '#3de8a0'}
+                      strokeWidth="10"
+                      strokeDasharray="314"
+                      strokeDashoffset={314 - (pctEficiencia / 100) * 314}
+                      strokeLinecap="round"
+                      style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(.23,1,.32,1)' }} />
+                  </svg>
+                  <div style={s.gaugeCenter}>
+                    <div style={{ ...s.gaugePct, color: pctEficiencia < 70 ? '#ff5a5a' : pctEficiencia < 85 ? '#ff9f40' : '#3de8a0' }}>{pctEficiencia}%</div>
+                    <div style={s.gaugeSubLabel}>eficiência</div>
+                  </div>
+                </div>
+                <div style={s.gaugeStats}>
+                  <div style={s.gaugeRow}><span style={s.gaugeLbl}>TOTAL EVENTOS</span><span style={s.gaugeVal}>{totalEventos}</span></div>
+                  <div style={s.gaugeRow}><span style={s.gaugeLbl}>ENTREGAS</span><span style={s.gaugeVal}>{totalEntregasNum}</span></div>
+                  <div style={s.gaugeRow}><span style={s.gaugeLbl}>INSUCESSOS</span><span style={s.gaugeVal}>{totalInsucessos}</span></div>
+                </div>
+              </div>
+              {/* Eventos como cards */}
+              {eficiencia.map(e => {
+                const pct = totalEventos > 0 ? ((Number(e.quantidade) / totalEventos) * 100).toFixed(1) : '0.0';
+                const isIns = isInsucesso(e.evento);
+                return (
+                  <div key={e.evento} style={{ ...s.efCard, borderLeftColor: isIns ? '#ff9f40' : '#3de8a0' }}>
+                    <div style={s.efCardEvento}>
+                      {e.evento.toUpperCase()}
+                      {isIns && <span style={s.badgeWarn}>INSUCESSO</span>}
+                    </div>
+                    <div style={s.efCardNums}>
+                      <span style={s.efCardQtd}>{e.quantidade}</span>
+                      <span style={s.efCardPct}>{pct}%</span>
+                    </div>
                   </div>
                 );
               })}
-              {produtividade.length === 0 && <div style={s.empty}>Nenhum registro na quinzena</div>}
+              {eficiencia.length === 0 && <div style={s.empty}>Sem dados de eficiência.</div>}
             </div>
+          )}
 
-            <div className="table-wrap" style={s.tableWrap}>
-              <table style={s.table}>
-                <thead>
-                  <tr>
-                    <th style={s.th}>Data</th>
-                    <th style={s.th}>CTes Entregues</th>
-                    <th style={s.th}>Pacotes</th>
-                    <th style={s.th}>Peso (kg)</th>
-                    <th style={s.th}>Valor Pago (R$)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {produtividade.length === 0 ? (
-                    <tr><td colSpan={5} style={{ ...s.td, textAlign: 'center', color: '#6b7280' }}>Nenhum registro encontrado.</td></tr>
-                  ) : (
-                    produtividade.map(p => (
-                      <tr key={p.data}>
-                        <td style={s.td}>{formatDate(p.data)}</td>
-                        <td style={s.td}><span style={s.badgeGreen}>{p.ctes}</span></td>
-                        <td style={s.td}>{p.pacotes}</td>
-                        <td style={s.td}>{Number(p.peso_total).toFixed(1)}</td>
-                        <td style={s.td}>{formatMoney(p.valor_total)}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div style={s.section}>
-            <div className="section-title" style={s.sectionTitle}><span style={s.sectionIcon}>📊</span> EFICIÊNCIA</div>
-            <div className="section-sub" style={s.sectionSub}>Proporção de entregas × insucessos</div>
-
-            <div style={s.gaugeWrap}>
-              <div style={s.gaugeRing}>
-                <svg width="120" height="120" viewBox="0 0 120 120">
-                  <circle cx="60" cy="60" r="50" fill="none" stroke="#2a2f3e" strokeWidth="10" />
-                  <circle cx="60" cy="60" r="50" fill="none"
-                    stroke={pctEficiencia < 70 ? '#ff5a5a' : pctEficiencia < 85 ? '#ff9f40' : '#3de8a0'}
-                    strokeWidth="10"
-                    strokeDasharray="314"
-                    strokeDashoffset={314 - (pctEficiencia / 100) * 314}
-                    strokeLinecap="round"
-                    style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(.23,1,.32,1)' }} />
-                </svg>
-                <div style={s.gaugeCenter}>
-                  <div style={{
-                    ...s.gaugePct,
-                    color: pctEficiencia < 70 ? '#ff5a5a' : pctEficiencia < 85 ? '#ff9f40' : '#3de8a0'
-                  }}>{pctEficiencia}%</div>
-                  <div className="gauge-sub-label" style={s.gaugeSubLabel}>eficiência</div>
-                </div>
-              </div>
-              <div style={s.gaugeDetail}>
-                <div style={s.gaugeRow}>
-                  <span style={s.gaugeLbl}>TOTAL EVENTOS</span>
-                  <span style={s.gaugeVal}>{totalEventos}</span>
-                </div>
-                <div style={s.gaugeRow}>
-                  <span style={s.gaugeLbl}>ENTREGAS</span>
-                  <span style={s.gaugeVal}>{totalEntregasNum}</span>
-                </div>
-                <div style={s.gaugeRow}>
-                  <span style={s.gaugeLbl}>INSUCESSOS</span>
-                  <span style={s.gaugeVal}>{totalInsucessos}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="table-wrap" style={s.tableWrap}>
-              <table style={s.table}>
-                <thead>
-                  <tr>
-                    <th style={s.th}>Evento</th>
-                    <th style={s.th}>Qtd</th>
-                    <th style={s.th}>%</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {eficiencia.length === 0 ? (
-                    <tr><td colSpan={3} style={{ ...s.td, textAlign: 'center', color: '#6b7280' }}>Sem dados.</td></tr>
-                  ) : (
-                    eficiencia.map(e => {
-                      const pct = totalEventos > 0 ? ((Number(e.quantidade) / totalEventos) * 100).toFixed(1) : '0.0';
-                      const isIns = isInsucesso(e.evento);
-                      return (
-                        <tr key={e.evento}>
-                          <td style={s.td}>
-                            {e.evento.toUpperCase()}{' '}
-                            {isIns && <span style={s.badgeWarn}>INSUCESSO</span>}
-                          </td>
-                          <td style={s.td}>{e.quantidade}</td>
-                          <td style={s.td}>{pct}%</td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div style={s.section}>
-            <div className="section-title" style={s.sectionTitle}><span style={s.sectionIcon}>⚠️</span> RECLAMAÇÕES</div>
-            <div className="section-sub" style={s.sectionSub}>Acareações geradas</div>
-            <div id="rec-content">
+          {/* RECLAMAÇÕES */}
+          {activeTab === 'reclamacoes' && (
+            <div style={s.section}>
+              <div style={s.sectionTitle}>⚠️ RECLAMAÇÕES</div>
+              <div style={s.sectionSub}>Acareações geradas na quinzena</div>
               {reclamacoes.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '32px 0' }}>
-                  <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '2.5rem', color: '#3de8a0' }}>✓ ZERO</div>
-                  <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.7rem', color: '#6b7280', marginTop: 8, letterSpacing: '2px' }}>NENHUMA RECLAMAÇÃO NA QUINZENA</div>
+                <div style={s.zeroRec}>
+                  <div style={s.zeroRecNum}>✓ ZERO</div>
+                  <div style={s.zeroRecSub}>NENHUMA RECLAMAÇÃO</div>
                 </div>
               ) : (
                 <>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 20 }}>
-                    <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '3rem', color: '#ff5a5a' }}>{reclamacoes.length}</div>
+                  <div style={s.recHeader}>
+                    <div style={s.recNum}>{reclamacoes.length}</div>
                     <div>
-                      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.65rem', color: '#6b7280' }}>ÍNDICE DE RECLAMAÇÕES</div>
-                      <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.2rem', color: '#ff9f40' }}>{pctReclamacao.toFixed(2)}%</div>
+                      <div style={s.recLbl}>RECLAMAÇÕES</div>
+                      <div style={s.recPct}>{pctReclamacao.toFixed(2)}%</div>
                     </div>
                   </div>
-            <div className="table-wrap" style={s.tableWrap}>
-                    <table style={s.table}>
-                      <thead>
-                        <tr>
-                          <th style={s.th}>Lista</th>
-                          <th style={s.th}>Data Entrega</th>
-                          <th style={s.th}>Endereço</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {reclamacoes.map((r, i) => {
-                          const addr = r.cep ? cepCache[r.cep] : null;
-                          const mapsQ = addr?.logradouro || addr?.bairro
-                            ? `${addr.logradouro || ''}, ${addr.bairro || ''}, Salvador, BA`
-                            : r.cep ? `CEP ${r.cep.replace(/\D/g, '')}, Salvador, BA` : '';
-                          return (
-                            <tr key={r.id || i}>
-                              <td style={s.td}>{r.lista}</td>
-                              <td style={s.td}>{formatDate(r.data_entrega || r.data_criacao)}</td>
-                              <td style={{ ...s.td, fontSize: '0.65rem' }}>
-                                {!r.cep ? (
-                                  <em style={{ color: '#6b7280' }}>—</em>
-                                ) : !addr ? (
-                                  <span style={{ color: '#ff9f40' }}>carregando...</span>
-                                ) : addr.logradouro ? (
-                                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQ)}`} target="_blank" rel="noopener noreferrer" style={{ color: '#5ab4ff', textDecoration: 'none' }}>
-                                    {addr.logradouro}, {addr.bairro} <span style={{ fontSize: '0.6rem' }}>📍</span>
-                                  </a>
-                                ) : (
-                                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQ)}`} target="_blank" rel="noopener noreferrer" style={{ color: '#5ab4ff', textDecoration: 'none' }}>
-                                    {addr.bairro} <span style={{ fontSize: '0.6rem' }}>📍</span>
-                                  </a>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                  {reclamacoes.map((r, i) => {
+                    const addr = r.cep ? cepCache[r.cep] : null;
+                    const mapsQ = addr?.logradouro || addr?.bairro
+                      ? `${addr.logradouro || ''}, ${addr.bairro || ''}, Salvador, BA`
+                      : r.cep ? `CEP ${r.cep.replace(/\D/g, '')}, Salvador, BA` : '';
+                    return (
+                      <div key={r.id || i} style={s.recCard}>
+                        <div style={s.recCardRow}>
+                          <div style={s.recCardLbl}>Lista</div>
+                          <div style={s.recCardVal}>{r.lista}</div>
+                        </div>
+                        <div style={s.recCardRow}>
+                          <div style={s.recCardLbl}>Data Entrega</div>
+                          <div style={s.recCardVal}>{formatDate(r.data_entrega || r.data_criacao)}</div>
+                        </div>
+                        <div style={s.recCardRow}>
+                          <div style={s.recCardLbl}>Endereço</div>
+                          <div style={s.recCardVal}>
+                            {!r.cep ? (
+                              <em style={{ color: '#6b7280' }}>—</em>
+                            ) : !addr ? (
+                              <span style={{ color: '#ff9f40' }}>carregando...</span>
+                            ) : addr.logradouro ? (
+                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQ)}`} target="_blank" rel="noopener noreferrer" style={s.mapLink}>
+                                {addr.logradouro}, {addr.bairro} 📍
+                              </a>
+                            ) : (
+                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQ)}`} target="_blank" rel="noopener noreferrer" style={s.mapLink}>
+                                {addr.bairro} 📍
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </>
               )}
             </div>
-          </div>
+          )}
 
-          <div style={{ ...s.section, gridColumn: '1 / -1' }}>
-            <div className="section-title" style={{ ...s.sectionTitle, justifyContent: 'space-between' }}>
-              <span><span style={s.sectionIcon}>🚚</span> LISTAS / VIAGENS DA QUINZENA</span>
-              <a href="/driver/regras-pagamento" target="_blank" rel="noopener noreferrer" style={s.regrasLink}>📋 Regras p/ Pagamento Antecipado</a>
-            </div>
-            <div className="section-sub" style={s.sectionSub}>Status da lista + valor calculado por faixa de peso e bairro</div>
-            {msgSolicitacao && <div style={s.solicMsg}>{msgSolicitacao}</div>}
-
-            {trips.length === 0 ? (
-              <div style={s.empty}>Nenhuma lista encontrada para esta quinzena.</div>
-            ) : (
-              <>
-                <div style={s.listasGrid}>
+          {/* LISTAS */}
+          {activeTab === 'listas' && (
+            <div style={s.section}>
+              <div style={{ ...s.sectionTitle, justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                <span>🚚 LISTAS DA QUINZENA</span>
+                <a href="/driver/regras-pagamento" target="_blank" rel="noopener noreferrer" style={s.regrasLink}>📋 Regras</a>
+              </div>
+              <div style={s.sectionSub}>Valor calculado por faixa de peso e bairro</div>
+              {msgSolicitacao && <div style={s.solicMsg}>{msgSolicitacao}</div>}
+              {trips.length === 0 ? (
+                <div style={s.empty}>Nenhuma lista encontrada para esta quinzena.</div>
+              ) : (
+                <>
                   {trips.map((t) => {
                     const lista = t.numero_lista;
                     const faixasLista = faixas[lista] || [];
@@ -508,9 +544,7 @@ export default function DriverDashboard() {
 
                     const temSolicitacao = t.solicitacao_status && t.solicitacao_status !== 'recusado';
                     const solicitacaoStatus = t.solicitacao_status || null;
-
                     const reclamacoesDesatualizadas = !ultimaImportacao || (Date.now() - new Date(ultimaImportacao).getTime()) > 4 * 60 * 60 * 1000;
-
                     const eficienciaMinima = Number(config?.eficiencia_minima_adiantamento) || 98;
                     const taxaAdiantamento = Number(config?.taxa_adiantamento) || 0;
                     const valorLiquido = totalValorLista * (1 - taxaAdiantamento / 100);
@@ -520,219 +554,276 @@ export default function DriverDashboard() {
                     if (!dataBaixaOk) motivos.push('Data Baixa deve ser anterior a hoje');
                     if (t.tem_reclamacao_aberta) motivos.push('Lista possui reclamação');
                     if (totalValorLista <= 0) motivos.push('Valor da lista é zero');
-                    if (totalValorLista > 400) motivos.push('Valor da lista excede R$ 400,00');
-                    if (emSuspensao) motivos.push('Período de pagamento da quinzena em processamento');
-                    if (t.status !== 'Finalizado') motivos.push('Lista não está finalizada');
-                    if (t.pago) motivos.push('Lista já foi paga');
-                    if (temSolicitacao) motivos.push(solicitacaoStatus === 'pendente' ? 'Adiantamento já solicitado (pendente)' : 'Adiantamento já aprovado');
-                    if (reclamacoesDesatualizadas) motivos.push('Reclamações desatualizadas — aguardando análise');
+                    if (totalValorLista > 400) motivos.push('Valor excede R$ 400,00');
+                    if (emSuspensao) motivos.push('Quinzena em processamento');
+                    if (t.status !== 'Finalizado') motivos.push('Lista não finalizada');
+                    if (t.pago) motivos.push('Já paga');
+                    if (temSolicitacao) motivos.push(solicitacaoStatus === 'pendente' ? 'Adiantamento pendente' : 'Adiantamento aprovado');
+                    if (reclamacoesDesatualizadas) motivos.push('Reclamações em análise');
+
                     return (
-                      <div key={lista} className="lista-card" style={s.listaCard}>
-                        <div className="lista-card-header" style={s.listaCardHeader}>
+                      <div key={lista} style={s.listaCard}>
+                        {/* Header */}
+                        <div style={s.listaCardHeader}>
                           <div>
-                            <div className="lista-numero" style={s.listaNumero}>#{lista}</div>
+                            <div style={s.listaNumero}>#{lista}</div>
                             <div style={s.listaRota}>{t.ctes_vinculados} CTEs</div>
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                            <span className="badge-status" style={s.badgeStatus(statusColor)}>{status}</span>
+                            <span style={s.badgeStatus(statusColor)}>{status}</span>
                             {solicitacaoStatus && (
                               <span style={{
                                 ...s.badgeStatus(solicitacaoStatus === 'aprovado' ? '#3de8a0' : '#ff9f40'),
                                 fontSize: '0.5rem'
                               }}>
-                                ADIANTAMENTO {solicitacaoStatus.toUpperCase()}
+                                ADIANT. {solicitacaoStatus.toUpperCase()}
                               </span>
                             )}
-                            <button
-                              onClick={() => handleSolicitarPagamento(lista, totalValorLista)}
-                              disabled={!elegivel || solicitando[lista]}
-                              title={!elegivel ? motivos.join('; ') : ''}
-                              className={reclamacoesDesatualizadas ? 'btn-solicitar-disabled' : 'btn-solicitar'}
-                              style={reclamacoesDesatualizadas ? s.btnSolicitarDisabled : elegivel ? s.btnSolicitar : s.btnSolicitarDisabled}
-                            >
-                              {solicitando[lista] ? '...' : reclamacoesDesatualizadas ? 'Adiantamento em análise' : 'Solicitar Pagamento Antecipado'}
-                            </button>
                           </div>
                         </div>
 
+                        {/* Stats */}
                         <div style={s.listaStats}>
                           <div style={s.listaStat}>
                             <div style={s.listaStatVal}>{totalEntregasLista}</div>
-                            <div className="lista-stat-lbl" style={s.listaStatLbl}>Entregues</div>
+                            <div style={s.listaStatLbl}>Entregues</div>
                           </div>
                           <div style={s.listaStat}>
                             <div style={s.listaStatVal}>{t.qtd || '-'}</div>
-                            <div className="lista-stat-lbl" style={s.listaStatLbl}>Na Lista</div>
+                            <div style={s.listaStatLbl}>Na Lista</div>
                           </div>
                           <div style={s.listaStat}>
                             <div style={s.listaStatVal}>{t.ctes_vinculados || 0}</div>
-                            <div className="lista-stat-lbl" style={s.listaStatLbl}>CTEs</div>
+                            <div style={s.listaStatLbl}>CTEs</div>
                           </div>
                         </div>
 
-                        <div style={{ marginTop: 8 }}>
-                          {faixasLista.length > 0 && (
+                        {/* Bairros expandível */}
+                        {faixasLista.length > 0 && (
+                          <div style={{ marginTop: 8 }}>
                             <div style={{ cursor: 'pointer' }} onClick={() => toggleExpandido(lista)}>
                               <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.6rem', color: '#6b7280', letterSpacing: '1px', marginBottom: 4 }}>
                                 {expandido[lista] ? '▼' : '▶'} Bairros e Faixas
                               </div>
                             </div>
-                          )}
-                          {expandido[lista] && faixasLista.length > 0 && (
-                            <div style={{ background: '#1e2230', borderRadius: 4, padding: 8, marginTop: 4 }}>
-                              {(() => {
-                                const byBairro = {};
-                                for (const f of faixasLista) {
-                                  const b = f.bairro || 'Sem bairro';
-                                  if (!byBairro[b]) byBairro[b] = [];
-                                  byBairro[b].push(f);
-                                }
-                                return Object.entries(byBairro).map(([bairro, faixasDoBairro]) => (
-                                  <div key={bairro} style={{ marginBottom: 8, borderLeft: '2px solid #2a2f3e', paddingLeft: 8 }}>
-                                    <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.65rem', color: '#f0c040', letterSpacing: '1px', marginBottom: 4 }}>{bairro}</div>
-                                    {faixasDoBairro.map((f, idx) => (
-                                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', padding: '2px 0', fontFamily: "'IBM Plex Mono', monospace" }}>
-                                        <span style={{ color: '#6b7280' }}>{f.faixa_desc}</span>
-                                        <span style={{ color: '#e8eaf0' }}>{f.entregas} × {formatMoney(f.total_valor)}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ));
-                              })()}
-                            </div>
-                          )}
-                        </div>
+                            {expandido[lista] && (
+                              <div style={{ background: '#1e2230', borderRadius: 4, padding: 8, marginTop: 4 }}>
+                                {(() => {
+                                  const byBairro = {};
+                                  for (const f of faixasLista) {
+                                    const b = f.bairro || 'Sem bairro';
+                                    if (!byBairro[b]) byBairro[b] = [];
+                                    byBairro[b].push(f);
+                                  }
+                                  return Object.entries(byBairro).map(([bairro, faixasDoBairro]) => (
+                                    <div key={bairro} style={{ marginBottom: 8, borderLeft: '2px solid #2a2f3e', paddingLeft: 8 }}>
+                                      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.65rem', color: '#f0c040', letterSpacing: '1px', marginBottom: 4 }}>{bairro}</div>
+                                      {faixasDoBairro.map((f, idx) => (
+                                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', padding: '2px 0', fontFamily: "'IBM Plex Mono', monospace" }}>
+                                          <span style={{ color: '#6b7280' }}>{f.faixa_desc}</span>
+                                          <span style={{ color: '#e8eaf0' }}>{f.entregas} × {formatMoney(f.total_valor)}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ));
+                                })()}
+                              </div>
+                            )}
+                          </div>
+                        )}
 
+                        {/* Valor */}
                         <div style={s.listaValor}>
                           <div>
                             <div style={s.listaValorLbl}>Valor Calculado</div>
-                            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.6rem', color: '#6b7280' }}>
-                              faixa de peso
-                            </div>
+                            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.55rem', color: '#6b7280' }}>faixa de peso</div>
                           </div>
-                          <div className="lista-valor-num" style={totalValorLista > 0 ? s.listaValorNum : { ...s.listaValorNum, color: '#6b7280' }}>
+                          <div style={totalValorLista > 0 ? s.listaValorNum : { ...s.listaValorNum, color: '#6b7280' }}>
                             {totalValorLista > 0 ? formatMoney(totalValorLista) : '—'}
                           </div>
                         </div>
+
                         {taxaAdiantamento > 0 && totalValorLista > 0 && (
-                          <div style={s.listaValor}>
-                            <div>
-                              <div style={s.listaValorLbl}>Líquido (taxa {taxaAdiantamento}%)</div>
-                            </div>
-                            <div className="lista-valor-num" style={{ ...s.listaValorNum, color: '#3de8a0', fontSize: '0.95rem' }}>
-                              {formatMoney(valorLiquido)}
-                            </div>
+                          <div style={{ ...s.listaValor, borderTop: 'none', paddingTop: 4 }}>
+                            <div style={s.listaValorLbl}>Líquido (taxa {taxaAdiantamento}%)</div>
+                            <div style={{ ...s.listaValorNum, color: '#3de8a0', fontSize: '0.9rem' }}>{formatMoney(valorLiquido)}</div>
                           </div>
                         )}
+
+                        {/* Botão solicitar */}
+                        <button
+                          onClick={() => handleSolicitarPagamento(lista, totalValorLista)}
+                          disabled={!elegivel || solicitando[lista]}
+                          title={!elegivel ? motivos.join('; ') : ''}
+                          style={{ ...s.btnSolicitar, ...(elegivel ? {} : s.btnSolicitarDisabled), marginTop: 12, width: '100%' }}
+                        >
+                          {solicitando[lista] ? '...' : reclamacoesDesatualizadas ? 'Adiantamento em análise' : 'Solicitar Pagamento Antecipado'}
+                        </button>
                       </div>
                     );
                   })}
-                </div>
 
-                <div className="total-rodape" style={s.totalRodape}>
-                  <div style={s.totalRodapeLbl}>Total das Listas na Quinzena</div>
-                  <div style={s.totalRodapeVal}>{formatMoney(trips.reduce((s2, t) => {
-                    const fl = faixas[t.numero_lista] || [];
-                    return s2 + fl.reduce((s3, f) => s3 + Number(f.total_valor), 0);
-                  }, 0))}</div>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+                  <div style={s.totalRodape}>
+                    <div style={s.totalRodapeLbl}>Total da Quinzena</div>
+                    <div style={s.totalRodapeVal}>{formatMoney(trips.reduce((s2, t) => {
+                      const fl = faixas[t.numero_lista] || [];
+                      return s2 + fl.reduce((s3, f) => s3 + Number(f.total_valor), 0);
+                    }, 0))}</div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
-        <div style={s.footer}>SISTEMA DE GESTÃO DE MOTORISTAS · DRIVER_PEY</div>
-      </div>
+        </div>{/* end tabContent */}
+      </div>{/* end content */}
+
+      <div style={s.footer}>DRIVER_PEY · INTUITIVA LOG</div>
     </div>
   );
 }
 
 const s = {
-  container: { minHeight: '100vh', background: '#0d0f14', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', sans-serif", position: 'relative' },
-  loading: { display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', gap: 12, fontFamily: "'IBM Plex Mono', monospace", color: '#6b7280', fontSize: '0.8rem', letterSpacing: '2px' },
-  spinner: { width: 20, height: 20, border: '2px solid #2a2f3e', borderTopColor: '#f0c040', borderRadius: '50%', animation: 'spin .7s linear infinite' },
+  container: { minHeight: '100vh', background: '#0d0f14', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', sans-serif" },
 
-  topbar: { background: '#161920', borderBottom: '1px solid #2a2f3e', padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 60, position: 'sticky', top: 0, zIndex: 50 },
-  brand: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.5rem', letterSpacing: '3px', color: '#f0c040' },
-  navLink: { color: '#6b7280', cursor: 'pointer', fontSize: '0.72rem', fontFamily: "'IBM Plex Mono', monospace", letterSpacing: '1px', padding: '6px 10px', border: '1px solid #2a2f3e', borderRadius: 4 },
-  topbarInfo: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.62rem', color: '#6b7280', textAlign: 'right', lineHeight: 1.6 },
-  topbarInfoVal: { color: '#e8eaf0', fontWeight: 600 },
-  logoutBtn: { background: 'transparent', border: '1px solid #2a2f3e', color: '#6b7280', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.65rem', letterSpacing: '1px', padding: '6px 12px', cursor: 'pointer', marginLeft: 24 },
+  loading: { display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', gap: 12, fontFamily: "'IBM Plex Mono', monospace", color: '#6b7280', fontSize: '0.8rem', letterSpacing: '2px', flexDirection: 'column' },
+  spinner: { width: 24, height: 24, border: '2px solid #2a2f3e', borderTopColor: '#f0c040', borderRadius: '50%', animation: 'spin .7s linear infinite' },
 
-  content: { maxWidth: 1200, margin: '0 auto', padding: '0 0 60px' },
-  error: { background: '#2a1a1a', border: '1px solid #ff5a5a', color: '#ff5a5a', padding: '12px 16px', margin: '20px 32px 0', fontSize: '0.85rem' },
+  // ── Topbar ──
+  topbar: { background: '#161920', borderBottom: '1px solid #2a2f3e', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 52, position: 'sticky', top: 0, zIndex: 100 },
+  brand: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.4rem', letterSpacing: '3px', color: '#f0c040' },
+  menuBtn: { background: 'transparent', border: '1px solid #2a2f3e', color: '#e8eaf0', width: 36, height: 36, cursor: 'pointer', fontSize: '1rem', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' },
 
-  hero: { padding: '40px 32px 0', display: 'flex', gap: 32, alignItems: 'flex-end', flexWrap: 'wrap' },
-  heroName: { fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(2.5rem, 6vw, 5rem)', letterSpacing: '4px', lineHeight: 1, color: '#e8eaf0' },
+  // ── Drawer ──
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 200 },
+  drawer: { position: 'fixed', top: 0, right: 0, width: 260, height: '100%', background: '#161920', borderLeft: '1px solid #2a2f3e', zIndex: 201, display: 'flex', flexDirection: 'column', padding: '20px 0' },
+  drawerHeader: { padding: '0 20px 20px' },
+  drawerName: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.1rem', letterSpacing: '2px', color: '#e8eaf0' },
+  drawerMat: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.65rem', color: '#6b7280', letterSpacing: '1px', marginTop: 4 },
+  drawerDivider: { height: 1, background: '#2a2f3e', margin: '8px 0' },
+  drawerItem: { background: 'transparent', border: 'none', color: '#e8eaf0', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.8rem', letterSpacing: '1px', padding: '14px 20px', cursor: 'pointer', textAlign: 'left', width: '100%' },
+
+  // ── Content ──
+  content: { maxWidth: 600, margin: '0 auto', paddingBottom: 80 },
+  error: { background: '#2a1a1a', border: '1px solid #ff5a5a', color: '#ff5a5a', padding: '12px 16px', margin: '12px 16px', fontSize: '0.85rem', borderRadius: 4 },
+
+  // ── Hero ──
+  hero: { padding: '24px 16px 0' },
+  heroName: { fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(2rem, 10vw, 3.5rem)', letterSpacing: '3px', lineHeight: 1, color: '#e8eaf0' },
   heroNameEm: { color: '#f0c040', fontStyle: 'normal' },
-  heroMat: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.7rem', color: '#6b7280', letterSpacing: '2px', marginTop: 6 },
-  qzNav: { display: 'flex', flexDirection: 'column', gap: 8 },
-  qzLabelSmall: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.6rem', letterSpacing: '2px', color: '#6b7280', textTransform: 'uppercase' },
-  qzNavRow: { display: 'flex', alignItems: 'center', gap: 0 },
-  qzBtn: { background: '#1e2230', border: '1px solid #2a2f3e', color: '#6b7280', width: 32, height: 36, cursor: 'pointer', fontSize: '1rem', transition: 'color .15s', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  qzBadge: { background: '#1e2230', border: '1px solid #2a2f3e', padding: '8px 16px', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.7rem', letterSpacing: '1px', color: '#3de8a0', minWidth: 220, textAlign: 'center', borderLeft: 'none', borderRight: 'none' },
-  pagLabel: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.65rem', color: '#3de8a0', letterSpacing: '1px' },
+  heroMat: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.65rem', color: '#6b7280', letterSpacing: '2px', marginTop: 4 },
+
+  // ── Quinzena nav ──
+  qzNav: { marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 },
+  qzLabelSmall: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.58rem', letterSpacing: '2px', color: '#6b7280', textTransform: 'uppercase' },
+  qzNavRow: { display: 'flex', alignItems: 'center' },
+  qzBtn: { background: '#1e2230', border: '1px solid #2a2f3e', color: '#6b7280', width: 40, height: 40, cursor: 'pointer', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  qzBadge: { flex: 1, background: '#1e2230', border: '1px solid #2a2f3e', borderLeft: 'none', borderRight: 'none', padding: '10px 12px', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.68rem', letterSpacing: '1px', color: '#3de8a0', textAlign: 'center' },
+  pagLabel: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.62rem', color: '#3de8a0', letterSpacing: '1px' },
   pagData: { fontWeight: 600, color: '#f0c040' },
 
-  kpiStrip: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1px', background: '#2a2f3e', margin: '32px 32px 0', border: '1px solid #2a2f3e' },
-  kpi: { background: '#161920', padding: '24px 20px', position: 'relative', overflow: 'hidden' },
-  kpiLabel: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.6rem', letterSpacing: '2px', textTransform: 'uppercase', color: '#6b7280', marginBottom: 10 },
-  kpiValue: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '2.4rem', letterSpacing: '2px', lineHeight: 1 },
-  kpiDetail: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.65rem', color: '#6b7280', marginTop: 6 },
+  // ── KPI horizontal scroll ──
+  kpiScroll: { display: 'flex', gap: 1, background: '#2a2f3e', overflowX: 'auto', margin: '16px 0 0', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' },
+  kpiCard: { background: '#161920', padding: '16px 14px', borderBottom: '2px solid #3de8a0', flexShrink: 0, minWidth: 110 },
+  kpiLabel: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.55rem', letterSpacing: '2px', textTransform: 'uppercase', color: '#6b7280', marginBottom: 8 },
+  kpiValue: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '2rem', letterSpacing: '2px', lineHeight: 1 },
+  kpiDetail: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.58rem', color: '#6b7280', marginTop: 4 },
 
-  sections: { padding: 32, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 },
-  section: { background: '#161920', border: '1px solid #2a2f3e', padding: 24 },
-  sectionTitle: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.2rem', letterSpacing: '3px', color: '#f0c040', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 10 },
-  sectionIcon: { width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem' },
-  sectionSub: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.65rem', color: '#6b7280', letterSpacing: '1px', marginBottom: 20 },
+  // ── Tab bar ──
+  tabBar: { display: 'flex', background: '#161920', borderBottom: '1px solid #2a2f3e', position: 'sticky', top: 52, zIndex: 90, overflowX: 'auto', scrollbarWidth: 'none' },
+  tabBtn: { flex: '1 0 auto', background: 'transparent', border: 'none', color: '#6b7280', padding: '10px 8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, transition: 'color .15s', borderBottom: '2px solid transparent', minWidth: 60 },
+  tabBtnActive: { color: '#f0c040', borderBottomColor: '#f0c040' },
+  tabIcon: { fontSize: '1rem' },
+  tabLabel: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.5rem', letterSpacing: '1px', textTransform: 'uppercase', whiteSpace: 'nowrap' },
 
-  barChart: { display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 },
-  barRow: { display: 'flex', alignItems: 'center', gap: 12 },
-  barLabel: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.65rem', color: '#6b7280', width: 80, flexShrink: 0, textAlign: 'right' },
-  barTrack: { flex: 1, background: '#1e2230', height: 20, position: 'relative', overflow: 'hidden' },
+  // ── Tab content ──
+  tabContent: { padding: '0 0 16px' },
+  section: { padding: '20px 16px' },
+  sectionTitle: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.1rem', letterSpacing: '3px', color: '#f0c040', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 },
+  sectionSub: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.6rem', color: '#6b7280', letterSpacing: '1px', marginBottom: 16 },
+
+  // ── Resumo ──
+  resumoGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 },
+  resumoItem: { background: '#161920', border: '1px solid #2a2f3e', padding: '16px 14px', borderRadius: 4 },
+  resumoLbl: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.58rem', color: '#6b7280', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 8 },
+  resumoVal: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '2.2rem', lineHeight: 1, color: '#e8eaf0' },
+  pagCard: { background: '#1e2230', border: '1px solid #2a2f3e', borderLeft: '3px solid #3de8a0', padding: '16px', borderRadius: 4 },
+  pagCardLbl: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.6rem', color: '#6b7280', letterSpacing: '1px', marginBottom: 6 },
+  pagCardVal: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.8rem', color: '#e8eaf0', marginBottom: 8 },
+  pagCardTotal: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '2rem', color: '#3de8a0', letterSpacing: '2px' },
+
+  // ── Produtividade ──
+  barChart: { display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 },
+  barRow: { display: 'flex', alignItems: 'center', gap: 10 },
+  barLabel: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.6rem', color: '#6b7280', width: 72, flexShrink: 0, textAlign: 'right' },
+  barTrack: { flex: 1, background: '#1e2230', height: 18, position: 'relative', overflow: 'hidden' },
   barFill: { height: '100%', background: '#f0c040', transition: 'width 1s cubic-bezier(.23,1,.32,1)' },
-  barVal: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.65rem', color: '#e8eaf0', width: 30, flexShrink: 0 },
+  barVal: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.62rem', color: '#e8eaf0', width: 24, flexShrink: 0 },
+  prodCard: { background: '#161920', border: '1px solid #2a2f3e', borderRadius: 4, padding: '12px 14px', marginBottom: 8 },
+  prodCardDate: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1rem', color: '#f0c040', letterSpacing: '2px', marginBottom: 10 },
+  prodCardRow: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 },
+  prodCardItem: { textAlign: 'center' },
+  prodCardLbl: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.5rem', color: '#6b7280', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 4 },
+  prodCardVal: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.1rem', color: '#e8eaf0' },
 
-  tableWrap: { overflowX: 'auto' },
-  table: { width: '100%', borderCollapse: 'collapse', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem' },
-  th: { textAlign: 'left', fontSize: '0.6rem', letterSpacing: '2px', textTransform: 'uppercase', color: '#6b7280', padding: '8px 12px', borderBottom: '1px solid #2a2f3e' },
-  td: { padding: '10px 12px', borderBottom: '1px solid rgba(42,47,62,.6)', color: '#e8eaf0', fontSize: '0.75rem' },
-  badgeGreen: { display: 'inline-block', padding: '2px 8px', fontSize: '0.6rem', letterSpacing: '1px', textTransform: 'uppercase', fontFamily: "'IBM Plex Mono', monospace", borderRadius: 2, background: 'rgba(61,232,160,.15)', color: '#3de8a0' },
-  badgeWarn: { display: 'inline-block', padding: '2px 8px', fontSize: '0.6rem', letterSpacing: '1px', textTransform: 'uppercase', fontFamily: "'IBM Plex Mono', monospace", borderRadius: 2, background: 'rgba(255,159,64,.15)', color: '#ff9f40' },
-  badgeStatus: (c) => ({ display: 'inline-block', padding: '2px 8px', fontSize: '0.55rem', letterSpacing: '1px', textTransform: 'uppercase', fontFamily: "'IBM Plex Mono', monospace", borderRadius: 2, background: `${c}22`, color: c }),
-
-  gaugeWrap: { display: 'flex', alignItems: 'center', gap: 32, flexWrap: 'wrap' },
+  // ── Eficiência ──
+  gaugeWrap: { display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap', marginBottom: 20 },
   gaugeRing: { position: 'relative', width: 120, height: 120, flexShrink: 0 },
   gaugeCenter: { position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' },
   gaugePct: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.8rem', lineHeight: 1 },
   gaugeSubLabel: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.5rem', color: '#6b7280', letterSpacing: '1px', marginTop: 4 },
-  gaugeDetail: { flex: 1 },
-  gaugeRow: { display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #2a2f3e', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.72rem' },
+  gaugeStats: { flex: 1 },
+  gaugeRow: { display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #2a2f3e', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.68rem' },
   gaugeLbl: { color: '#6b7280' },
   gaugeVal: { color: '#e8eaf0', fontWeight: 600 },
+  efCard: { background: '#161920', border: '1px solid #2a2f3e', borderLeft: '3px solid #3de8a0', padding: '12px 14px', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 2 },
+  efCardEvento: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.7rem', color: '#e8eaf0', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: 1 },
+  efCardNums: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, flexShrink: 0 },
+  efCardQtd: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.3rem', color: '#e8eaf0', lineHeight: 1 },
+  efCardPct: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.6rem', color: '#6b7280' },
 
-  empty: { textAlign: 'center', padding: '40px 0', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem', color: '#6b7280', letterSpacing: '1px' },
+  // ── Reclamações ──
+  zeroRec: { textAlign: 'center', padding: '40px 0' },
+  zeroRecNum: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '2.5rem', color: '#3de8a0' },
+  zeroRecSub: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.7rem', color: '#6b7280', marginTop: 8, letterSpacing: '2px' },
+  recHeader: { display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 16 },
+  recNum: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '3rem', color: '#ff5a5a' },
+  recLbl: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.6rem', color: '#6b7280' },
+  recPct: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.2rem', color: '#ff9f40' },
+  recCard: { background: '#161920', border: '1px solid #2a2f3e', borderLeft: '3px solid #ff5a5a', padding: '12px 14px', marginBottom: 8, borderRadius: 2 },
+  recCardRow: { display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid rgba(42,47,62,.5)', fontFamily: "'IBM Plex Mono', monospace" },
+  recCardLbl: { fontSize: '0.58rem', color: '#6b7280', letterSpacing: '1px', textTransform: 'uppercase' },
+  recCardVal: { fontSize: '0.72rem', color: '#e8eaf0' },
+  mapLink: { color: '#5ab4ff', textDecoration: 'none' },
 
-  listasGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12, marginTop: 4 },
-  listaCard: { background: '#0d0f14', border: '1px solid #2a2f3e', padding: 16, position: 'relative', transition: 'border-color .2s' },
+  // ── Listas ──
+  listaCard: { background: '#161920', border: '1px solid #2a2f3e', padding: '14px', marginBottom: 10, borderRadius: 4 },
   listaCardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
   listaNumero: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.4rem', letterSpacing: '2px', color: '#f0c040', lineHeight: 1 },
-  listaRota: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.65rem', color: '#6b7280', letterSpacing: '1px', marginTop: 2, textTransform: 'uppercase' },
-  listaStats: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 },
-  listaStat: { textAlign: 'center' },
-  listaStatVal: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.1rem', color: '#e8eaf0', lineHeight: 1 },
-  listaStatLbl: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.55rem', color: '#6b7280', letterSpacing: '1px', textTransform: 'uppercase' },
-  listaValor: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTop: '1px solid #2a2f3e' },
-  listaValorLbl: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.6rem', color: '#6b7280', letterSpacing: '1px', textTransform: 'uppercase' },
-  listaValorNum: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.1rem', color: '#3de8a0', letterSpacing: '1px' },
+  listaRota: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.6rem', color: '#6b7280', letterSpacing: '1px', marginTop: 2 },
+  listaStats: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 },
+  listaStat: { textAlign: 'center', background: '#0d0f14', padding: '8px 4px', borderRadius: 2 },
+  listaStatVal: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.2rem', color: '#e8eaf0', lineHeight: 1 },
+  listaStatLbl: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.5rem', color: '#6b7280', letterSpacing: '1px', textTransform: 'uppercase', marginTop: 2 },
+  listaValor: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTop: '1px solid #2a2f3e', marginTop: 8 },
+  listaValorLbl: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.58rem', color: '#6b7280', letterSpacing: '1px', textTransform: 'uppercase' },
+  listaValorNum: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.2rem', color: '#3de8a0', letterSpacing: '1px' },
 
-  totalRodape: { marginTop: 16, padding: '14px 18px', background: '#1e2230', border: '1px solid #2a2f3e', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  totalRodapeLbl: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.65rem', color: '#6b7280', letterSpacing: '2px', textTransform: 'uppercase' },
+  totalRodape: { marginTop: 12, padding: '14px 16px', background: '#1e2230', border: '1px solid #2a2f3e', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 4 },
+  totalRodapeLbl: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.6rem', color: '#6b7280', letterSpacing: '2px', textTransform: 'uppercase' },
   totalRodapeVal: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.5rem', color: '#3de8a0', letterSpacing: '2px' },
 
-  footer: { padding: '20px 32px', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.6rem', color: '#2a2f3e', letterSpacing: '1px', textAlign: 'center' },
-  regrasLink: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.6rem', color: '#5ab4ff', textDecoration: 'none', letterSpacing: '1px', padding: '4px 8px', border: '1px solid #5ab4ff33', borderRadius: 2, transition: 'background .2s' },
-  solicMsg: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.72rem', color: '#3de8a0', marginBottom: 12, padding: '8px 12px', background: '#1a3a2a', border: '1px solid #3de8a033', borderRadius: 4 },
-  btnSolicitar: { background: 'rgba(61,232,160,.15)', border: '1px solid #3de8a0', color: '#3de8a0', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.55rem', letterSpacing: '1px', padding: '4px 8px', cursor: 'pointer', borderRadius: 2, whiteSpace: 'nowrap', transition: 'background .2s' },
-  btnSolicitarDisabled: { background: 'transparent', border: '1px solid #2a2f3e', color: '#6b7280', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.55rem', letterSpacing: '1px', padding: '4px 8px', cursor: 'not-allowed', borderRadius: 2, whiteSpace: 'nowrap' },
+  // ── Badges ──
+  badgeStatus: (c) => ({ display: 'inline-block', padding: '3px 8px', fontSize: '0.55rem', letterSpacing: '1px', textTransform: 'uppercase', fontFamily: "'IBM Plex Mono', monospace", borderRadius: 2, background: `${c}22`, color: c }),
+  badgeWarn: { display: 'inline-block', padding: '2px 6px', fontSize: '0.55rem', letterSpacing: '1px', textTransform: 'uppercase', fontFamily: "'IBM Plex Mono', monospace", borderRadius: 2, background: 'rgba(255,159,64,.15)', color: '#ff9f40' },
+
+  // ── Botões ──
+  btnSolicitar: { background: 'rgba(61,232,160,.15)', border: '1px solid #3de8a0', color: '#3de8a0', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.6rem', letterSpacing: '1px', padding: '10px 12px', cursor: 'pointer', borderRadius: 4, textAlign: 'center' },
+  btnSolicitarDisabled: { background: 'transparent', border: '1px solid #2a2f3e', color: '#6b7280', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.6rem', letterSpacing: '1px', padding: '10px 12px', cursor: 'not-allowed', borderRadius: 4, textAlign: 'center' },
+
+  // ── Misc ──
+  empty: { textAlign: 'center', padding: '32px 0', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.72rem', color: '#6b7280', letterSpacing: '1px' },
+  regrasLink: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.6rem', color: '#5ab4ff', textDecoration: 'none', letterSpacing: '1px', padding: '4px 8px', border: '1px solid #5ab4ff33', borderRadius: 2 },
+  solicMsg: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.72rem', color: '#3de8a0', marginBottom: 12, padding: '10px 12px', background: '#1a3a2a', border: '1px solid #3de8a033', borderRadius: 4 },
+  footer: { padding: '20px 16px', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.55rem', color: '#2a2f3e', letterSpacing: '1px', textAlign: 'center' },
 };
