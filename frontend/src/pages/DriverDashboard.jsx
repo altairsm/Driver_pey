@@ -52,10 +52,10 @@ function calcQuinzenaFim(dataStr) {
 
 // ─── Tab navigation ───────────────────────────────────────────────────────────
 const TABS = [
+  { id: 'reclamacoes',  label: 'Reclamações',   icon: '⚠️' },
   { id: 'resumo',       label: 'Resumo',       icon: '📋' },
   { id: 'produtividade',label: 'Produção',      icon: '📦' },
   { id: 'eficiencia',   label: 'Eficiência',    icon: '📊' },
-  { id: 'reclamacoes',  label: 'Reclamações',   icon: '⚠️' },
   { id: 'listas',       label: 'Listas',        icon: '🚚' },
 ];
 
@@ -270,9 +270,9 @@ export default function DriverDashboard() {
           <div style={s.qzNav}>
             <div style={s.qzLabelSmall}>Selecionar Quinzena</div>
             <div style={s.qzNavRow}>
-              <button onClick={handlePrev} disabled={qzIdx >= quinzenas.length - 1} style={{ ...s.qzBtn, opacity: qzIdx >= quinzenas.length - 1 ? 0.3 : 1 }}>&#8249;</button>
+              <button className="qz-nav-btn" onClick={handlePrev} disabled={qzIdx >= quinzenas.length - 1} style={{ ...s.qzBtn, opacity: qzIdx >= quinzenas.length - 1 ? 0.3 : 1 }}>&#8249;</button>
               <div style={s.qzBadge}>{qzLabel}{qzPos}</div>
-              <button onClick={handleNext} disabled={qzIdx <= 0} style={{ ...s.qzBtn, opacity: qzIdx <= 0 ? 0.3 : 1 }}>&#8250;</button>
+              <button className="qz-nav-btn" onClick={handleNext} disabled={qzIdx <= 0} style={{ ...s.qzBtn, opacity: qzIdx <= 0 ? 0.3 : 1 }}>&#8250;</button>
             </div>
             {pagamentoDate && (
               <div style={s.pagLabel}>
@@ -589,7 +589,7 @@ export default function DriverDashboard() {
                         {faixasLista.length > 0 && (
                           <div style={{ marginTop: 8 }}>
                             <div style={{ cursor: 'pointer' }} onClick={() => toggleExpandido(lista)}>
-                              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.6rem', color: '#6b7280', letterSpacing: '1px', marginBottom: 4 }}>
+                              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.7rem', color: '#fdfdfe', letterSpacing: '1px', marginBottom: 4 }}>
                                 {expandido[lista] ? '▼' : '▶'} Bairros e Faixas
                               </div>
                             </div>
@@ -703,8 +703,8 @@ const s = {
   // ── Quinzena nav ──
   qzNav: { marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 },
   qzLabelSmall: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.58rem', letterSpacing: '2px', color: '#6b7280', textTransform: 'uppercase' },
-  qzNavRow: { display: 'flex', alignItems: 'center' },
-  qzBtn: { background: '#1e2230', border: '1px solid #2a2f3e', color: '#6b7280', width: 40, height: 40, cursor: 'pointer', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  qzNavRow: { display: 'flex', alignItems: 'center', gap: 6 },
+  qzBtn: { background: '#2a2f3e', border: '1px solid #3a3f4e', color: '#f0c040', width: 44, height: 44, borderRadius: 8, cursor: 'pointer', fontSize: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' },
   qzBadge: { flex: 1, background: '#1e2230', border: '1px solid #2a2f3e', borderLeft: 'none', borderRight: 'none', padding: '10px 12px', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.68rem', letterSpacing: '1px', color: '#3de8a0', textAlign: 'center' },
   pagLabel: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.62rem', color: '#3de8a0', letterSpacing: '1px' },
   pagData: { fontWeight: 600, color: '#f0c040' },

@@ -1,3 +1,8 @@
+.qz-nav-btn:hover {
+  background: #3a3f4e !important;
+  border-color: #f0c040 !important;
+}
+
 @media (max-width: 768px) {
   .topbar-driver-row {
     flex-wrap: wrap !important;
