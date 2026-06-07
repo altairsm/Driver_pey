@@ -269,7 +269,7 @@ export default function DriverDashboard() {
         <div style={s.sections}>
           <div style={{ ...s.section, gridColumn: '1 / -1' }}>
             <div style={s.sectionTitle}><span style={s.sectionIcon}>📦</span> RELATÓRIO DE PRODUTIVIDADE</div>
-            <div style={s.sectionSub}>CTes com evento de ENTREGA — por data</div>
+            <div style={s.sectionSub}>SUAS ENTREGAS — por data</div>
 
             <div style={s.barChart}>
               {produtividade.map(p => {
@@ -392,7 +392,7 @@ export default function DriverDashboard() {
 
           <div style={s.section}>
             <div style={s.sectionTitle}><span style={s.sectionIcon}>⚠️</span> RECLAMAÇÕES</div>
-            <div style={s.sectionSub}>Cruzamento com tabela acareacaojad</div>
+            <div style={s.sectionSub}>Acareações geradas</div>
             <div id="rec-content">
               {reclamacoes.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '32px 0' }}>
