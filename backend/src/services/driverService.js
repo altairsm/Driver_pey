@@ -393,13 +393,7 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
 }
 
 export async function getDriverDados(matricula) {
-  const result = await pool.query(`
-    SELECT "OperadorMatricula"::bigint AS matricula, nome_completo, cpf, telefone,
-           leu_regras, cnpj_mei, pix_tipo
-    FROM matriculos_jad
-    WHERE "OperadorMatricula"::bigint = $1
-  `, [matricula]);
-  return result.rows[0] || null;
+  return getDriverData(matricula);
 }
 
 export async function atualizarDriverDados(matricula, dados) {

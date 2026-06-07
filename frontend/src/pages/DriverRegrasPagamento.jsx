@@ -193,7 +193,7 @@ export default function DriverRegrasPagamento() {
             Passe o mouse sobre o botão para ver o motivo.
             <br /><br />
             Após solicitar, a solicitação fica <strong style={{ color: '#ff9f40' }}>pendente</strong>
-            para análise. O administrador poderá aprovar ou recusar.
+             para análise. O administrador poderá aprovar ou recusar.
           </div>
         </div>
 
@@ -215,7 +215,7 @@ export default function DriverRegrasPagamento() {
                 ...(confirmando ? s.confirmBtnDisabled : {}),
               }}
             >
-              {confirmando ? 'CONFIRMANDO...' : 'LI E ENTENDI AS REGRAS — QUERO SOLICITAR ADIANTAMENTO'}
+              {confirmando ? 'CONFIRMANDO...' : 'LI E ENTENDI AS REGRAS'}
             </button>
           </div>
         )}
