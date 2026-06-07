@@ -14,7 +14,8 @@ export async function calcularPagamentos(inicio, fim) {
         re."Peso"::numeric             AS peso_cte,
         re."Cep",
         COALESCE(fb.valor_peso, 0)     AS valor_peso,
-        COALESCE(tf.valor_fixo + GREATEST(re."Peso"::numeric - 15, 0) * tf.valor_excedente_kg, 0) AS valor_faturamento
+        COALESCE(tf.valor_fixo + GREATEST(re."Peso"::numeric - 15, 0) * tf.valor_excedente_kg, 0) AS valor_faturamento,
+        le.pago AS pago_raw
       FROM relatorioentrega_export re
       CROSS JOIN quinzena_params qp
       LEFT JOIN ceps_bairros cb
@@ -28,7 +29,6 @@ export async function calcularPagamentos(inicio, fim) {
       JOIN lista_entregas le ON le."Número"::text = re."Lista"
       WHERE LOWER(re."Evento") = 'entrega'
         AND le.status = 'Finalizado'
-        AND (le.pago IS NULL OR le.pago = false)
         AND re."Data"::date BETWEEN qp.inicio AND qp.fim
     ),
     entregas_base AS (
@@ -46,7 +46,8 @@ export async function calcularPagamentos(inicio, fim) {
         COUNT(DISTINCT lista) AS total_listas,
         SUM(peso_cte)         AS peso_total,
         SUM(valor_peso)       AS total_quinzena,
-        SUM(valor_faturamento) AS total_faturamento
+        SUM(valor_faturamento) AS total_faturamento,
+        BOOL_AND(COALESCE(pago_raw, false)) AS pago
       FROM entregas_base
       GROUP BY matricula, nome_entrega
     )
@@ -61,7 +62,8 @@ export async function calcularPagamentos(inicio, fim) {
       COALESCE(rm.peso_total, 0)   AS peso_total,
       COALESCE(rm.total_quinzena, 0)::numeric(10,2) AS total_quinzena,
       COALESCE(rm.total_faturamento, 0)::numeric(10,2) AS receita_total,
-      COALESCE(rm.total_faturamento - rm.total_quinzena, 0)::numeric(10,2) AS margem_bruta
+      COALESCE(rm.total_faturamento - rm.total_quinzena, 0)::numeric(10,2) AS margem_bruta,
+      COALESCE(rm.pago, false) AS pago
     FROM matriculos_jad m
     LEFT JOIN resumo_motorista rm ON rm.matricula = m."OperadorMatricula"::bigint
     WHERE COALESCE(rm.total_quinzena, 0) > 0
