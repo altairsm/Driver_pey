@@ -477,5 +477,21 @@ CREATE TABLE IF NOT EXISTS solicitacoes_pagamento (
     UNIQUE (matricula, lista_numero)
 );
 
+-- 12. CONFIGURAÇÕES DO SISTEMA
+CREATE TABLE IF NOT EXISTS configuracoes (
+    id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    dias_uteis_pagamento INTEGER NOT NULL DEFAULT 4,
+    eficiencia_minima_adiantamento NUMERIC(5,2) NOT NULL DEFAULT 98.00,
+    taxa_adiantamento NUMERIC(5,2) NOT NULL DEFAULT 0.00,
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO configuracoes (id, dias_uteis_pagamento, eficiencia_minima_adiantamento, taxa_adiantamento)
+VALUES (1, 4, 98.00, 0.00)
+ON CONFLICT (id) DO NOTHING;
+
+ALTER TABLE solicitacoes_pagamento ADD COLUMN IF NOT EXISTS taxa_aplicada NUMERIC(5,2);
+
 CREATE INDEX IF NOT EXISTS idx_ceps_bairros_cep ON ceps_bairros (cep_ini, cep_fim);
 CREATE INDEX IF NOT EXISTS idx_faixas_peso_bairro_tabela ON faixas_peso_entrega_bairro (nome_tabela, peso_de, peso_ate);

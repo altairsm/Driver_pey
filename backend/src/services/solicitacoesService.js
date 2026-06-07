@@ -10,6 +10,7 @@ export async function listarSolicitacoes(status = null) {
       m.nome_completo,
       sp.lista_numero,
       sp.valor_solicitado,
+      sp.taxa_aplicada,
       sp.status,
       sp.criado_em,
       sp.aprovado_em,

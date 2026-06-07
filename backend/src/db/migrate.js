@@ -515,6 +515,16 @@ export async function runMigrations() {
     )`);
     console.log('  -> solicitacoes_pagamento');
 
+    await pool.query(`CREATE TABLE IF NOT EXISTS configuracoes (
+      id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+      dias_uteis_pagamento INTEGER NOT NULL DEFAULT 4,
+      eficiencia_minima_adiantamento NUMERIC(5,2) NOT NULL DEFAULT 98.00,
+      taxa_adiantamento NUMERIC(5,2) NOT NULL DEFAULT 0.00,
+      criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    console.log('  -> configuracoes');
+
     // ── Step 3: Create indexes ──
     console.log('Migrations: creating indexes...');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_ceps_bairros_cep ON ceps_bairros (cep_ini, cep_fim)');
@@ -553,6 +563,7 @@ export async function runMigrations() {
     // ── Step 6: solicitacoes_pagamento column migrations ──
     await pool.query('ALTER TABLE solicitacoes_pagamento ADD COLUMN IF NOT EXISTS aprovado_em TIMESTAMP');
     await pool.query('ALTER TABLE solicitacoes_pagamento ADD COLUMN IF NOT EXISTS recusado_em TIMESTAMP');
+    await pool.query('ALTER TABLE solicitacoes_pagamento ADD COLUMN IF NOT EXISTS taxa_aplicada NUMERIC(5,2)');
     console.log('  solicitacoes_pagamento columns expanded');
 
     // ── Step 7: Seeds ──
@@ -581,6 +592,13 @@ export async function runMigrations() {
     await seedIfEmpty('tabela_faturamento', seedFaturamento);
     await pool.query(fixFaturamento);
     console.log('  Faturamento table seeded / fixed');
+
+    await pool.query(`
+      INSERT INTO configuracoes (id, dias_uteis_pagamento, eficiencia_minima_adiantamento, taxa_adiantamento)
+      VALUES (1, 4, 98.00, 0.00)
+      ON CONFLICT (id) DO NOTHING
+    `);
+    console.log('  Configuracoes seeded');
 
     console.log('Migrations: all seed data done');
   } catch (err) {

@@ -13,6 +13,7 @@ import AdminCtesSemFaixa from './pages/AdminCtesSemFaixa'
 import AdminCepsConflitos from './pages/AdminCepsConflitos'
 import AdminReclamacoes from './pages/AdminReclamacoes'
 import AdminSolicitacoesPagamento from './pages/AdminSolicitacoesPagamento'
+import AdminConfiguracoes from './pages/AdminConfiguracoes'
 
 function ProtectedRoute({ children, adminOnly }) {
   const token = localStorage.getItem('token')
@@ -54,6 +55,7 @@ function App() {
       <Route path="/admin/ceps/conflitos" element={<AdminCepsConflitos />} />
       <Route path="/admin/reclamacoes" element={<AdminReclamacoes />} />
       <Route path="/admin/solicitacoes-pagamento" element={<AdminSolicitacoesPagamento />} />
+      <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

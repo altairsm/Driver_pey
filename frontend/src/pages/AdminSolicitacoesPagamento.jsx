@@ -92,6 +92,8 @@ export default function AdminSolicitacoesPagamento() {
                   <th style={s.th}>Motorista</th>
                   <th style={s.th}>Lista</th>
                   <th style={s.th}>Valor</th>
+                  <th style={s.th}>Taxa</th>
+                  <th style={s.th}>Líquido</th>
                   <th style={s.th}>Status</th>
                   <th style={s.th}>Solicitado em</th>
                   <th style={s.th}>Ação</th>
@@ -105,6 +107,8 @@ export default function AdminSolicitacoesPagamento() {
                     <td style={s.td}>{solic.nome_completo}</td>
                     <td style={s.td}>#{solic.lista_numero}</td>
                     <td style={s.td}>{formatMoney(solic.valor_solicitado)}</td>
+                    <td style={s.td}>{solic.taxa_aplicada ? `${solic.taxa_aplicada}%` : '—'}</td>
+                    <td style={{ ...s.td, color: '#3de8a0' }}>{formatMoney(solic.valor_solicitado * (1 - (Number(solic.taxa_aplicada) || 0) / 100))}</td>
                     <td style={s.td}>
                       <span style={{ ...s.badge, background: `${badgeCor(solic.status)}22`, color: badgeCor(solic.status) }}>
                         {solic.status.toUpperCase()}

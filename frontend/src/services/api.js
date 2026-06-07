@@ -297,4 +297,14 @@ export async function recusarSolicitacao(id) {
   return data;
 }
 
+export async function getConfig() {
+  const { data } = await api.get('/configuracoes');
+  return data;
+}
+
+export async function updateConfig(dados) {
+  const { data } = await api.put('/configuracoes', dados);
+  return data;
+}
+
 export default api;

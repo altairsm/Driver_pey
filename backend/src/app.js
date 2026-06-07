@@ -11,6 +11,7 @@ import tabelasRoutes from './routes/tabelas.js';
 import cepsRoutes from './routes/ceps.js';
 import reclamacoesRoutes from './routes/reclamacoes.js';
 import solicitacoesRoutes from './routes/solicitacoes.js';
+import configuracoesRoutes from './routes/configuracoes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -32,6 +33,7 @@ app.use('/api/admin', tabelasRoutes);
 app.use('/api/admin', cepsRoutes);
 app.use('/api/admin', reclamacoesRoutes);
 app.use('/api/admin', solicitacoesRoutes);
+app.use('/api/configuracoes', configuracoesRoutes);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
