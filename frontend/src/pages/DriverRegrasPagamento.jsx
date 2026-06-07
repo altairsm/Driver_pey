@@ -11,7 +11,7 @@ export default function DriverRegrasPagamento() {
     cardHeader: (c) => ({ padding: '14px 20px', background: '#1e2230', borderBottom: '1px solid #2a2f3e', borderLeft: `3px solid ${c}`, display: 'flex', alignItems: 'center', gap: 12 }),
     cardNum: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.2rem', color: '#6b7280', width: 28, textAlign: 'right' },
     cardTitle: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem', fontWeight: 600, letterSpacing: '1px', color: '#e8eaf0' },
-    cardBody: { padding: '16px 20px', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.72rem', lineHeight: 1.7, color: '#b0b4c0' },
+    cardBody: { padding: '16px 20px', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.72rem', lineHeight: 1.7, color: '#f0f1f5' },
     highlight: (c) => ({ color: c, fontWeight: 600 }),
     badge: (bg, fg) => ({ display: 'inline-block', padding: '2px 8px', fontSize: '0.6rem', letterSpacing: '1px', borderRadius: 2, background: bg, color: fg, margin: '0 2px' }),
     divider: { height: 1, background: '#2a2f3e', margin: '24px 0' },
@@ -26,16 +26,16 @@ export default function DriverRegrasPagamento() {
       </div>
       <div style={s.content}>
         <h1 style={s.title}>Pagamento Antecipado</h1>
-        <div style={s.sub}>
+        <div style={s.cardTitle}>
           Regras para solicitar o adiantamento do pagamento de uma lista.<br />
-          O pagamento normal é feito em até <strong style={{ color: '#e8eaf0' }}>N dias úteis</strong> após o fechamento da quinzena
+          O pagamento normal é feito em até <strong style={{ color: '#e8eaf0' }}>4 dias úteis</strong> após o fechamento da quinzena
           (configurado pela administração). Com o adiantamento, você pode receber antes se a lista atender todos os critérios.
         </div>
 
         <div style={s.card}>
           <div style={s.cardHeader('#3de8a0')}>
             <div style={s.cardNum}>01</div>
-            <div style={s.cardTitle}>Eficiência mínima (configurável)</div>
+            <div style={s.cardTitle}>Eficiência mínima.</div>
           </div>
           <div style={s.cardBody}>
             Sua eficiência nos <strong style={{ color: '#e8eaf0' }}>últimos 30 dias</strong> deve ser igual ou superior ao valor definido pela administração (padrão 98%).
