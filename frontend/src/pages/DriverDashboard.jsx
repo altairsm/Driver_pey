@@ -381,19 +381,6 @@ export default function DriverDashboard() {
                 })}
                 {produtividade.length === 0 && <div style={s.empty}>Nenhum registro na quinzena</div>}
               </div>
-              {/* Tabela como cards no mobile */}
-              {produtividade.map(p => (
-                <div key={p.data} style={s.prodCard}>
-                  <div style={s.prodCardDate}>{formatDate(p.data)}</div>
-                  <div style={s.prodCardRow}>
-                    <div style={s.prodCardItem}><div style={s.prodCardLbl}>CTes</div><div style={{ ...s.prodCardVal, color: '#3de8a0' }}>{p.ctes}</div></div>
-                    <div style={s.prodCardItem}><div style={s.prodCardLbl}>Pacotes</div><div style={s.prodCardVal}>{p.pacotes}</div></div>
-                    <div style={s.prodCardItem}><div style={s.prodCardLbl}>Peso</div><div style={s.prodCardVal}>{Number(p.peso_total).toFixed(1)}kg</div></div>
-                    <div style={s.prodCardItem}><div style={s.prodCardLbl}>Valor</div><div style={{ ...s.prodCardVal, color: '#f0c040' }}>{formatMoney(p.valor_total)}</div></div>
-                  </div>
-                </div>
-              ))}
-              {produtividade.length === 0 && <div style={s.empty}>Nenhum registro encontrado.</div>}
             </div>
           )}
 
