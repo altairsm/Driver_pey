@@ -75,7 +75,7 @@ export default function Topbar({ user }) {
 
   return (
     <div style={styles.topbar}>
-      <div style={styles.brand}>DRIVER_PEY</div>
+      <div style={styles.brand}>DRIVER PEY - INTUITIVA LOG</div>
       <div style={styles.nav} ref={ref}>
         {isAdmin ? (
           GRUPOS.map((g) => (

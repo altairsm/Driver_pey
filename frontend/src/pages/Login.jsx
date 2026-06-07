@@ -36,7 +36,7 @@ export default function Login() {
       <div style={styles.card}>
         <div style={styles.cardAccent} />
         <div style={styles.cardContent}>
-          <div style={styles.logo}>DRIVER_PEY</div>
+          <div style={styles.logo}>DRIVER PEY - INTUITIVA LOG</div>
           <div style={styles.subtitle}>Portal do Motorista</div>
           <form onSubmit={handleSubmit} style={styles.form}>
             <div style={styles.field}>

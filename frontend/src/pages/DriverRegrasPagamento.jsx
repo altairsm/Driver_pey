@@ -28,59 +28,54 @@ export default function DriverRegrasPagamento() {
         <h1 style={s.title}>Pagamento Antecipado</h1>
         <div style={s.sub}>
           Regras para solicitar o adiantamento do pagamento de uma lista.<br />
-          O pagamento normal é feito <strong style={{ color: '#e8eaf0' }}>4 dias úteis após o fechamento da quinzena</strong>.
-          Com o adiantamento, você pode receber antes desse prazo se a lista atender todos os critérios abaixo.
+          O pagamento normal é feito em até <strong style={{ color: '#e8eaf0' }}>N dias úteis</strong> após o fechamento da quinzena
+          (configurado pela administração). Com o adiantamento, você pode receber antes se a lista atender todos os critérios.
         </div>
 
         <div style={s.card}>
           <div style={s.cardHeader('#3de8a0')}>
             <div style={s.cardNum}>01</div>
-            <div style={s.cardTitle}>Eficiência ≥ 98%</div>
+            <div style={s.cardTitle}>Eficiência mínima (configurável)</div>
           </div>
           <div style={s.cardBody}>
-            Sua eficiência nos <strong style={{ color: '#e8eaf0' }}>últimos 30 dias</strong> deve ser de no mínimo 98%.
+            Sua eficiência nos <strong style={{ color: '#e8eaf0' }}>últimos 30 dias</strong> deve ser igual ou superior ao valor definido pela administração (padrão 98%).
             <br /><br />
             A eficiência é calculada como:
             <br />
             <span style={s.highlight('#f0c040')}>
-              (Total de entregas ÷ Total com sucesso) × 100
+              (Total de entregas com sucesso ÷ Total de eventos) × 100
             </span>
             <br /><br />
-            Os 2% de margem são para insucessos que o motorista não pode reverter,
-            como recusa do destinatário.
+            A margem cobre insucessos não evitáveis, como recusa do destinatário.
           </div>
         </div>
 
         <div style={s.card}>
           <div style={s.cardHeader('#5ab4ff')}>
             <div style={s.cardNum}>02</div>
-            <div style={s.cardTitle}>24h úteis desde o Baixa</div>
+            <div style={s.cardTitle}>Lista finalizada com Data Baixa anterior</div>
           </div>
           <div style={s.cardBody}>
-            A lista deve ter a <strong style={{ color: '#e8eaf0' }}>Data da última Baixa</strong> em dia anterior ao da solicitação de adiantamento.
+            A lista deve ter <strong style={{ color: '#e8eaf0' }}>status = Finalizado</strong> e a
+            <strong style={{ color: '#e8eaf0' }}> Data da última Baixa</strong> deve ser anterior à data da solicitação.
             <br /><br />
-            Ou seja, ao menos <strong style={{ color: '#e8eaf0' }}>1 dia útil</strong> precisa ter passado
-            desde que a lista foi finalizada (baixada) no sistema.
-            <br /><br />
-            <span style={{ color: '#6b7280' }}>
-              Exemplo: se a Data Baixa é 05/06, você pode solicitar a partir de 06/06.
-            </span>
+            Listas com status diferente de Finalizado não são elegíveis.
           </div>
         </div>
 
         <div style={s.card}>
           <div style={s.cardHeader('#ff9f40')}>
             <div style={s.cardNum}>03</div>
-            <div style={s.cardTitle}>Sem reclamações geradas</div>
+            <div style={s.cardTitle}>Sem reclamações em aberto</div>
           </div>
           <div style={s.cardBody}>
-            Nenhuma Entrega da lista pode ter uma reclamação (acareação ou comprovante de entrega)
-            registrada no sistema de solicitações-status.
+            Nenhuma entrega da lista pode ter reclamação (acareação ou comprovante) registrada.
             <br /><br />
-            Se houver qualquer reclamação gerada para entrega desta lista,
-            a solicitação de adiantamento <strong style={{ color: '#ff5a5a' }}>não será permitida</strong>.
+            Se houver qualquer reclamação em aberto na lista, a solicitação{' '}
+            <strong style={{ color: '#ff5a5a' }}>não será permitida</strong>.
             <br /><br />
-            Independente do pagamento ou não, a responsabilidade de solucionar a reclamação é do motorista.
+            Além disso, é preciso que tenham se passado pelo menos <strong style={{ color: '#e8eaf0' }}>4 horas</strong> desde a
+            última importação de reclamações pelo administrador.
           </div>
         </div>
 
@@ -90,17 +85,60 @@ export default function DriverRegrasPagamento() {
             <div style={s.cardTitle}>Valor máximo de R$ 400,00</div>
           </div>
           <div style={s.cardBody}>
-            O valor calculado da lista (soma de todas as faixas de peso por bairro)
-            deve ser de <strong style={{ color: '#e8eaf0' }}>até R$ 400,00</strong>.
+            O valor calculado da lista (soma de todas as faixas de peso por bairro) deve ser de
+            <strong style={{ color: '#e8eaf0' }}> até R$ 400,00</strong>.
             <br /><br />
-            Listas com valor superior a R$ 400,00 não podem ser adiantadas —
-            o pagamento seguirá o fluxo normal da quinzena.
+            Listas com valor superior seguem o fluxo normal da quinzena.
+          </div>
+        </div>
+
+        <div style={s.card}>
+          <div style={s.cardHeader('#ff5a5a')}>
+            <div style={s.cardNum}>05</div>
+            <div style={s.cardTitle}>Fora do período de suspensão</div>
+          </div>
+          <div style={s.cardBody}>
+            Adiantamentos ficam bloqueados entre o <strong style={{ color: '#e8eaf0' }}>último dia da quinzena</strong>
+            (a que a lista pertence) e a <strong style={{ color: '#e8eaf0' }}>data de pagamento</strong>
+            (N dias úteis após o fim da quinzena). Durante esse período a lista segue para pagamento normal.
           </div>
         </div>
 
         <div style={s.card}>
           <div style={s.cardHeader('#f0c040')}>
-            <div style={s.cardNum}>05</div>
+            <div style={s.cardNum}>06</div>
+            <div style={s.cardTitle}>Taxa de adiantamento</div>
+          </div>
+          <div style={s.cardBody}>
+            Sobre o valor adiantado é aplicada uma <strong style={{ color: '#e8eaf0' }}>taxa</strong>
+            (percentual configurado pela administração). O valor líquido recebido é:
+            <br /><br />
+            <span style={s.highlight('#f0c040')}>
+              Valor da lista × (1 − taxa%)
+            </span>
+            <br /><br />
+            A taxa fica registrada na solicitação para auditoria.
+          </div>
+        </div>
+
+        <div style={s.card}>
+          <div style={s.cardHeader('#f0c040')}>
+            <div style={s.cardNum}>07</div>
+            <div style={s.cardTitle}>Sem solicitação pendente / aprovada</div>
+          </div>
+          <div style={s.cardBody}>
+            Cada lista só pode ter uma solicitação ativa por vez. Se já houver uma solicitação
+            <strong style={{ color: '#ff9f40' }}> pendente</strong> ou
+            <strong style={{ color: '#3de8a0' }}> aprovada</strong> para a mesma lista,
+            uma nova solicitação não será aceita.
+            <br /><br />
+            Solicitações <strong style={{ color: '#6b7280' }}>recusadas</strong> não bloqueiam — você pode solicitar novamente.
+          </div>
+        </div>
+
+        <div style={s.card}>
+          <div style={s.cardHeader('#f0c040')}>
+            <div style={s.cardNum}>08</div>
             <div style={s.cardTitle}>Como solicitar</div>
           </div>
           <div style={s.cardBody}>
@@ -113,7 +151,7 @@ export default function DriverRegrasPagamento() {
             Passe o mouse sobre o botão para ver o motivo.
             <br /><br />
             Após solicitar, a solicitação fica <strong style={{ color: '#ff9f40' }}>pendente</strong>
-            para análise. O status será atualizado pelo administrador.
+            para análise. O administrador poderá aprovar ou recusar.
           </div>
         </div>
 

@@ -306,9 +306,6 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
     if (st === 'pendente') {
       return { success: false, motivo: 'Já existe uma solicitação pendente para esta lista' };
     }
-    if (st === 'recusado') {
-      return { success: false, motivo: 'Solicitação anterior para esta lista foi recusada' };
-    }
   }
 
   const dataBaixa = l['Data Baixa'] ? new Date(l['Data Baixa']) : null;

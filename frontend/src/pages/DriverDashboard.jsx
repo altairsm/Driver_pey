@@ -42,6 +42,13 @@ function calcPagamento(endDate, diasUteis) {
   return d;
 }
 
+function calcQuinzenaFim(dataStr) {
+  const d = new Date(dataStr.slice(0, 10));
+  const dia = d.getUTCDate();
+  if (dia <= 15) return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 14));
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
+}
+
 export default function DriverDashboard() {
   const [driver, setDriver] = useState(null);
   const [quinzenas, setQuinzenas] = useState([]);
@@ -480,9 +487,14 @@ export default function DriverDashboard() {
                     const hoje = new Date(); hoje.setHours(0,0,0,0);
                     const dataBaixaOk = db && db < hoje;
 
-                    const emSuspensao = qzAtual && pagamentoDate
-                      ? hoje.getTime() >= new Date(qzAtual.fim.slice(0, 10)).getTime() &&
-                        hoje.getTime() <= pagamentoDate.getTime()
+                    const emSuspensao = t.data_baixa
+                      ? (() => {
+                          const qf = calcQuinzenaFim(t.data_baixa);
+                          qf.setHours(0,0,0,0);
+                          const pd = calcPagamento(qf.toISOString().slice(0, 10), config?.dias_uteis_pagamento || 4);
+                          pd.setHours(0,0,0,0);
+                          return hoje.getTime() >= qf.getTime() && hoje.getTime() <= pd.getTime();
+                        })()
                       : false;
 
                     const temSolicitacao = t.solicitacao_status && t.solicitacao_status !== 'recusado';
@@ -493,7 +505,7 @@ export default function DriverDashboard() {
                     const eficienciaMinima = Number(config?.eficiencia_minima_adiantamento) || 98;
                     const taxaAdiantamento = Number(config?.taxa_adiantamento) || 0;
                     const valorLiquido = totalValorLista * (1 - taxaAdiantamento / 100);
-                    const elegivel = !t.pago && pctEficiencia >= eficienciaMinima && dataBaixaOk && !t.tem_reclamacao_aberta && totalValorLista > 0 && totalValorLista <= 400 && !emSuspensao && !temSolicitacao && !reclamacoesDesatualizadas;
+                    const elegivel = !t.pago && pctEficiencia >= eficienciaMinima && dataBaixaOk && !t.tem_reclamacao_aberta && totalValorLista > 0 && totalValorLista <= 400 && !emSuspensao && !temSolicitacao && !reclamacoesDesatualizadas && t.status === 'Finalizado';
                     const motivos = [];
                     if (pctEficiencia < eficienciaMinima) motivos.push(`Eficiência abaixo de ${eficienciaMinima}%`);
                     if (!dataBaixaOk) motivos.push('Data Baixa deve ser anterior a hoje');
@@ -501,6 +513,7 @@ export default function DriverDashboard() {
                     if (totalValorLista <= 0) motivos.push('Valor da lista é zero');
                     if (totalValorLista > 400) motivos.push('Valor da lista excede R$ 400,00');
                     if (emSuspensao) motivos.push('Período de pagamento da quinzena em processamento');
+                    if (t.status !== 'Finalizado') motivos.push('Lista não está finalizada');
                     if (t.pago) motivos.push('Lista já foi paga');
                     if (temSolicitacao) motivos.push(solicitacaoStatus === 'pendente' ? 'Adiantamento já solicitado (pendente)' : 'Adiantamento já aprovado');
                     if (reclamacoesDesatualizadas) motivos.push('Reclamações desatualizadas — aguardando análise');
