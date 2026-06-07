@@ -19,7 +19,11 @@ export default function Login() {
       const data = await login(cpf, matricula);
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.driver));
-      navigate('/driver');
+      if (data.driver.leu_regras) {
+        navigate('/driver');
+      } else {
+        navigate('/driver/regras-pagamento');
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Erro ao fazer login');
     } finally {

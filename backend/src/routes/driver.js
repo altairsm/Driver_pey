@@ -3,7 +3,8 @@ import { authenticateToken } from '../middleware/auth.js';
 import {
   getDriverData, getDriverDashboard, getDriverTrips, getDriverTripsFaixas,
   getQuinzenasDisponiveis, getProdutividade, getEficiencia, getReclamacoes,
-  solicitarPagamento, getUltimaImportacao
+  solicitarPagamento, getUltimaImportacao,
+  getDriverDados, atualizarDriverDados, confirmarRegras
 } from '../services/driverService.js';
 
 const router = Router();
@@ -120,6 +121,38 @@ router.post('/solicitar-pagamento', async (req, res) => {
     if (!result.success) {
       return res.status(400).json({ error: result.motivo });
     }
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+router.get('/dados', async (req, res) => {
+  try {
+    const dados = await getDriverDados(req.user.matricula);
+    if (!dados) return res.status(404).json({ error: 'Motorista não encontrado' });
+    res.json(dados);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+router.put('/dados', async (req, res) => {
+  try {
+    const { cnpj_mei, telefone, pix_tipo } = req.body;
+    const result = await atualizarDriverDados(req.user.matricula, { cnpj_mei, telefone, pix_tipo });
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+router.post('/confirmar-regras', async (req, res) => {
+  try {
+    const result = await confirmarRegras(req.user.matricula);
     res.json(result);
   } catch (err) {
     console.error(err);

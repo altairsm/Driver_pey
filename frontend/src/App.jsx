@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import Login from './pages/Login'
 import DriverDashboard from './pages/DriverDashboard'
 import DriverRegrasPagamento from './pages/DriverRegrasPagamento'
+import MeusDados from './pages/MeusDados'
 import AdminPagamentos from './pages/AdminPagamentos'
 import AdminUpload from './pages/AdminUpload'
 import AdminImportarListas from './pages/AdminImportarListas'
@@ -41,6 +42,14 @@ function App() {
         element={
           <ProtectedRoute>
             <DriverRegrasPagamento />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/driver/meus-dados"
+        element={
+          <ProtectedRoute>
+            <MeusDados />
           </ProtectedRoute>
         }
       />

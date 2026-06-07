@@ -109,9 +109,17 @@ export default function Topbar({ user }) {
             </div>
           ))
         ) : (
-          <span style={styles.navLink} onClick={() => navigate('/driver')}>
-            Dashboard
-          </span>
+          <>
+            <span style={styles.navLink} onClick={() => navigate('/driver')}>
+              Dashboard
+            </span>
+            <span style={styles.navLink} onClick={() => navigate('/driver/regras-pagamento')}>
+              Regras
+            </span>
+            <span style={styles.navLink} onClick={() => navigate('/driver/meus-dados')}>
+              Meus Dados
+            </span>
+          </>
         )}
         <span style={styles.userName}>{user?.nome || user?.matricula || ''}</span>
         <button style={styles.logoutBtn} onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); navigate('/login'); }}>

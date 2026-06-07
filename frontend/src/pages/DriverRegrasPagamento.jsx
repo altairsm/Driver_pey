@@ -1,4 +1,41 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { getDriverDados, confirmarRegras } from '../services/api';
+
 export default function DriverRegrasPagamento() {
+  const navigate = useNavigate();
+  const [confirmado, setConfirmado] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [confirmando, setConfirmando] = useState(false);
+
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        if (user.leu_regras) {
+          setConfirmado(true);
+        }
+      } catch {}
+      setLoading(false);
+    };
+    check();
+  }, []);
+
+  const handleConfirmar = async () => {
+    setConfirmando(true);
+    try {
+      await confirmarRegras();
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      user.leu_regras = true;
+      localStorage.setItem('user', JSON.stringify(user));
+      setConfirmado(true);
+      setTimeout(() => navigate('/driver'), 1500);
+    } catch {
+      alert('Erro ao confirmar. Tente novamente.');
+    }
+    setConfirmando(false);
+  };
+
   const s = {
     container: { minHeight: '100vh', background: '#0d0f14', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', sans-serif" },
     topbar: { background: '#161920', borderBottom: '1px solid #2a2f3e', padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 60 },
@@ -6,36 +43,41 @@ export default function DriverRegrasPagamento() {
     backBtn: { background: 'transparent', border: '1px solid #2a2f3e', color: '#6b7280', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.65rem', letterSpacing: '1px', padding: '6px 12px', cursor: 'pointer', textDecoration: 'none' },
     content: { maxWidth: 800, margin: '0 auto', padding: '40px 24px 60px' },
     title: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '2rem', letterSpacing: '3px', color: '#f0c040', marginBottom: 8 },
-    sub: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.65rem', color: '#6b7280', letterSpacing: '1px', marginBottom: 32, lineHeight: 1.6 },
+    sub: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.72rem', color: '#b0b4c0', marginBottom: 32, lineHeight: 1.6 },
     card: { background: '#161920', border: '1px solid #2a2f3e', borderRadius: 6, marginBottom: 16, overflow: 'hidden' },
     cardHeader: (c) => ({ padding: '14px 20px', background: '#1e2230', borderBottom: '1px solid #2a2f3e', borderLeft: `3px solid ${c}`, display: 'flex', alignItems: 'center', gap: 12 }),
     cardNum: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.2rem', color: '#6b7280', width: 28, textAlign: 'right' },
     cardTitle: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem', fontWeight: 600, letterSpacing: '1px', color: '#e8eaf0' },
-    cardBody: { padding: '16px 20px', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.72rem', lineHeight: 1.7, color: '#f0f1f5' },
+    cardBody: { padding: '16px 20px', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.72rem', lineHeight: 1.7, color: '#b0b4c0' },
     highlight: (c) => ({ color: c, fontWeight: 600 }),
     badge: (bg, fg) => ({ display: 'inline-block', padding: '2px 8px', fontSize: '0.6rem', letterSpacing: '1px', borderRadius: 2, background: bg, color: fg, margin: '0 2px' }),
     divider: { height: 1, background: '#2a2f3e', margin: '24px 0' },
     footer: { padding: '20px 32px', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.6rem', color: '#2a2f3e', letterSpacing: '1px', textAlign: 'center' },
+    confirmBtn: { background: '#3de8a0', color: '#0d0f14', border: 'none', padding: '16px 32px', fontSize: '0.85rem', fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600, letterSpacing: '1px', borderRadius: 6, cursor: 'pointer', width: '100%', marginTop: 8 },
+    confirmBtnDisabled: { background: '#2a2f3e', color: '#6b7280', cursor: 'not-allowed' },
+    confirmMsg: { textAlign: 'center', padding: 24, fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.85rem', color: '#3de8a0' },
   };
+
+  if (loading) return null;
 
   return (
     <div style={s.container}>
       <div style={s.topbar}>
         <div style={s.brand}>DRIVER PEY - INTUITIVA LOG</div>
-        <a href="/driver" style={s.backBtn}>&#8592; Voltar ao Painel</a>
+        {confirmado && <a href="/driver" style={s.backBtn}>&#8592; Voltar ao Painel</a>}
       </div>
       <div style={s.content}>
         <h1 style={s.title}>Pagamento Antecipado</h1>
-        <div style={s.cardTitle}>
+        <div style={s.sub}>
           Regras para solicitar o adiantamento do pagamento de uma lista.<br />
-          O pagamento normal é feito em até <strong style={{ color: '#e8eaf0' }}>4 dias úteis</strong> após o fechamento da quinzena
-          (configurado pela administração). Com o adiantamento, você pode receber antes se a lista atender todos os critérios.
+          O pagamento normal é feito em até <strong style={{ color: '#e8eaf0' }}>N dias úteis</strong> após o fechamento da quinzena
+          (configurado pela administração). Com o adiantamento, você pode receber antes se a lista atender todos os critérios abaixo.
         </div>
 
         <div style={s.card}>
           <div style={s.cardHeader('#3de8a0')}>
             <div style={s.cardNum}>01</div>
-            <div style={s.cardTitle}>Eficiência mínima.</div>
+            <div style={s.cardTitle}>Eficiência mínima (configurável)</div>
           </div>
           <div style={s.cardBody}>
             Sua eficiência nos <strong style={{ color: '#e8eaf0' }}>últimos 30 dias</strong> deve ser igual ou superior ao valor definido pela administração (padrão 98%).
@@ -156,6 +198,27 @@ export default function DriverRegrasPagamento() {
         </div>
 
         <div style={s.divider} />
+
+        {confirmado ? (
+          <div style={s.confirmMsg}>
+            ✓ Você já leu e entendeu as regras
+            <br /><br />
+            <a href="/driver" style={{ ...s.backBtn, display: 'inline-block' }}>&#8592; Ir para o Painel</a>
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center' }}>
+            <button
+              onClick={handleConfirmar}
+              disabled={confirmando}
+              style={{
+                ...s.confirmBtn,
+                ...(confirmando ? s.confirmBtnDisabled : {}),
+              }}
+            >
+              {confirmando ? 'CONFIRMANDO...' : 'LI E ENTENDI AS REGRAS — QUERO SOLICITAR ADIANTAMENTO'}
+            </button>
+          </div>
+        )}
 
         <div style={{ textAlign: 'center', padding: 20 }}>
           <a href="/driver" style={{ ...s.backBtn, display: 'inline-block' }}>&#8592; Voltar ao Painel</a>
