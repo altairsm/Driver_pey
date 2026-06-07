@@ -97,7 +97,7 @@ export default function Topbar({ user }) {
                       key={item.path}
                       style={{
                         ...styles.dropdownItem,
-                        color: location.pathname === item.path ? '#f0c040' : '#e8eaf0',
+                        color: location.pathname === item.path ? '#f0c040' : '#fdfdfd',
                       }}
                       onClick={() => navegar(item.path)}
                     >
