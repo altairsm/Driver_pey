@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getResumo, confirmarPagamento, getAdminQuinzenas } from '../services/api';
+import { getResumo, confirmarPagamento, getAdminQuinzenas, getConfig } from '../services/api';
 import Topbar from '../components/Topbar';
 
 function formatQuinzena(inicio, fim) {
@@ -8,14 +8,14 @@ function formatQuinzena(inicio, fim) {
   return `${i[2]}/${i[1]} a ${f[2]}/${f[1]}/${f[0]}`;
 }
 
-function calcPagamento(endDate) {
+function calcPagamento(endDate, diasUteis) {
   const d = new Date(endDate);
   d.setUTCDate(d.getUTCDate() + 1);
   let uteis = 0;
-  while (uteis < 5) {
+  while (uteis < diasUteis) {
     const dow = d.getUTCDay();
     if (dow !== 0 && dow !== 6) uteis++;
-    if (uteis < 5) d.setUTCDate(d.getUTCDate() + 1);
+    if (uteis < diasUteis) d.setUTCDate(d.getUTCDate() + 1);
   }
   return d;
 }
@@ -27,6 +27,7 @@ export default function AdminPagamentos() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [confirmando, setConfirmando] = useState(null);
+  const [config, setConfig] = useState(null);
 
   const qzAtual = quinzenas[qzIdx] || null;
 
@@ -46,8 +47,9 @@ export default function AdminPagamentos() {
   useEffect(() => {
     const init = async () => {
       try {
-        const qzs = await getAdminQuinzenas();
+        const [qzs, cfg] = await Promise.all([getAdminQuinzenas(), getConfig()]);
         setQuinzenas(qzs);
+        setConfig(cfg);
         if (qzs.length > 0) {
           const q = qzs[0];
           await fetchResumo(q.inicio.slice(0, 10), q.fim.slice(0, 10));
@@ -114,7 +116,7 @@ export default function AdminPagamentos() {
           </button>
           {qzAtual && (
             <div style={styles.pagDateLabel}>
-              Pagamento: {calcPagamento(qzAtual.fim.slice(0, 10)).toLocaleDateString('pt-BR')}
+              Pagamento: {calcPagamento(qzAtual.fim.slice(0, 10), config?.dias_uteis_pagamento || 4).toLocaleDateString('pt-BR')}
             </div>
           )}
         </div>

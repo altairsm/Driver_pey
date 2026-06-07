@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getDriverDashboard, getDriverTrips, getDriverMe, getDriverTripsFaixas, getQuinzenas, getProdutividade, getEficiencia, getReclamacoes, solicitarPagamento, getUltimaImportacaoReclamacoes } from '../services/api';
+import { getDriverDashboard, getDriverTrips, getDriverMe, getDriverTripsFaixas, getQuinzenas, getProdutividade, getEficiencia, getReclamacoes, solicitarPagamento, getUltimaImportacaoReclamacoes, getConfig } from '../services/api';
 
 const EVENTOS_INSUCESSO = [
   'tentativa de entrega', 'ausente', 'recusado',
@@ -30,14 +30,14 @@ function formatMoney(v) {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-function calcPagamento(endDate) {
+function calcPagamento(endDate, diasUteis) {
   const d = new Date(endDate);
   d.setUTCDate(d.getUTCDate() + 1);
   let uteis = 0;
-  while (uteis < 5) {
+  while (uteis < diasUteis) {
     const dow = d.getUTCDay();
     if (dow !== 0 && dow !== 6) uteis++;
-    if (uteis < 5) d.setUTCDate(d.getUTCDate() + 1);
+    if (uteis < diasUteis) d.setUTCDate(d.getUTCDate() + 1);
   }
   return d;
 }
@@ -60,6 +60,7 @@ export default function DriverDashboard() {
   const [msgSolicitacao, setMsgSolicitacao] = useState('');
   const [ultimaImportacao, setUltimaImportacao] = useState(null);
   const [cepCache, setCepCache] = useState({});
+  const [config, setConfig] = useState(null);
 
   const qzAtual = quinzenas[qzIdx] || null;
 
@@ -94,8 +95,9 @@ export default function DriverDashboard() {
       try {
         const me = await getDriverMe();
         setDriver(me);
-        const qzs = await getQuinzenas();
+        const [qzs, cfg] = await Promise.all([getQuinzenas(), getConfig()]);
         setQuinzenas(qzs);
+        setConfig(cfg);
         const ultima = await getUltimaImportacaoReclamacoes();
         setUltimaImportacao(ultima.ultima_importacao);
         if (qzs.length > 0) {
@@ -185,7 +187,7 @@ export default function DriverDashboard() {
     ? `${formatDate(qzAtual.inicio)} — ${formatDate(qzAtual.fim)}`
     : 'SEM DADOS';
   const qzPos = quinzenas.length > 1 ? ` (${qzIdx + 1}/${quinzenas.length})` : '';
-  const pagamentoDate = qzAtual ? calcPagamento(qzAtual.fim) : null;
+  const pagamentoDate = qzAtual ? calcPagamento(qzAtual.fim, config?.dias_uteis_pagamento || 4) : null;
 
   const prodMaxCtes = Math.max(...produtividade.map(p => Number(p.ctes)), 1);
 
@@ -203,7 +205,7 @@ export default function DriverDashboard() {
   return (
     <div style={s.container}>
       <div style={s.topbar}>
-        <div style={s.brand}>DRIVER_PEY</div>
+        <div style={s.brand}>DRIVER PEY - INTUITIVA LOG</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={s.topbarInfo}>
             MOTORISTA <span style={s.topbarInfoVal}>{driver?.nome_completo?.toUpperCase() || '—'}</span><br />
@@ -488,9 +490,12 @@ export default function DriverDashboard() {
 
                     const reclamacoesDesatualizadas = !ultimaImportacao || (Date.now() - new Date(ultimaImportacao).getTime()) > 4 * 60 * 60 * 1000;
 
-                    const elegivel = !t.pago && pctEficiencia >= 98 && dataBaixaOk && !t.tem_reclamacao_aberta && totalValorLista > 0 && totalValorLista <= 400 && !emSuspensao && !temSolicitacao && !reclamacoesDesatualizadas;
+                    const eficienciaMinima = Number(config?.eficiencia_minima_adiantamento) || 98;
+                    const taxaAdiantamento = Number(config?.taxa_adiantamento) || 0;
+                    const valorLiquido = totalValorLista * (1 - taxaAdiantamento / 100);
+                    const elegivel = !t.pago && pctEficiencia >= eficienciaMinima && dataBaixaOk && !t.tem_reclamacao_aberta && totalValorLista > 0 && totalValorLista <= 400 && !emSuspensao && !temSolicitacao && !reclamacoesDesatualizadas;
                     const motivos = [];
-                    if (pctEficiencia < 98) motivos.push('Eficiência abaixo de 98%');
+                    if (pctEficiencia < eficienciaMinima) motivos.push(`Eficiência abaixo de ${eficienciaMinima}%`);
                     if (!dataBaixaOk) motivos.push('Data Baixa deve ser anterior a hoje');
                     if (t.tem_reclamacao_aberta) motivos.push('Lista possui reclamação');
                     if (totalValorLista <= 0) motivos.push('Valor da lista é zero');
@@ -586,6 +591,16 @@ export default function DriverDashboard() {
                             {totalValorLista > 0 ? formatMoney(totalValorLista) : '—'}
                           </div>
                         </div>
+                        {taxaAdiantamento > 0 && totalValorLista > 0 && (
+                          <div style={s.listaValor}>
+                            <div>
+                              <div style={s.listaValorLbl}>Líquido (taxa {taxaAdiantamento}%)</div>
+                            </div>
+                            <div style={{ ...s.listaValorNum, color: '#3de8a0', fontSize: '0.95rem' }}>
+                              {formatMoney(valorLiquido)}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

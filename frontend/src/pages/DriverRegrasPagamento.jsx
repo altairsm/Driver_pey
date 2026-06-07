@@ -21,7 +21,7 @@ export default function DriverRegrasPagamento() {
   return (
     <div style={s.container}>
       <div style={s.topbar}>
-        <div style={s.brand}>DRIVER_PEY</div>
+        <div style={s.brand}>DRIVER PEY - INTUITIVA LOG</div>
         <a href="/driver" style={s.backBtn}>&#8592; Voltar ao Painel</a>
       </div>
       <div style={s.content}>

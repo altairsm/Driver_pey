@@ -1,4 +1,5 @@
 import { pool } from '../db/index.js';
+import { getConfig } from './configuracaoService.js';
 
 export async function getDriverData(matricula) {
   const result = await pool.query(`
@@ -261,9 +262,9 @@ function addDiasUteis(data, n) {
   return d;
 }
 
-function emPeriodoSuspensao(dataBaixa) {
+function emPeriodoSuspensao(dataBaixa, diasUteis) {
   const quinzenaFim = calcQuinzenaFim(dataBaixa);
-  const pagamentoDate = addDiasUteis(quinzenaFim, 4);
+  const pagamentoDate = addDiasUteis(quinzenaFim, diasUteis);
   const hoje = new Date();
   hoje.setUTCHours(0, 0, 0, 0);
   const qf = new Date(quinzenaFim);
@@ -274,6 +275,8 @@ function emPeriodoSuspensao(dataBaixa) {
 }
 
 export async function solicitarPagamento(matricula, listaNumero, valorSolicitado) {
+  const config = await getConfig();
+
   const { rows: lista } = await pool.query(`
     SELECT le."Número", le."Data Baixa", le.status, le.pago
     FROM lista_entregas le
@@ -309,7 +312,7 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
   }
 
   const dataBaixa = l['Data Baixa'] ? new Date(l['Data Baixa']) : null;
-  if (dataBaixa && emPeriodoSuspensao(dataBaixa)) {
+  if (dataBaixa && emPeriodoSuspensao(dataBaixa, config.dias_uteis_pagamento)) {
     return { success: false, motivo: 'Período de pagamento da quinzena em processamento — adiantamentos suspensos' };
   }
 
@@ -347,8 +350,8 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
     return { success: false, motivo: 'Reclamações desatualizadas — última importação há mais de 4 horas' };
   }
 
-  if (pctEf < 98) {
-    return { success: false, motivo: 'Eficiência abaixo de 98% nos últimos 30 dias' };
+  if (pctEf < Number(config.eficiencia_minima_adiantamento)) {
+    return { success: false, motivo: `Eficiência abaixo de ${config.eficiencia_minima_adiantamento}% nos últimos 30 dias` };
   }
 
   if (l.status !== 'Finalizado') {
@@ -375,11 +378,13 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
     return { success: false, motivo: 'Valor da lista deve ser entre R$ 0,01 e R$ 400,00' };
   }
 
+  const taxaAplicada = Number(config.taxa_adiantamento) || 0;
+
   try {
     await pool.query(`
-      INSERT INTO solicitacoes_pagamento (matricula, lista_numero, valor_solicitado, status)
-      VALUES ($1, $2, $3, 'pendente')
-    `, [matricula, listaNumero, valorSolicitado]);
+      INSERT INTO solicitacoes_pagamento (matricula, lista_numero, valor_solicitado, taxa_aplicada, status)
+      VALUES ($1, $2, $3, $4, 'pendente')
+    `, [matricula, listaNumero, valorSolicitado, taxaAplicada]);
     return { success: true, motivo: 'Solicitação registrada com sucesso' };
   } catch (err) {
     if (err.code === '23505') {
