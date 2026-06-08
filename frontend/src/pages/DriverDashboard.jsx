@@ -52,7 +52,7 @@ function calcQuinzenaFim(dataStr) {
 
 // ─── Tab navigation ───────────────────────────────────────────────────────────
 const TABS = [
-  { id: 'reclamacoes',  label: 'Reclamações',   icon: '⚠️' },
+  { id: 'reclamacoes',  label: 'Acareação',   icon: '⚠️' },
   { id: 'resumo',       label: 'Resumo',       icon: '📋' },
   { id: 'produtividade',label: 'Produção',      icon: '📦' },
   { id: 'eficiencia',   label: 'Eficiência',    icon: '📊' },
@@ -228,7 +228,7 @@ export default function DriverDashboard() {
     <div style={s.container}>
       {/* ── TOPBAR MOBILE ── */}
       <div style={s.topbar}>
-        <div style={s.brand}>DRIVER PEY</div>
+        <div style={s.brand}>DRIVER PAY</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             style={s.menuBtn}
@@ -395,7 +395,7 @@ export default function DriverDashboard() {
                   <svg width="120" height="120" viewBox="0 0 120 120">
                     <circle cx="60" cy="60" r="50" fill="none" stroke="#2a2f3e" strokeWidth="10" />
                     <circle cx="60" cy="60" r="50" fill="none"
-                      stroke={pctEficiencia < 70 ? '#ff5a5a' : pctEficiencia < 85 ? '#ff9f40' : '#3de8a0'}
+                      stroke={pctEficiencia < 95 ? '#ff5a5a' : pctEficiencia < 97 ? '#ff9f40' : '#3de8a0'}
                       strokeWidth="10"
                       strokeDasharray="314"
                       strokeDashoffset={314 - (pctEficiencia / 100) * 314}
@@ -665,7 +665,7 @@ export default function DriverDashboard() {
         </div>{/* end tabContent */}
       </div>{/* end content */}
 
-      <div style={s.footer}>DRIVER_PEY · INTUITIVA LOG</div>
+      <div style={s.footer}>DRIVER_PAY · INTUITIVA LOG</div>
     </div>
   );
 }

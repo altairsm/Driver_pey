@@ -55,7 +55,7 @@ export default function Login() {
       <div style={s.card}>
         <div style={s.cardAccent} />
         <div style={s.cardContent}>
-          <div style={s.logo}>DRIVER PEY - INTUITIVA LOG</div>
+          <div style={s.logo}>DRIVER PAY - INTUITIVA LOG</div>
           <div style={s.subtitle}>
             {isAdmin ? 'Portal Administrativo' : 'Portal do Motorista'}
           </div>
