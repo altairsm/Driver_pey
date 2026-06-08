@@ -228,7 +228,7 @@ export default function DriverDashboard() {
     <div style={s.container}>
       {/* ── TOPBAR MOBILE ── */}
       <div style={s.topbar}>
-        <div style={s.brand}>DRIVER PAY</div>
+        <div style={s.brand}>DRIVER PIX</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             style={s.menuBtn}
@@ -665,7 +665,7 @@ export default function DriverDashboard() {
         </div>{/* end tabContent */}
       </div>{/* end content */}
 
-      <div style={s.footer}>DRIVER_PAY · INTUITIVA LOG</div>
+      <div style={s.footer}>DRIVER PIX · INTUITIVA LOG</div>
     </div>
   );
 }

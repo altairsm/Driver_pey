@@ -63,7 +63,7 @@ export default function DriverRegrasPagamento() {
   return (
     <div style={s.container}>
       <div style={s.topbar}>
-        <div style={s.brand}>DRIVER PAY - INTUITIVA LOG</div>
+        <div style={s.brand}>DRIVER PIX - INTUITIVA LOG</div>
         {confirmado && <a href="/driver" style={s.backBtn}>&#8592; Voltar ao Painel</a>}
       </div>
       <div style={s.content}>
@@ -224,7 +224,7 @@ export default function DriverRegrasPagamento() {
           <a href="/driver" style={{ ...s.backBtn, display: 'inline-block' }}>&#8592; Voltar ao Painel</a>
         </div>
       </div>
-      <div style={s.footer}>SISTEMA DE GESTÃO DE MOTORISTAS · DRIVER_PAY</div>
+      <div style={s.footer}>SISTEMA DE GESTÃO DE MOTORISTAS · DRIVER PIX</div>
     </div>
   );
 }

@@ -28,9 +28,10 @@ const GRUPOS = [
     ativoPrefix: '/admin/ceps',
     items: [
       { label: 'CEPs', path: '/admin/ceps' },
-      { label: 'sem Range', path: '/admin/ceps/sem-range' },
+      { label: 'sem Cadastro', path: '/admin/ceps/sem-range' },
+      { label: 'sem Bairro', path: '/admin/ceps/sem-bairro' },
+      { label: 'sem Tabela', path: '/admin/ceps/sem-tabela' },
       { label: 'CTEs sem Faixa', path: '/admin/ceps/ctes-sem-faixa' },
-      { label: 'Conflitos', path: '/admin/ceps/conflitos' },
     ],
   },
   {
@@ -50,6 +51,14 @@ export default function Topbar({ user }) {
   const isAdmin = location.pathname.startsWith('/admin');
   const [aberto, setAberto] = useState(null);
   const ref = useRef(null);
+  const [commit, setCommit] = useState('');
+
+  useEffect(() => {
+    fetch('/api/version')
+      .then(r => r.json())
+      .then(d => setCommit(d.commit))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     function handleClick(e) {
@@ -75,7 +84,10 @@ export default function Topbar({ user }) {
 
   return (
     <div style={styles.topbar}>
-      <div style={styles.brand}>DRIVER PAY - INTUITIVA LOG</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={styles.brand}>DRIVER PIX - INTUITIVA LOG</div>
+        {commit && <span style={styles.commitBadge}>{commit}</span>}
+      </div>
       <div style={styles.nav} ref={ref}>
         {isAdmin ? (
           GRUPOS.map((g) => (
@@ -218,5 +230,15 @@ const styles = {
     borderRadius: 4,
     cursor: 'pointer',
     fontSize: '0.8rem',
+  },
+  commitBadge: {
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: '0.7rem',
+    color: '#6b7280',
+    letterSpacing: '0.5px',
+    background: '#1e2230',
+    padding: '2px 8px',
+    borderRadius: 4,
+    border: '1px solid #2a2f3e',
   },
 };
