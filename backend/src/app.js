@@ -27,6 +27,9 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 function getCommitHash() {
   try {
     const dir = dirname(fileURLToPath(import.meta.url));
+    try {
+      return readFileSync(join(dir, '..', '.commit'), 'utf8').trim();
+    } catch {}
     const gitDir = join(dir, '..', '..', '.git');
     const head = readFileSync(join(gitDir, 'HEAD'), 'utf8').trim();
     if (head.startsWith('ref: ')) {

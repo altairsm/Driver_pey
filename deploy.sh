@@ -21,6 +21,8 @@ fi
 echo -e "${YELLOW}[1/5] Atualizando código...${NC}"
 git pull
 
+export COMMIT_HASH=$(git rev-parse --short HEAD)
+
 # 3. Reconstruir containers
 echo -e "${YELLOW}[2/5] Reconstruindo containers...${NC}"
 docker compose build --no-cache
