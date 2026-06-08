@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getCepsSemTabela, getTabelas, adicionarCep, atualizarBairroRota, getBairrosRotas } from '../services/api';
+import { getCepsSemTabela, getTabelas, criarCep, atualizarBairroRota, getBairrosRotas } from '../services/api';
 import Topbar from '../components/Topbar';
 
 export default function AdminBairrosSemTabela() {
@@ -34,7 +34,7 @@ export default function AdminBairrosSemTabela() {
       if (br) {
         await atualizarBairroRota(br.id, tabelaSel);
       }
-      await adicionarCep({ cep: ceps.find(c => c.id === id)?.cep, bairro, rota: rota || null, nome_tabela: tabelaSel });
+      await criarCep({ cep: ceps.find(c => c.id === id)?.cep, bairro, rota: rota || null, nome_tabela: tabelaSel });
       setMsg(`✅ Tabela "${tabelaSel}" definida para "${bairro}"`);
       setEditId(null);
       setTabelaSel('');
