@@ -195,23 +195,56 @@ export async function getCepsPorBairro(bairro) {
   return data;
 }
 
+export async function getCeps(semCadastro) {
+  const params = {};
+  if (semCadastro) params.semCadastro = 'true';
+  const { data } = await api.get('/admin/ceps', { params });
+  return data;
+}
+
+export async function getCep(cep) {
+  const { data } = await api.get(`/admin/ceps/${cep}`);
+  return data;
+}
+
+export async function criarCep(dados) {
+  const { data } = await api.post('/admin/ceps', dados);
+  return data;
+}
+
+export async function atualizarCep(id, dados) {
+  const { data } = await api.put(`/admin/ceps/${id}`, dados);
+  return data;
+}
+
+export async function deletarCep(id) {
+  const { data } = await api.delete(`/admin/ceps/${id}`);
+  return data;
+}
+
 export async function atribuirTabelaParaBairro(bairro, tabela_motorista) {
   const { data } = await api.put('/admin/ceps/atribuir-tabela', { bairro, tabela_motorista });
   return data;
 }
 
 export async function getCepsSemRange() {
-  const { data } = await api.get('/admin/ceps/sem-range');
+  const { data } = await api.get('/admin/ceps/sem-cadastro');
+  return data;
+}
+
+export async function getCepsSemCadastro() {
+  const { data } = await api.get('/admin/ceps/sem-cadastro');
   return data;
 }
 
 export async function adicionarCepRange(dados) {
-  const { data } = await api.post('/admin/ceps/adicionar', dados);
-  return data;
-}
-
-export async function getRangesSemTabela() {
-  const { data } = await api.get('/admin/ceps/ranges-sem-tabela');
+  const { cep_ini, bairro, cidade, tabela_motorista } = dados;
+  const { data } = await api.post('/admin/ceps', {
+    cep: cep_ini,
+    bairro,
+    rota: null,
+    nome_tabela: tabela_motorista,
+  });
   return data;
 }
 
@@ -222,6 +255,41 @@ export async function getCtesSemFaixa() {
 
 export async function getCepsConflitos() {
   const { data } = await api.get('/admin/ceps/conflitos');
+  return data;
+}
+
+export async function importarCepsPlanilha(file, onProgress) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const { data } = await api.post('/admin/ceps/importar-planilha', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress: onProgress,
+  });
+  return data;
+}
+
+export async function autoDescobrirCeps() {
+  const { data } = await api.post('/admin/ceps/auto-descobrir');
+  return data;
+}
+
+export async function consultarViaCep(cep) {
+  const { data } = await api.get(`/admin/ceps/consultar-viacep/${cep}`);
+  return data;
+}
+
+export async function migrarCepsLegado() {
+  const { data } = await api.post('/admin/ceps/migrar-legado');
+  return data;
+}
+
+export async function getBairrosRotas() {
+  const { data } = await api.get('/admin/bairros-rotas');
+  return data;
+}
+
+export async function atualizarBairroRota(id, nome_tabela) {
+  const { data } = await api.put(`/admin/bairros-rotas/${id}`, { nome_tabela });
   return data;
 }
 

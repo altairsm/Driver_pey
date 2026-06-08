@@ -483,6 +483,25 @@ export async function runMigrations() {
     )`);
     console.log('  -> ceps_bairros');
 
+    await pool.query(`CREATE TABLE IF NOT EXISTS ceps_especificos (
+      id SERIAL PRIMARY KEY,
+      cep VARCHAR(8) NOT NULL UNIQUE,
+      bairro VARCHAR(200) NOT NULL,
+      rota VARCHAR(200),
+      nome_tabela VARCHAR(10) NOT NULL,
+      importado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    console.log('  -> ceps_especificos');
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS bairros_rotas (
+      id SERIAL PRIMARY KEY,
+      bairro VARCHAR(200) NOT NULL,
+      rota VARCHAR(200) NOT NULL,
+      nome_tabela VARCHAR(10) NOT NULL,
+      UNIQUE(bairro, rota)
+    )`);
+    console.log('  -> bairros_rotas');
+
     await pool.query(`CREATE TABLE IF NOT EXISTS faixas_peso_entrega_bairro (
       id SERIAL PRIMARY KEY,
       peso_de NUMERIC(10,3) NOT NULL,
@@ -539,6 +558,8 @@ export async function runMigrations() {
     console.log('Migrations: creating indexes...');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_ceps_bairros_cep ON ceps_bairros (cep_ini, cep_fim)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_faixas_peso_bairro_tabela ON faixas_peso_entrega_bairro (nome_tabela, peso_de, peso_ate)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_ceps_especificos_cep ON ceps_especificos (cep)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_bairros_rotas_bairro ON bairros_rotas (bairro)');
     console.log('  indexes created');
 
     // ── Step 4: Diagnóstico acareacaojad columns ──
