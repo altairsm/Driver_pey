@@ -12,6 +12,7 @@ import AdminCeps from './pages/AdminCeps'
 import AdminCepsSemRange from './pages/AdminCepsSemRange'
 import AdminCtesSemFaixa from './pages/AdminCtesSemFaixa'
 import AdminCepsConflitos from './pages/AdminCepsConflitos'
+import AdminCepsImportar from './pages/AdminCepsImportar'
 import AdminReclamacoes from './pages/AdminReclamacoes'
 import AdminSolicitacoesPagamento from './pages/AdminSolicitacoesPagamento'
 import AdminConfiguracoes from './pages/AdminConfiguracoes'
@@ -62,6 +63,7 @@ function App() {
       <Route path="/admin/ceps/sem-range" element={<AdminCepsSemRange />} />
       <Route path="/admin/ceps/ctes-sem-faixa" element={<AdminCtesSemFaixa />} />
       <Route path="/admin/ceps/conflitos" element={<AdminCepsConflitos />} />
+      <Route path="/admin/ceps/importar" element={<AdminCepsImportar />} />
       <Route path="/admin/reclamacoes" element={<AdminReclamacoes />} />
       <Route path="/admin/solicitacoes-pagamento" element={<AdminSolicitacoesPagamento />} />
       <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />

@@ -20,12 +20,11 @@ export async function getDriverDashboard(matricula, inicio = null, fim = null) {
         re."Peso"::numeric AS peso_cte,
         COALESCE(fb.valor_peso, 0) AS valor_peso
       FROM relatorioentrega_export re
-      LEFT JOIN ceps_bairros cb
-        ON CAST(NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '') AS BIGINT)
-           BETWEEN CAST(cb.cep_ini AS BIGINT) AND CAST(cb.cep_fim AS BIGINT)
+      LEFT JOIN ceps_especificos ce
+        ON ce.cep = NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '')
       LEFT JOIN faixas_peso_entrega_bairro fb
         ON re."Peso"::numeric BETWEEN fb.peso_de AND fb.peso_ate
-        AND fb.nome_tabela = cb.tabela_motorista
+        AND fb.nome_tabela = ce.nome_tabela
       JOIN lista_entregas le ON le."Número"::text = re."Lista"
       WHERE re."OperadorMatricula"::bigint = $1
         AND LOWER(re."Evento") = 'entrega'
@@ -97,17 +96,16 @@ export async function getDriverTripsFaixas(matricula, inicio = null, fim = null)
         re."NCTE" AS ncte,
         re."Lista" AS lista,
         re."Peso"::numeric AS peso_cte,
-        COALESCE(cb.bairro, 'Sem bairro') AS bairro,
+        COALESCE(ce.bairro, 'Sem bairro') AS bairro,
         COALESCE(fb.faixas, 'Sem faixa') AS faixa_desc,
         COALESCE(fb.valor_peso, 0) AS valor_peso,
         fb.peso_de
       FROM relatorioentrega_export re
-      LEFT JOIN ceps_bairros cb
-        ON CAST(NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '') AS BIGINT)
-           BETWEEN CAST(cb.cep_ini AS BIGINT) AND CAST(cb.cep_fim AS BIGINT)
+      LEFT JOIN ceps_especificos ce
+        ON ce.cep = NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '')
       LEFT JOIN faixas_peso_entrega_bairro fb
         ON re."Peso"::numeric BETWEEN fb.peso_de AND fb.peso_ate
-        AND fb.nome_tabela = cb.tabela_motorista
+        AND fb.nome_tabela = ce.nome_tabela
       JOIN lista_entregas le ON le."Número"::text = re."Lista"
       WHERE re."OperadorMatricula"::bigint = $1
         AND LOWER(re."Evento") = 'entrega'
@@ -169,12 +167,11 @@ export async function getProdutividade(matricula, inicio, fim) {
         re."Peso"::numeric AS peso,
         COALESCE(fb.valor_peso, 0) AS valor_peso
       FROM relatorioentrega_export re
-      LEFT JOIN ceps_bairros cb
-        ON CAST(NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '') AS BIGINT)
-           BETWEEN CAST(cb.cep_ini AS BIGINT) AND CAST(cb.cep_fim AS BIGINT)
+      LEFT JOIN ceps_especificos ce
+        ON ce.cep = NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '')
       LEFT JOIN faixas_peso_entrega_bairro fb
         ON re."Peso"::numeric BETWEEN fb.peso_de AND fb.peso_ate
-        AND fb.nome_tabela = cb.tabela_motorista
+        AND fb.nome_tabela = ce.nome_tabela
       JOIN lista_entregas le ON le."Número"::text = re."Lista"
       WHERE re."OperadorMatricula"::bigint = $1
         AND LOWER(re."Evento") = 'entrega'
