@@ -222,6 +222,21 @@ export async function deletarCep(id) {
   return data;
 }
 
+export async function getCepsSemBairro() {
+  const { data } = await api.get('/admin/ceps/sem-bairro');
+  return data;
+}
+
+export async function atualizarCepSemBairro(id, bairro, nome_tabela) {
+  const { data } = await api.put(`/admin/ceps/${id}/definir-bairro`, { bairro, nome_tabela });
+  return data;
+}
+
+export async function getCepsSemTabela() {
+  const { data } = await api.get('/admin/ceps/sem-tabela');
+  return data;
+}
+
 export async function atribuirTabelaParaBairro(bairro, tabela_motorista) {
   const { data } = await api.put('/admin/ceps/atribuir-tabela', { bairro, tabela_motorista });
   return data;

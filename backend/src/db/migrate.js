@@ -486,11 +486,16 @@ export async function runMigrations() {
     await pool.query(`CREATE TABLE IF NOT EXISTS ceps_especificos (
       id SERIAL PRIMARY KEY,
       cep VARCHAR(8) NOT NULL UNIQUE,
-      bairro VARCHAR(200) NOT NULL,
+      bairro VARCHAR(200),
       rota VARCHAR(200),
-      nome_tabela VARCHAR(10) NOT NULL,
+      nome_tabela VARCHAR(10),
       importado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
+
+    try {
+      await pool.query(`ALTER TABLE ceps_especificos ALTER COLUMN nome_tabela DROP NOT NULL`);
+      await pool.query(`ALTER TABLE ceps_especificos ALTER COLUMN bairro DROP NOT NULL`);
+    } catch { /* column already nullable */ }
     console.log('  -> ceps_especificos');
 
     await pool.query(`CREATE TABLE IF NOT EXISTS bairros_rotas (

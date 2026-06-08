@@ -11,6 +11,8 @@ import {
   listarCtesSemFaixa,
   migrarCepsDeRanges,
   consultarViaCep,
+  listarCepsSemBairro, atualizarCepSemBairro,
+  listarCepsSemTabela,
 } from '../services/cepsService.js';
 import { parseXLSX } from '../services/xlsxService.js';
 
@@ -250,6 +252,46 @@ router.get('/ceps/consultar-viacep/:cep', async (req, res) => {
   } catch (err) {
     console.error('Erro ao consultar ViaCEP:', err);
     res.status(500).json({ error: 'Erro ao consultar ViaCEP' });
+  }
+});
+
+// ==================== CEPS SEM BAIRRO ====================
+
+router.get('/ceps/sem-bairro', async (req, res) => {
+  try {
+    const ceps = await listarCepsSemBairro();
+    res.json(ceps);
+  } catch (err) {
+    console.error('Erro ao listar CEPs sem bairro:', err);
+    res.status(500).json({ error: 'Erro ao listar CEPs sem bairro' });
+  }
+});
+
+router.put('/ceps/:id/definir-bairro', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { bairro, nome_tabela } = req.body;
+    if (!bairro) {
+      return res.status(400).json({ error: 'bairro é obrigatório' });
+    }
+    const atualizado = await atualizarCepSemBairro(id, bairro, nome_tabela || null);
+    if (!atualizado) return res.status(404).json({ error: 'CEP não encontrado' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Erro ao definir bairro do CEP:', err);
+    res.status(500).json({ error: 'Erro ao definir bairro do CEP' });
+  }
+});
+
+// ==================== CEPS SEM TABELA ====================
+
+router.get('/ceps/sem-tabela', async (req, res) => {
+  try {
+    const ceps = await listarCepsSemTabela();
+    res.json(ceps);
+  } catch (err) {
+    console.error('Erro ao listar CEPs sem tabela:', err);
+    res.status(500).json({ error: 'Erro ao listar CEPs sem tabela' });
   }
 });
 

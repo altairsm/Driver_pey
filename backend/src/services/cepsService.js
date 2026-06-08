@@ -62,11 +62,11 @@ export async function adicionarCep(cep, bairro, rota, nome_tabela) {
     INSERT INTO ceps_especificos (cep, bairro, rota, nome_tabela)
     VALUES ($1, $2, $3, $4)
     ON CONFLICT (cep) DO UPDATE SET
-      bairro = EXCLUDED.bairro,
-      rota = EXCLUDED.rota,
-      nome_tabela = EXCLUDED.nome_tabela
+      bairro = COALESCE(EXCLUDED.bairro, ceps_especificos.bairro),
+      rota = COALESCE(EXCLUDED.rota, ceps_especificos.rota),
+      nome_tabela = COALESCE(EXCLUDED.nome_tabela, ceps_especificos.nome_tabela)
     RETURNING *
-  `, [cepLimpo, bairro, rota, nome_tabela]);
+  `, [cepLimpo, bairro || null, rota || null, nome_tabela || null]);
   return result.rows[0];
 }
 
@@ -119,12 +119,14 @@ export async function importarCepsDaPlanilha(rows) {
           nome_tabela = EXCLUDED.nome_tabela
       `, [cep, bairro, rota, nome_tabela]);
 
-      await client.query(`
-        INSERT INTO bairros_rotas (bairro, rota, nome_tabela)
-        VALUES ($1, $2, $3)
-        ON CONFLICT (bairro, rota) DO UPDATE SET
-          nome_tabela = EXCLUDED.nome_tabela
-      `, [bairro, rota || '', nome_tabela]);
+      if (nome_tabela) {
+        await client.query(`
+          INSERT INTO bairros_rotas (bairro, rota, nome_tabela)
+          VALUES ($1, $2, $3)
+          ON CONFLICT (bairro, rota) DO UPDATE SET
+            nome_tabela = EXCLUDED.nome_tabela
+        `, [bairro, rota || '', nome_tabela]);
+      }
 
       importados++;
     }
@@ -164,7 +166,7 @@ export async function consultarViaCep(cep) {
 
 export async function autoDescobrirCeps() {
   const cepsNovos = await listarCepsSemCadastro();
-  const resultados = { sucesso: 0, falha: 0, ignorados: 0, detalhes: [] };
+  const resultados = { sucesso: 0, sem_bairro: 0, sem_tabela: 0, ignorados: 0, detalhes: [] };
 
   for (const item of cepsNovos) {
     const cep = item.Cep.replace(/\D/g, '');
@@ -175,13 +177,13 @@ export async function autoDescobrirCeps() {
 
     const viaCepData = await consultarViaCep(cep);
     if (!viaCepData || !viaCepData.bairro) {
-      resultados.falha++;
-      resultados.detalhes.push({ cep, status: 'falha', motivo: 'ViaCEP sem bairro' });
+      await adicionarCep(cep, null, null, null);
+      resultados.sem_bairro++;
+      resultados.detalhes.push({ cep, status: 'sem_bairro', motivo: 'ViaCEP sem bairro' });
       continue;
     }
 
     const bairro = viaCepData.bairro;
-    const cidade = viaCepData.cidade;
 
     const bairroRota = await pool.query(`
       SELECT * FROM bairros_rotas
@@ -198,22 +200,31 @@ export async function autoDescobrirCeps() {
     } else {
       const cepSimilar = await pool.query(`
         SELECT ce.* FROM ceps_especificos ce
-        WHERE ce.bairro ILIKE $1
+        WHERE ce.bairro ILIKE $1 AND ce.nome_tabela IS NOT NULL
         LIMIT 1
       `, [`%${bairro}%`]);
       if (cepSimilar.rows[0]) {
         nome_tabela = cepSimilar.rows[0].nome_tabela;
         rota = cepSimilar.rows[0].rota;
-      } else {
-        resultados.falha++;
-        resultados.detalhes.push({ cep, status: 'falha', motivo: `Bairro "${bairro}" sem tabela definida` });
-        continue;
       }
     }
 
-    await adicionarCep(cep, bairro, rota, nome_tabela);
-    resultados.sucesso++;
-    resultados.detalhes.push({ cep, status: 'sucesso', bairro, rota, nome_tabela });
+    if (nome_tabela) {
+      await adicionarCep(cep, bairro, rota, nome_tabela);
+
+      await pool.query(`
+        INSERT INTO bairros_rotas (bairro, rota, nome_tabela)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (bairro, rota) DO UPDATE SET nome_tabela = EXCLUDED.nome_tabela
+      `, [bairro, rota || '', nome_tabela]).catch(() => {});
+
+      resultados.sucesso++;
+      resultados.detalhes.push({ cep, status: 'sucesso', bairro, rota, nome_tabela });
+    } else {
+      await adicionarCep(cep, bairro, null, null);
+      resultados.sem_tabela++;
+      resultados.detalhes.push({ cep, status: 'sem_tabela', bairro, motivo: `Bairro "${bairro}" sem tabela definida` });
+    }
   }
 
   return resultados;
@@ -245,6 +256,52 @@ export async function listarCtesSemFaixa() {
     SELECT DISTINCT ON (ncte, lista) *
     FROM ctes_raw
     ORDER BY ncte, lista, bairro NULLS LAST
+  `);
+  return result.rows;
+}
+
+// ==================== CEPS SEM BAIRRO ====================
+
+export async function listarCepsSemBairro() {
+  const result = await pool.query(`
+    SELECT
+      ce.id, ce.cep, ce.bairro, ce.rota, ce.nome_tabela, ce.importado_em,
+      COUNT(re.id) AS total_ctes,
+      MIN(re."BairroDestino") AS bairro_no_relatorio,
+      MIN(re."CidadeDestino") AS cidade
+    FROM ceps_especificos ce
+    LEFT JOIN relatorioentrega_export re
+      ON NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '') = ce.cep
+    WHERE ce.bairro IS NULL
+    GROUP BY ce.id, ce.cep, ce.bairro, ce.rota, ce.nome_tabela, ce.importado_em
+    ORDER BY total_ctes DESC
+  `);
+  return result.rows;
+}
+
+export async function atualizarCepSemBairro(id, bairro, nome_tabela) {
+  const result = await pool.query(`
+    UPDATE ceps_especificos
+    SET bairro = $1, nome_tabela = $2
+    WHERE id = $3
+  `, [bairro, nome_tabela || null, id]);
+  return result.rowCount > 0;
+}
+
+// ==================== BAIRROS SEM TABELA ====================
+
+export async function listarCepsSemTabela() {
+  const result = await pool.query(`
+    SELECT
+      ce.id, ce.cep, ce.bairro, ce.rota, ce.nome_tabela, ce.importado_em,
+      COUNT(re.id) AS total_ctes,
+      MIN(re."CidadeDestino") AS cidade
+    FROM ceps_especificos ce
+    LEFT JOIN relatorioentrega_export re
+      ON NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '') = ce.cep
+    WHERE ce.bairro IS NOT NULL AND ce.nome_tabela IS NULL
+    GROUP BY ce.id, ce.cep, ce.bairro, ce.rota, ce.nome_tabela, ce.importado_em
+    ORDER BY total_ctes DESC
   `);
   return result.rows;
 }
