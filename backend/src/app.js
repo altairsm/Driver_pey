@@ -12,6 +12,7 @@ import cepsRoutes from './routes/ceps.js';
 import reclamacoesRoutes from './routes/reclamacoes.js';
 import solicitacoesRoutes from './routes/solicitacoes.js';
 import configuracoesRoutes from './routes/configuracoes.js';
+import { authenticateToken, requireAdmin } from './middleware/auth.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -26,6 +27,7 @@ app.get('/api/health', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/driver', driverRoutes);
+app.use('/api/admin', authenticateToken, requireAdmin);
 app.use('/api/admin', adminRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/admin', listasRoutes);

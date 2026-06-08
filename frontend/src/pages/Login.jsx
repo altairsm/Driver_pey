@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login } from '../services/api';
+import { login, adminLogin } from '../services/api';
 
 export default function Login() {
   const [cpf, setCpf] = useState('');
   const [matricula, setMatricula] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  const handleDriverSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
@@ -31,56 +33,105 @@ export default function Login() {
     }
   };
 
-  const adminAccess = () => {
-    navigate('/admin/pagamentos');
+  const handleAdminSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      const data = await adminLogin(username, password);
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.admin));
+      navigate('/admin/pagamentos');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Erro ao fazer login');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <div style={styles.cardAccent} />
-        <div style={styles.cardContent}>
-          <div style={styles.logo}>DRIVER PEY - INTUITIVA LOG</div>
-          <div style={styles.subtitle}>Portal do Motorista</div>
-          <form onSubmit={handleSubmit} style={styles.form}>
-            <div style={styles.field}>
-              <label style={styles.label}>CPF</label>
-              <input
-                style={styles.input}
-                type="text"
-                placeholder="000.000.000-00"
-                value={cpf}
-                onChange={(e) => setCpf(e.target.value.replace(/\D/g, ''))}
-                maxLength={11}
-                required
-              />
-            </div>
-            <div style={styles.field}>
-              <label style={styles.label}>Matrícula</label>
-              <input
-                style={styles.input}
-                type="text"
-                placeholder="000000"
-                value={matricula}
-                onChange={(e) => setMatricula(e.target.value.replace(/\D/g, ''))}
-                required
-              />
-            </div>
-            {error && <div style={styles.error}>{error}</div>}
-            <button
-              type="submit"
-              style={{
-                ...styles.button,
-                opacity: loading ? 0.6 : 1,
-              }}
-              disabled={loading}
-            >
-              {loading ? 'Entrando...' : 'Entrar'}
-            </button>
-          </form>
-          <div style={styles.divider}>ou</div>
-          <button onClick={adminAccess} style={styles.adminBtn}>
-            Acesso Administrativo
+    <div style={s.container}>
+      <div style={s.card}>
+        <div style={s.cardAccent} />
+        <div style={s.cardContent}>
+          <div style={s.logo}>DRIVER PEY - INTUITIVA LOG</div>
+          <div style={s.subtitle}>
+            {isAdmin ? 'Portal Administrativo' : 'Portal do Motorista'}
+          </div>
+
+          {!isAdmin ? (
+            <form onSubmit={handleDriverSubmit} style={s.form}>
+              <div style={s.field}>
+                <label style={s.label}>CPF</label>
+                <input
+                  style={s.input}
+                  type="text"
+                  placeholder="000.000.000-00"
+                  value={cpf}
+                  onChange={(e) => setCpf(e.target.value.replace(/\D/g, ''))}
+                  maxLength={11}
+                  required
+                />
+              </div>
+              <div style={s.field}>
+                <label style={s.label}>Matrícula</label>
+                <input
+                  style={s.input}
+                  type="text"
+                  placeholder="000000"
+                  value={matricula}
+                  onChange={(e) => setMatricula(e.target.value.replace(/\D/g, ''))}
+                  required
+                />
+              </div>
+              {error && <div style={s.error}>{error}</div>}
+              <button
+                type="submit"
+                style={{ ...s.button, opacity: loading ? 0.6 : 1 }}
+                disabled={loading}
+              >
+                {loading ? 'Entrando...' : 'Entrar'}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleAdminSubmit} style={s.form}>
+              <div style={s.field}>
+                <label style={s.label}>Usuário</label>
+                <input
+                  style={s.input}
+                  type="text"
+                  placeholder="Usuário"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                />
+              </div>
+              <div style={s.field}>
+                <label style={s.label}>Senha</label>
+                <input
+                  style={s.input}
+                  type="password"
+                  placeholder="Senha"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+              {error && <div style={s.error}>{error}</div>}
+              <button
+                type="submit"
+                style={{ ...s.button, opacity: loading ? 0.6 : 1 }}
+                disabled={loading}
+              >
+                {loading ? 'Entrando...' : 'Entrar'}
+              </button>
+            </form>
+          )}
+
+          <div style={s.divider}>ou</div>
+          <button onClick={() => { setIsAdmin(!isAdmin); setError(''); }} style={s.adminBtn}>
+            {isAdmin ? 'Voltar ao Login do Motorista' : 'Acesso Administrativo'}
           </button>
         </div>
       </div>
@@ -88,7 +139,7 @@ export default function Login() {
   );
 }
 
-const styles = {
+const s = {
   container: {
     minHeight: '100vh',
     background: '#0d0f14',

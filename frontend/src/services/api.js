@@ -31,6 +31,11 @@ export async function login(cpf, matricula) {
   return data;
 }
 
+export async function adminLogin(username, password) {
+  const { data } = await api.post('/auth/admin-login', { username, password });
+  return data;
+}
+
 export async function getMe() {
   const { data } = await api.get('/auth/me');
   return data;
