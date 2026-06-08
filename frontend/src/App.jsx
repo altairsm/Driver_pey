@@ -11,8 +11,9 @@ import AdminTabelas from './pages/AdminTabelas'
 import AdminCeps from './pages/AdminCeps'
 import AdminCepsSemRange from './pages/AdminCepsSemRange'
 import AdminCtesSemFaixa from './pages/AdminCtesSemFaixa'
-import AdminCepsConflitos from './pages/AdminCepsConflitos'
 import AdminCepsImportar from './pages/AdminCepsImportar'
+import AdminCepsSemBairro from './pages/AdminCepsSemBairro'
+import AdminBairrosSemTabela from './pages/AdminBairrosSemTabela'
 import AdminReclamacoes from './pages/AdminReclamacoes'
 import AdminSolicitacoesPagamento from './pages/AdminSolicitacoesPagamento'
 import AdminConfiguracoes from './pages/AdminConfiguracoes'
@@ -62,8 +63,9 @@ function App() {
       <Route path="/admin/ceps" element={<AdminCeps />} />
       <Route path="/admin/ceps/sem-range" element={<AdminCepsSemRange />} />
       <Route path="/admin/ceps/ctes-sem-faixa" element={<AdminCtesSemFaixa />} />
-      <Route path="/admin/ceps/conflitos" element={<AdminCepsConflitos />} />
       <Route path="/admin/ceps/importar" element={<AdminCepsImportar />} />
+      <Route path="/admin/ceps/sem-bairro" element={<AdminCepsSemBairro />} />
+      <Route path="/admin/ceps/sem-tabela" element={<AdminBairrosSemTabela />} />
       <Route path="/admin/reclamacoes" element={<AdminReclamacoes />} />
       <Route path="/admin/solicitacoes-pagamento" element={<AdminSolicitacoesPagamento />} />
       <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
