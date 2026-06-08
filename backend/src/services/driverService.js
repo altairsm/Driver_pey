@@ -402,7 +402,7 @@ export async function atualizarDriverDados(matricula, dados) {
     UPDATE matriculos_jad
     SET cnpj_mei = $1, telefone = $2, pix_tipo = $3
     WHERE "OperadorMatricula"::bigint = $4
-  `, [cnpj_mei || null, telefone || null, pix_tipo || 'CPF', matricula]);
+  `, [cnpj_mei || null, telefone || null, pix_tipo, matricula]);
   return { success: true };
 }
 

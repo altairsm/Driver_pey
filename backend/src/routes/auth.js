@@ -13,7 +13,7 @@ router.post('/login', async (req, res) => {
     }
 
     const result = await pool.query(`
-      SELECT "OperadorMatricula"::bigint AS matricula, nome_completo, cpf, telefone
+      SELECT "OperadorMatricula"::bigint AS matricula, nome_completo, cpf, telefone, leu_regras
       FROM matriculos_jad
       WHERE "OperadorMatricula"::bigint = $1 AND cpf = $2
     `, [matricula, cpf]);
