@@ -109,18 +109,6 @@ router.get('/ceps/conflitos', async (req, res) => {
   res.json([]);
 });
 
-router.get('/ceps/:cep', async (req, res) => {
-  try {
-    const { cep } = req.params;
-    const encontrado = await buscarCep(cep);
-    if (!encontrado) return res.status(404).json({ error: 'CEP não encontrado' });
-    res.json(encontrado);
-  } catch (err) {
-    console.error('Erro ao buscar CEP:', err);
-    res.status(500).json({ error: 'Erro ao buscar CEP' });
-  }
-});
-
 router.post('/ceps', async (req, res) => {
   try {
     const { cep, bairro, rota, nome_tabela } = req.body;
@@ -340,6 +328,18 @@ router.post('/ceps/adicionar', async (req, res) => {
 
 router.get('/ceps/ranges-sem-tabela', async (req, res) => {
   res.json([]);
+});
+
+router.get('/ceps/:cep', async (req, res) => {
+  try {
+    const { cep } = req.params;
+    const encontrado = await buscarCep(cep);
+    if (!encontrado) return res.status(404).json({ error: 'CEP não encontrado' });
+    res.json(encontrado);
+  } catch (err) {
+    console.error('Erro ao buscar CEP:', err);
+    res.status(500).json({ error: 'Erro ao buscar CEP' });
+  }
 });
 
 export default router;
