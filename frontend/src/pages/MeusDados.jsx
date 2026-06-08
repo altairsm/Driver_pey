@@ -99,7 +99,7 @@ export default function MeusDados() {
   return (
     <div style={s.container}>
       <div style={s.topbar}>
-        <div style={s.brand}>DRIVER PEY - INTUITIVA LOG</div>
+        <div style={s.brand}>DRIVER PAY - INTUITIVA LOG</div>
         <a href="/driver" style={s.backBtn}>&#8592; Voltar ao Painel</a>
       </div>
       <div style={s.content}>
@@ -163,7 +163,7 @@ export default function MeusDados() {
           </button>
         </div>
       </div>
-      <div style={s.footer}>SISTEMA DE GESTÃO DE MOTORISTAS · DRIVER_PEY</div>
+      <div style={s.footer}>SISTEMA DE GESTÃO DE MOTORISTAS · DRIVER_PAY</div>
     </div>
   );
 }
