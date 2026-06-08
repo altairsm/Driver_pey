@@ -228,8 +228,8 @@ export async function getReclamacoes(matricula, inicio, fim) {
     JOIN relatorioentrega_export re ON re."NCTE" = a."NCTE"
     WHERE re."OperadorMatricula"::bigint = $1
       AND LOWER(re."Evento") = 'entrega'
-      AND re."Data"::date >= $2::date
-      AND re."Data"::date <= $3::date
+      AND a.data_criacao >= $2::date
+      AND a.data_criacao <= $3::date
     ORDER BY a.data_criacao DESC
   `, [matricula, inicio, fim]);
   return result.rows;
