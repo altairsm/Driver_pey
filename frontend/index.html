@@ -6,20 +6,22 @@
     <title>Driver PIX — Pagamento a Motoristas</title>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap" rel="stylesheet">
     <script>
-      window.chatwootSettings = {"position":"left","type":"standard","launcherTitle":"Fale conosco no chat"};
-      (function(d,t) {
-        var BASE_URL="https://app.sactudo.com.br";
-        var g=d.createElement(t),s=d.getElementsByTagName(t)[0];
-        g.src=BASE_URL+"/packs/js/sdk.js";
-        g.async = true;
-        s.parentNode.insertBefore(g,s);
-        g.onload=function(){
-          window.chatwootSDK.run({
-            websiteToken: 'Wt6wpVK64jDz3UxSczuCat5X',
-            baseUrl: BASE_URL
-          })
-        }
-      })(document,"script");
+      try {
+        window.chatwootSettings = {"position":"left","type":"standard","launcherTitle":"Fale conosco no chat"};
+        (function(d,t) {
+          var BASE_URL="https://app.sactudo.com.br";
+          var g=d.createElement(t),s=d.getElementsByTagName(t)[0];
+          g.src=BASE_URL+"/packs/js/sdk.js";
+          g.async = true;
+          s.parentNode.insertBefore(g,s);
+          g.onload=function(){
+            window.chatwootSDK.run({
+              websiteToken: 'Wt6wpVK64jDz3UxSczuCat5X',
+              baseUrl: BASE_URL
+            })
+          }
+        })(document,"script");
+      } catch(e) {}
     </script>
   </head>
   <body>
