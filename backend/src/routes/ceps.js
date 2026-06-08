@@ -105,6 +105,10 @@ router.get('/ceps', async (req, res) => {
   }
 });
 
+router.get('/ceps/conflitos', async (req, res) => {
+  res.json([]);
+});
+
 router.get('/ceps/:cep', async (req, res) => {
   try {
     const { cep } = req.params;
@@ -335,10 +339,6 @@ router.post('/ceps/adicionar', async (req, res) => {
 });
 
 router.get('/ceps/ranges-sem-tabela', async (req, res) => {
-  res.json([]);
-});
-
-router.get('/ceps/conflitos', async (req, res) => {
   res.json([]);
 });
 
