@@ -1,3 +1,4 @@
+import bcrypt from 'bcrypt';
 import { pool } from './index.js';
 
 const seedMatriculas = `
@@ -525,6 +526,15 @@ export async function runMigrations() {
     )`);
     console.log('  -> configuracoes');
 
+    await pool.query(`CREATE TABLE IF NOT EXISTS admin_users (
+      id SERIAL PRIMARY KEY,
+      username VARCHAR(50) UNIQUE NOT NULL,
+      password_hash VARCHAR(255) NOT NULL,
+      nome VARCHAR(200) NOT NULL,
+      criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    console.log('  -> admin_users');
+
     // ── Step 3: Create indexes ──
     console.log('Migrations: creating indexes...');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_ceps_bairros_cep ON ceps_bairros (cep_ini, cep_fim)');
@@ -605,6 +615,20 @@ export async function runMigrations() {
       ON CONFLICT (id) DO NOTHING
     `);
     console.log('  Configuracoes seeded');
+
+    // ── Admin user seed ──
+    const { rows: adminCount } = await pool.query('SELECT COUNT(*)::int AS cnt FROM admin_users');
+    if (adminCount[0].cnt === 0) {
+      const hash = await bcrypt.hash('501578', 10);
+      await pool.query(`
+        INSERT INTO admin_users (username, password_hash, nome)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (username) DO NOTHING
+      `, ['125281', hash, 'Administrador']);
+      console.log('  Admin user seeded (125281)');
+    } else {
+      console.log('  admin_users already has data, skipping seed');
+    }
 
     console.log('Migrations: all seed data done');
   } catch (err) {

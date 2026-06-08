@@ -19,3 +19,10 @@ export function authenticateToken(req, res, next) {
     return res.status(403).json({ error: 'Token inválido ou expirado' });
   }
 }
+
+export function requireAdmin(req, res, next) {
+  if (req.user?.role !== 'admin') {
+    return res.status(403).json({ error: 'Acesso restrito a administradores' });
+  }
+  next();
+}
