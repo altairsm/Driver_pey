@@ -1,6 +1,6 @@
 import { pool } from '../db/index.js';
 
-export async function getAnalyticsBairros(inicio, fim) {
+export async function getAnalyticsBairros(inicio, fim, matricula) {
   const query = `
     WITH entregas_periodo AS (
       SELECT DISTINCT ON (re."NCTE", re."Lista")
@@ -9,7 +9,8 @@ export async function getAnalyticsBairros(inicio, fim) {
         COALESCE(fb.faixas, 'SEM FAIXA') AS faixa_peso_desc,
         re."Peso"::numeric AS peso,
         COALESCE(fb.valor_peso, 0) AS valor_peso,
-        COALESCE(tf.valor_fixo + GREATEST(re."Peso"::numeric - 15, 0) * tf.valor_excedente_kg, 0) AS valor_faturamento
+        COALESCE(tf.valor_fixo + GREATEST(re."Peso"::numeric - 15, 0) * tf.valor_excedente_kg, 0) AS valor_faturamento,
+        mj.nome_completo AS nome_motorista
       FROM relatorioentrega_export re
       LEFT JOIN ceps_especificos ce
         ON ce.cep = NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '')
@@ -18,8 +19,11 @@ export async function getAnalyticsBairros(inicio, fim) {
         AND fb.nome_tabela = ce.nome_tabela
       LEFT JOIN tabela_faturamento tf
         ON re."Peso"::numeric BETWEEN tf.peso_de AND tf.peso_ate
+      JOIN matriculos_jad mj
+        ON mj."OperadorMatricula"::bigint = re."OperadorMatricula"::bigint
       WHERE LOWER(re."Evento") = 'entrega'
         AND re."Data"::date BETWEEN $1 AND $2
+        AND ($3::bigint IS NULL OR re."OperadorMatricula"::bigint = $3)
       ORDER BY re."NCTE", re."Lista",
         CASE WHEN fb.valor_peso > 0 THEN 0 ELSE 1 END,
         fb.valor_peso ASC
@@ -36,6 +40,6 @@ export async function getAnalyticsBairros(inicio, fim) {
     ORDER BY bairro, nome_tabela, faixa_peso_desc
   `;
 
-  const result = await pool.query(query, [inicio, fim]);
+  const result = await pool.query(query, [inicio, fim, matricula || null]);
   return result.rows;
 }
