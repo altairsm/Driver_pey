@@ -385,6 +385,11 @@ export async function recusarSolicitacao(id) {
   return data;
 }
 
+export async function getAnalyticsBairros(inicio, fim) {
+  const { data } = await api.get('/admin/analytics/bairros', { params: { inicio, fim } });
+  return data;
+}
+
 export async function getConfig() {
   const { data } = await api.get('/configuracoes');
   return data;
