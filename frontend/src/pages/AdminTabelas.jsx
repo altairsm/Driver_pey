@@ -286,21 +286,18 @@ export default function AdminTabelas() {
               <div style={{ display: 'flex', gap: 12 }}>
                 <div style={{ ...s.field, flex: 1 }}>
                   <label style={s.label}>Peso De</label>
-                  <input style={s.input} type="number" step="0.001"
-                    value={editandoFaixa.peso_de}
-                    onChange={(e) => setEditandoFaixa({ ...editandoFaixa, peso_de: e.target.value })} />
+                  <input style={s.inputP} type="number" step="0.001"
+                    value={editandoFaixa.peso_de} disabled />
                 </div>
                 <div style={{ ...s.field, flex: 1 }}>
                   <label style={s.label}>Peso Até</label>
-                  <input style={s.input} type="number" step="0.001"
-                    value={editandoFaixa.peso_ate}
-                    onChange={(e) => setEditandoFaixa({ ...editandoFaixa, peso_ate: e.target.value })} />
+                  <input style={s.inputP} type="number" step="0.001"
+                    value={editandoFaixa.peso_ate} disabled />
                 </div>
               </div>
               <div style={s.field}>
                 <label style={s.label}>Faixa (descrição)</label>
-                <input style={s.input} value={editandoFaixa.faixas || ''}
-                  onChange={(e) => setEditandoFaixa({ ...editandoFaixa, faixas: e.target.value })} />
+                <input style={s.inputP} value={editandoFaixa.faixas || ''} disabled />
               </div>
               <div style={s.field}>
                 <label style={s.label}>Valor (R$)</label>

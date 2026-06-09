@@ -35,6 +35,14 @@ const GRUPOS = [
     ],
   },
   {
+    nome: 'Relatórios',
+    icon: '📊',
+    ativoPrefix: '/admin/analytics',
+    items: [
+      { label: 'Por Bairro', path: '/admin/analytics/bairros' },
+    ],
+  },
+  {
     nome: 'Sistema',
     icon: '⚙️',
     ativoPrefix: '/admin/motoristas',

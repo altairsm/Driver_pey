@@ -14,6 +14,7 @@ import tabelasRoutes from './routes/tabelas.js';
 import cepsRoutes from './routes/ceps.js';
 import reclamacoesRoutes from './routes/reclamacoes.js';
 import solicitacoesRoutes from './routes/solicitacoes.js';
+import analyticsRoutes from './routes/analytics.js';
 import configuracoesRoutes from './routes/configuracoes.js';
 import { authenticateToken, requireAdmin } from './middleware/auth.js';
 
@@ -58,6 +59,7 @@ app.use('/api/admin', tabelasRoutes);
 app.use('/api/admin', cepsRoutes);
 app.use('/api/admin', reclamacoesRoutes);
 app.use('/api/admin', solicitacoesRoutes);
+app.use('/api/admin', analyticsRoutes);
 app.use('/api/configuracoes', configuracoesRoutes);
 
 app.use((err, req, res, next) => {
