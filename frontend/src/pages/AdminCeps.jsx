@@ -74,6 +74,8 @@ export default function AdminCeps() {
     setMsg('');
     try {
       await atualizarBairroRota(bairroRotaId, tabelaSel);
+      const cepsResult = await getCepsPorBairro(bairroSel);
+      setCeps(cepsResult);
       setMsg(`✅ Tabela "${tabelaSel}" atribuída a "${bairroSel}"`);
       setTabelaAtual(tabelaSel);
     } catch (err) {

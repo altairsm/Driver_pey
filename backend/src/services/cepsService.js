@@ -20,12 +20,26 @@ export async function listarBairrosRotas() {
 }
 
 export async function atualizarBairroRota(id, nome_tabela) {
-  const result = await pool.query(`
-    UPDATE bairros_rotas
-    SET nome_tabela = $1
-    WHERE id = $2
-  `, [nome_tabela, id]);
-  return result.rowCount > 0;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query(`
+      UPDATE bairros_rotas SET nome_tabela = $1 WHERE id = $2 RETURNING bairro
+    `, [nome_tabela, id]);
+    if (result.rowCount > 0) {
+      const bairro = result.rows[0].bairro;
+      await client.query(`
+        UPDATE ceps_especificos SET nome_tabela = $1 WHERE bairro ILIKE $2
+      `, [nome_tabela, bairro]);
+    }
+    await client.query('COMMIT');
+    return result.rowCount > 0;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 // ==================== CEPS ESPECÍFICOS ====================
