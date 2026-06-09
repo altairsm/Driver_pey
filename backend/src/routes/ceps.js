@@ -13,6 +13,7 @@ import {
   consultarViaCep,
   listarCepsSemBairro, atualizarCepSemBairro,
   listarCepsSemTabela,
+  listarBairrosSemBairrosRotas, criarBairroRota,
 } from '../services/cepsService.js';
 import { parseXLSX } from '../services/xlsxService.js';
 
@@ -75,11 +76,11 @@ router.get('/bairros-rotas', async (req, res) => {
 router.put('/bairros-rotas/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { nome_tabela } = req.body;
-    if (!nome_tabela) {
-      return res.status(400).json({ error: 'nome_tabela é obrigatório' });
+    const { nome_tabela, rota } = req.body;
+    if (!nome_tabela && rota === undefined) {
+      return res.status(400).json({ error: 'Forneça nome_tabela ou rota para atualizar' });
     }
-    const atualizado = await atualizarBairroRota(id, nome_tabela);
+    const atualizado = await atualizarBairroRota(id, { nome_tabela, rota });
     if (!atualizado) return res.status(404).json({ error: 'Registro não encontrado' });
     res.json({ success: true });
   } catch (err) {
@@ -296,6 +297,32 @@ router.post('/ceps/migrar-legado', async (req, res) => {
   } catch (err) {
     console.error('Erro ao migrar CEPs legados:', err);
     res.status(500).json({ error: `Erro ao migrar CEPs legados: ${err.message}` });
+  }
+});
+
+// ==================== BAIRROS SEM ROTA ====================
+
+router.get('/ceps/bairros-sem-rota', async (req, res) => {
+  try {
+    const dados = await listarBairrosSemBairrosRotas();
+    res.json(dados);
+  } catch (err) {
+    console.error('Erro ao listar bairros sem rota:', err);
+    res.status(500).json({ error: 'Erro ao listar bairros sem rota' });
+  }
+});
+
+router.post('/ceps/bairros-sem-rota', async (req, res) => {
+  try {
+    const { bairro, nome_tabela, rota } = req.body;
+    if (!bairro) {
+      return res.status(400).json({ error: 'bairro é obrigatório' });
+    }
+    const criado = await criarBairroRota(bairro, nome_tabela || null, rota || null);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Erro ao criar bairro/rota:', err);
+    res.status(500).json({ error: 'Erro ao criar bairro/rota' });
   }
 });
 

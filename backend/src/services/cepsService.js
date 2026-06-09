@@ -4,7 +4,11 @@ import { pool } from '../db/index.js';
 
 export async function buscarBairros(termo) {
   const result = await pool.query(`
-    SELECT DISTINCT bairro FROM bairros_rotas
+    SELECT DISTINCT bairro FROM (
+      SELECT bairro FROM bairros_rotas
+      UNION
+      SELECT bairro FROM ceps_especificos WHERE bairro IS NOT NULL
+    ) sub
     WHERE bairro ILIKE $1
     ORDER BY bairro
   `, [`%${termo}%`]);
@@ -19,21 +23,97 @@ export async function listarBairrosRotas() {
   return result.rows;
 }
 
-export async function atualizarBairroRota(id, nome_tabela) {
+export async function atualizarBairroRota(id, dados) {
+  const { nome_tabela, rota } = dados;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    const sets = [];
+    const params = [];
+    let idx = 1;
+    if (nome_tabela !== undefined) {
+      sets.push(`nome_tabela = $${idx++}`);
+      params.push(nome_tabela);
+    }
+    if (rota !== undefined) {
+      sets.push(`rota = $${idx++}`);
+      params.push(rota);
+    }
+    if (sets.length === 0) return false;
+    params.push(id);
     const result = await client.query(`
-      UPDATE bairros_rotas SET nome_tabela = $1 WHERE id = $2 RETURNING bairro
-    `, [nome_tabela, id]);
+      UPDATE bairros_rotas SET ${sets.join(', ')} WHERE id = $${idx} RETURNING bairro
+    `, params);
     if (result.rowCount > 0) {
       const bairro = result.rows[0].bairro;
+      const upSets = [];
+      const upParams = [];
+      let upIdx = 1;
+      if (nome_tabela !== undefined) {
+        upSets.push(`nome_tabela = $${upIdx++}`);
+        upParams.push(nome_tabela);
+      }
+      if (rota !== undefined) {
+        upSets.push(`rota = $${upIdx++}`);
+        upParams.push(rota);
+      }
+      upParams.push(bairro);
       await client.query(`
-        UPDATE ceps_especificos SET nome_tabela = $1 WHERE bairro ILIKE $2
-      `, [nome_tabela, bairro]);
+        UPDATE ceps_especificos SET ${upSets.join(', ')} WHERE bairro ILIKE $${upIdx}
+      `, upParams);
     }
     await client.query('COMMIT');
     return result.rowCount > 0;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+export async function listarBairrosSemBairrosRotas() {
+  const result = await pool.query(`
+    SELECT ce.bairro, COUNT(ce.id) AS total_ceps,
+           COUNT(DISTINCT ce.nome_tabela) AS tabelas_distintas,
+           MIN(ce.nome_tabela) AS tabela_exemplo
+    FROM ceps_especificos ce
+    LEFT JOIN bairros_rotas br ON LOWER(br.bairro) = LOWER(ce.bairro)
+    WHERE ce.bairro IS NOT NULL AND br.id IS NULL
+    GROUP BY ce.bairro
+    ORDER BY ce.bairro
+  `);
+  return result.rows;
+}
+
+export async function criarBairroRota(bairro, nome_tabela, rota) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(`
+      INSERT INTO bairros_rotas (bairro, rota, nome_tabela)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (bairro, rota) DO UPDATE SET nome_tabela = EXCLUDED.nome_tabela
+    `, [bairro, rota || '', nome_tabela || null]);
+    const upSets = [];
+    const upParams = [];
+    let upIdx = 1;
+    if (nome_tabela !== undefined) {
+      upSets.push(`nome_tabela = $${upIdx++}`);
+      upParams.push(nome_tabela);
+    }
+    if (rota !== undefined) {
+      upSets.push(`rota = $${upIdx++}`);
+      upParams.push(rota);
+    }
+    if (upSets.length > 0) {
+      upParams.push(bairro);
+      await client.query(`
+        UPDATE ceps_especificos SET ${upSets.join(', ')} WHERE bairro ILIKE $${upIdx}
+      `, upParams);
+    }
+    await client.query('COMMIT');
+    return true;
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;

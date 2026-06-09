@@ -31,6 +31,7 @@ const GRUPOS = [
       { label: 'sem Cadastro', path: '/admin/ceps/sem-range' },
       { label: 'sem Bairro', path: '/admin/ceps/sem-bairro' },
       { label: 'sem Tabela', path: '/admin/ceps/sem-tabela' },
+      { label: 'sem Rota', path: '/admin/ceps/sem-rota' },
       { label: 'CTEs sem Faixa', path: '/admin/ceps/ctes-sem-faixa' },
     ],
   },

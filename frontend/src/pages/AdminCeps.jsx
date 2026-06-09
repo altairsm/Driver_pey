@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { getBairros, getCepsPorBairro, getBairrosRotas, atualizarBairroRota, getTabelas } from '../services/api';
+import { getBairros, getCepsPorBairro, getBairrosRotas, atualizarBairroRota, criarBairroRota, getTabelas } from '../services/api';
 import Topbar from '../components/Topbar';
 
 export default function AdminCeps() {
@@ -11,6 +11,8 @@ export default function AdminCeps() {
   const [bairroRotaId, setBairroRotaId] = useState(null);
   const [tabelaAtual, setTabelaAtual] = useState('');
   const [tabelaSel, setTabelaSel] = useState('');
+  const [rotaAtual, setRotaAtual] = useState('');
+  const [rotaSel, setRotaSel] = useState('');
   const [tabelas, setTabelas] = useState([]);
   const [msg, setMsg] = useState('');
   const [salvando, setSalvando] = useState(false);
@@ -39,6 +41,7 @@ export default function AdminCeps() {
   const handleSelecionarBairro = async (bairro) => {
     setBairroSel(bairro);
     setTabelaSel('');
+    setRotaSel('');
     setMsg('');
     try {
       const [cepsResult, bairrosRotasResult, tabelasResult] = await Promise.all([
@@ -54,10 +57,14 @@ export default function AdminCeps() {
         setBairroRotaId(br.id);
         setTabelaAtual(br.nome_tabela);
         setTabelaSel(br.nome_tabela);
+        setRotaAtual(br.rota || '');
+        setRotaSel(br.rota || '');
       } else {
         setBairroRotaId(null);
         setTabelaAtual('');
         setTabelaSel('');
+        setRotaAtual('');
+        setRotaSel('');
       }
     } catch (err) {
       setMsg(err.response?.data?.error || 'Erro ao carregar dados');
@@ -65,21 +72,54 @@ export default function AdminCeps() {
   };
 
   const handleAtribuir = async () => {
-    if (!bairroRotaId || !tabelaSel) {
+    if (!bairroRotaId) {
       setMsg('❌ Bairro não encontrado em bairros_rotas. Importe a planilha primeiro.');
       return;
     }
-    if (!confirm(`Atribuir tabela "${tabelaSel}" ao bairro "${bairroSel}"?`)) return;
+    const dados = {};
+    if (tabelaSel) dados.nome_tabela = tabelaSel;
+    if (rotaSel !== rotaAtual) dados.rota = rotaSel;
+    if (!dados.nome_tabela && !dados.rota) {
+      setMsg('❌ Nenhuma alteração para salvar.');
+      return;
+    }
     setSalvando(true);
     setMsg('');
     try {
-      await atualizarBairroRota(bairroRotaId, tabelaSel);
+      await atualizarBairroRota(bairroRotaId, dados);
       const cepsResult = await getCepsPorBairro(bairroSel);
       setCeps(cepsResult);
-      setMsg(`✅ Tabela "${tabelaSel}" atribuída a "${bairroSel}"`);
-      setTabelaAtual(tabelaSel);
+      setMsg(`✅ Bairro "${bairroSel}" atualizado`);
+      if (dados.nome_tabela) setTabelaAtual(tabelaSel);
+      if (dados.rota !== undefined) setRotaAtual(rotaSel);
     } catch (err) {
-      setMsg(`❌ ${err.response?.data?.error || 'Erro ao atribuir tabela'}`);
+      setMsg(`❌ ${err.response?.data?.error || 'Erro ao salvar'}`);
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const handleCriarCadastro = async () => {
+    if (!bairroSel) return;
+    if (!confirm(`Criar cadastro em bairros_rotas para "${bairroSel}"?`)) return;
+    setSalvando(true);
+    setMsg('');
+    try {
+      await criarBairroRota(bairroSel, tabelaSel || null, rotaSel || null);
+      const [cepsResult, bairrosRotasResult] = await Promise.all([
+        getCepsPorBairro(bairroSel),
+        getBairrosRotas(),
+      ]);
+      setCeps(cepsResult);
+      const br = bairrosRotasResult.find(r => r.bairro.toLowerCase() === bairroSel.toLowerCase());
+      if (br) {
+        setBairroRotaId(br.id);
+        setTabelaAtual(br.nome_tabela);
+        setRotaAtual(br.rota || '');
+      }
+      setMsg(`✅ Cadastro criado para "${bairroSel}"`);
+    } catch (err) {
+      setMsg(`❌ ${err.response?.data?.error || 'Erro ao criar cadastro'}`);
     } finally {
       setSalvando(false);
     }
@@ -164,7 +204,7 @@ export default function AdminCeps() {
               </button>
             </div>
             <div style={s.cardBody}>
-              {bairroRotaId && (
+                {bairroRotaId ? (
                 <div style={s.selectAtivo}>
                   <div>
                     <label style={s.label}>Alterar Tabela</label>
@@ -173,8 +213,32 @@ export default function AdminCeps() {
                       {tabelas.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
-                  <button style={s.btn('#198754', '#fff')} onClick={handleAtribuir} disabled={!tabelaSel || salvando || tabelaSel === tabelaAtual}>
+                  <div>
+                    <label style={s.label}>Alterar Rota</label>
+                    <input style={s.inp} placeholder="Rota" value={rotaSel}
+                      onChange={(e) => setRotaSel(e.target.value)} />
+                  </div>
+                  <button style={s.btn('#198754', '#fff')} onClick={handleAtribuir}
+                    disabled={salvando || (tabelaSel === tabelaAtual && rotaSel === rotaAtual)}>
                     {salvando ? 'Salvando...' : 'Salvar'}
+                  </button>
+                </div>
+              ) : (
+                <div style={s.selectAtivo}>
+                  <div>
+                    <label style={s.label}>Tabela</label>
+                    <select style={s.sel} value={tabelaSel} onChange={(e) => setTabelaSel(e.target.value)}>
+                      <option value="">Selecione...</option>
+                      {tabelas.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={s.label}>Rota</label>
+                    <input style={s.inp} placeholder="Rota" value={rotaSel}
+                      onChange={(e) => setRotaSel(e.target.value)} />
+                  </div>
+                  <button style={s.btn('#f0c040', '#0d0f14')} onClick={handleCriarCadastro} disabled={salvando}>
+                    {salvando ? 'Criando...' : 'Criar cadastro'}
                   </button>
                 </div>
               )}

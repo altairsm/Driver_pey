@@ -303,8 +303,18 @@ export async function getBairrosRotas() {
   return data;
 }
 
-export async function atualizarBairroRota(id, nome_tabela) {
-  const { data } = await api.put(`/admin/bairros-rotas/${id}`, { nome_tabela });
+export async function atualizarBairroRota(id, dados) {
+  const { data } = await api.put(`/admin/bairros-rotas/${id}`, dados);
+  return data;
+}
+
+export async function getBairrosSemRota() {
+  const { data } = await api.get('/admin/ceps/bairros-sem-rota');
+  return data;
+}
+
+export async function criarBairroRota(bairro, nome_tabela, rota) {
+  const { data } = await api.post('/admin/ceps/bairros-sem-rota', { bairro, nome_tabela, rota });
   return data;
 }
 
