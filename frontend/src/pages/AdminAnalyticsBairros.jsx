@@ -1,14 +1,20 @@
-import { useState } from 'react';
-import { getAnalyticsBairros } from '../services/api';
+import { useState, useEffect } from 'react';
+import { getAnalyticsBairros, getMotoristas } from '../services/api';
 import Topbar from '../components/Topbar';
 
 export default function AdminAnalyticsBairros() {
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
+  const [matricula, setMatricula] = useState('');
+  const [motoristas, setMotoristas] = useState([]);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [gerou, setGerou] = useState(false);
+
+  useEffect(() => {
+    getMotoristas().then(setMotoristas).catch(() => {});
+  }, []);
 
   const handleGerar = async () => {
     if (!dataInicio || !dataFim) { setError('Selecione data inicial e final'); return; }
@@ -16,7 +22,7 @@ export default function AdminAnalyticsBairros() {
     setError('');
     setGerou(false);
     try {
-      const data = await getAnalyticsBairros(dataInicio, dataFim);
+      const data = await getAnalyticsBairros(dataInicio, dataFim, matricula || undefined);
       setRows(data);
       setGerou(true);
     } catch (err) {
@@ -75,6 +81,16 @@ export default function AdminAnalyticsBairros() {
             <label style={s.label}>Data Fim</label>
             <input type="date" style={s.input} value={dataFim}
               onChange={(e) => setDataFim(e.target.value)} />
+          </div>
+          <div style={s.field}>
+            <label style={s.label}>Motorista</label>
+            <select style={s.input} value={matricula}
+              onChange={(e) => setMatricula(e.target.value)}>
+              <option value="">Todos</option>
+              {motoristas.map((m) => (
+                <option key={m.matricula} value={m.matricula}>{m.nome_completo}</option>
+              ))}
+            </select>
           </div>
           <button style={loading ? s.btnDisabled : s.btn} onClick={handleGerar} disabled={loading}>
             {loading ? 'Gerando...' : 'Filtrar'}
