@@ -375,6 +375,11 @@ export async function updateReclamacaoCte(id, cte) {
   return data;
 }
 
+export async function updateReclamacaoMotorista(id, matricula) {
+  const { data } = await api.put(`/admin/reclamacoes/${id}/motorista`, { matricula });
+  return data;
+}
+
 export async function deleteReclamacao(id) {
   const { data } = await api.delete(`/admin/reclamacoes/${id}`);
   return data;

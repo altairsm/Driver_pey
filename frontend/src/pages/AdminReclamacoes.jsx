@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Topbar from '../components/Topbar';
-import { uploadReclamacoes, getAdminReclamacoes, updateReclamacaoCte, deleteReclamacao, getReclamacoesQuinzenas } from '../services/api';
+import { uploadReclamacoes, getAdminReclamacoes, updateReclamacaoCte, updateReclamacaoMotorista, deleteReclamacao, getReclamacoesQuinzenas } from '../services/api';
 
 function formatQuinzena(inicio, fim) {
   const i = String(inicio).slice(0, 10).split('-');
@@ -18,6 +18,8 @@ export default function AdminReclamacoes() {
   const [loading, setLoading] = useState(true);
   const [editCteId, setEditCteId] = useState(null);
   const [editCteVal, setEditCteVal] = useState('');
+  const [editMotoristaId, setEditMotoristaId] = useState(null);
+  const [editMotoristaVal, setEditMotoristaVal] = useState('');
 
   const [quinzenas, setQuinzenas] = useState([]);
   const [qzIdx, setQzIdx] = useState(0);
@@ -107,6 +109,19 @@ export default function AdminReclamacoes() {
       else await carregar();
     } catch (err) {
       alert('Erro ao atualizar CTE: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const handleSalvarMotorista = async (id) => {
+    if (!editMotoristaVal.trim()) return;
+    try {
+      await updateReclamacaoMotorista(id, editMotoristaVal.trim());
+      setEditMotoristaId(null);
+      setEditMotoristaVal('');
+      if (qzAtual) await carregar(qzAtual.inicio.slice(0, 10), qzAtual.fim.slice(0, 10));
+      else await carregar();
+    } catch (err) {
+      alert('Erro ao atualizar motorista: ' + (err.response?.data?.error || err.message));
     }
   };
 
@@ -237,7 +252,13 @@ export default function AdminReclamacoes() {
                           <td style={s.td}>{r.assunto}</td>
                           <td style={s.td}>{r.status_original}</td>
                           <td style={s.td}>
-                            {situacao === 'ok' ? (
+                            {editMotoristaId === r.id ? (
+                              <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                                <input style={s.inp} value={editMotoristaVal} onChange={(e) => setEditMotoristaVal(e.target.value)} placeholder="Matrícula" />
+                                <button style={s.btnSm('#3de8a0', '#0d0f14')} onClick={() => handleSalvarMotorista(r.id)}>OK</button>
+                                <button style={s.btnSm('#6b7280', '#fff')} onClick={() => setEditMotoristaId(null)}>X</button>
+                              </div>
+                            ) : situacao === 'ok' ? (
                               <span style={s.badge('rgba(61,232,160,.15)', '#3de8a0')}>{r.motorista_nome || `Mat. ${r.matricula}`}</span>
                             ) : situacao === 'pendente' ? (
                               <span style={s.badge('rgba(255,159,64,.15)', '#ff9f40')}>CTE pendente</span>
@@ -247,9 +268,14 @@ export default function AdminReclamacoes() {
                           </td>
                           <td style={s.td}>{formatDate(r.data_criacao)}</td>
                           <td style={s.td}>
-                            {semCte && (
-                              <button style={s.btnSm('#ffc107', '#0d0f14')} onClick={() => { setEditCteId(r.id); setEditCteVal(''); }}>
+                            {(semCte || r.assunto === 'Assunto não identificado') && (
+                              <button style={s.btnSm('#ffc107', '#0d0f14')} onClick={() => { setEditCteId(r.id); setEditCteVal(r.cte || ''); }}>
                                 Editar CTE
+                              </button>
+                            )}
+                            {semMotorista && r.cte && (
+                              <button style={s.btnSm('#0d6efd', '#fff')} onClick={() => { setEditMotoristaId(r.id); setEditMotoristaVal(''); }}>
+                                Buscar Motorista
                               </button>
                             )}
                             <button style={s.btnSm('#dc3545', '#fff')} onClick={() => handleDeletar(r.id)}>
