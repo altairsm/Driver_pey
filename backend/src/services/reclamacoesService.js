@@ -216,6 +216,45 @@ export async function atualizarMotorista(id, matricula) {
   return { id, matricula: matInt, atualizado: result.rowCount > 0 };
 }
 
+export async function vincularMotoristaPorCte(id) {
+  const result = await pool.query(`
+    UPDATE acareacaojad a
+    SET "OperadorMatricula" = (
+      SELECT r."OperadorMatricula"::bigint
+      FROM relatorioentrega_export r
+      WHERE r."NCTE" = a."NCTE"
+        AND LOWER(r."Evento") = 'entrega'
+      LIMIT 1
+    )
+    WHERE a.id = $1
+      AND a."NCTE" IS NOT NULL
+    RETURNING a.id, a."OperadorMatricula" AS matricula
+  `, [id]);
+  return result.rows[0] || null;
+}
+
+export async function vincularTodosPendentes() {
+  const result = await pool.query(`
+    UPDATE acareacaojad a
+    SET "OperadorMatricula" = (
+      SELECT r."OperadorMatricula"::bigint
+      FROM relatorioentrega_export r
+      WHERE r."NCTE" = a."NCTE"
+        AND LOWER(r."Evento") = 'entrega'
+      LIMIT 1
+    )
+    WHERE a."OperadorMatricula" IS NULL
+      AND a."NCTE" IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM relatorioentrega_export r2
+        WHERE r2."NCTE" = a."NCTE"
+          AND LOWER(r2."Evento") = 'entrega'
+      )
+    RETURNING id
+  `);
+  return { atualizados: result.rowCount };
+}
+
 export async function deletarReclamacao(id) {
   const result = await pool.query(`DELETE FROM acareacaojad WHERE id = $1`, [id]);
   return result.rowCount > 0;

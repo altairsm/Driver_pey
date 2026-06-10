@@ -380,6 +380,16 @@ export async function updateReclamacaoMotorista(id, matricula) {
   return data;
 }
 
+export async function vincularReclamacaoMotorista(id) {
+  const { data } = await api.post(`/admin/reclamacoes/${id}/vincular`);
+  return data;
+}
+
+export async function vincularReclamacoesPendentes() {
+  const { data } = await api.post('/admin/reclamacoes/vincular-pendentes');
+  return data;
+}
+
 export async function deleteReclamacao(id) {
   const { data } = await api.delete(`/admin/reclamacoes/${id}`);
   return data;

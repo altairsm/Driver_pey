@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { uploadReclamacoes, listarReclamacoes, atualizarCte, deletarReclamacao, listarReclamacoesSemMotorista, getQuinzenasReclamacoes, atualizarMotorista } from '../services/reclamacoesService.js';
+import { uploadReclamacoes, listarReclamacoes, atualizarCte, deletarReclamacao, listarReclamacoesSemMotorista, getQuinzenasReclamacoes, atualizarMotorista, vincularMotoristaPorCte, vincularTodosPendentes } from '../services/reclamacoesService.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -74,6 +74,30 @@ router.put('/reclamacoes/:id/motorista', async (req, res) => {
   } catch (err) {
     console.error('Erro ao atualizar motorista:', err);
     res.status(500).json({ error: 'Erro ao atualizar motorista' });
+  }
+});
+
+router.post('/reclamacoes/vincular-pendentes', async (req, res) => {
+  try {
+    const result = await vincularTodosPendentes();
+    res.json(result);
+  } catch (err) {
+    console.error('Erro ao vincular pendentes:', err);
+    res.status(500).json({ error: 'Erro ao vincular pendentes' });
+  }
+});
+
+router.post('/reclamacoes/:id/vincular', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await vincularMotoristaPorCte(id);
+    if (!result) {
+      return res.status(404).json({ error: 'CTE não encontrado na tabela de entregas' });
+    }
+    res.json(result);
+  } catch (err) {
+    console.error('Erro ao vincular motorista:', err);
+    res.status(500).json({ error: 'Erro ao vincular motorista' });
   }
 });
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Topbar from '../components/Topbar';
-import { uploadReclamacoes, getAdminReclamacoes, updateReclamacaoCte, updateReclamacaoMotorista, deleteReclamacao, getReclamacoesQuinzenas } from '../services/api';
+import { uploadReclamacoes, getAdminReclamacoes, updateReclamacaoCte, updateReclamacaoMotorista, vincularReclamacaoMotorista, vincularReclamacoesPendentes, deleteReclamacao, getReclamacoesQuinzenas } from '../services/api';
 
 function formatQuinzena(inicio, fim) {
   const i = String(inicio).slice(0, 10).split('-');
@@ -125,6 +125,32 @@ export default function AdminReclamacoes() {
     }
   };
 
+  const handleVincular = async (id) => {
+    try {
+      const result = await vincularReclamacaoMotorista(id);
+      if (result && result.matricula) {
+        if (qzAtual) await carregar(qzAtual.inicio.slice(0, 10), qzAtual.fim.slice(0, 10));
+        else await carregar();
+      } else {
+        alert('CTE não encontrado na tabela de entregas. Verifique se a entrega já foi importada.');
+      }
+    } catch (err) {
+      alert('Erro ao vincular: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const handleVincularPendentes = async () => {
+    if (!confirm('Vincular motoristas de todas as reclamações pendentes?')) return;
+    try {
+      const result = await vincularReclamacoesPendentes();
+      if (qzAtual) await carregar(qzAtual.inicio.slice(0, 10), qzAtual.fim.slice(0, 10));
+      else await carregar();
+      alert(`${result.atualizados} motorista(s) vinculado(s).`);
+    } catch (err) {
+      alert('Erro: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
   const handleDeletar = async (id) => {
     if (!confirm('Remover esta reclamação?')) return;
     try {
@@ -205,8 +231,18 @@ export default function AdminReclamacoes() {
 
         <div style={s.card}>
           <div style={s.cardHeader('#dc3545')}>
-            <h5 style={s.cardTitle}>Reclamações Importadas ({reclamacoes.length})</h5>
-            {msgAuto && <span style={{ fontSize: '0.72rem', color: '#3de8a0', fontFamily: "'IBM Plex Mono', monospace" }}>{msgAuto}</span>}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <h5 style={s.cardTitle}>Reclamações Importadas ({reclamacoes.length})</h5>
+              {msgAuto && <span style={{ fontSize: '0.72rem', color: '#3de8a0', fontFamily: "'IBM Plex Mono', monospace" }}>{msgAuto}</span>}
+            </div>
+            {(() => {
+              const pendentes = reclamacoes.filter(r => !r.matricula && r.cte).length;
+              return pendentes > 0 ? (
+                <button style={s.btnSm('#0d6efd', '#fff')} onClick={handleVincularPendentes}>
+                  Vincular pendentes ({pendentes})
+                </button>
+              ) : null;
+            })()}
           </div>
           <div style={s.cardBody}>
             {loading ? (
@@ -263,7 +299,12 @@ export default function AdminReclamacoes() {
                             ) : situacao === 'pendente' ? (
                               <span style={s.badge('rgba(255,159,64,.15)', '#ff9f40')}>CTE pendente</span>
                             ) : (
-                              <span style={s.badge('rgba(255,90,90,.15)', '#ff5a5a')}>CTE não encontrado</span>
+                              <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                                <span style={s.badge('rgba(255,90,90,.15)', '#ff5a5a')}>CTE não encontrado</span>
+                                <button style={s.btnSm('#0d6efd', '#fff')} onClick={() => handleVincular(r.id)}>
+                                  Vincular
+                                </button>
+                              </div>
                             )}
                           </td>
                           <td style={s.td}>{formatDate(r.data_criacao)}</td>
