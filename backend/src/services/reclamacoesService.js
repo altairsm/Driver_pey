@@ -203,6 +203,19 @@ export async function atualizarCte(id, cte) {
   return { id, cte: cteLimpo, matricula };
 }
 
+export async function atualizarMotorista(id, matricula) {
+  const matInt = matricula ? parseInt(matricula, 10) : null;
+  if (matInt && isNaN(matInt)) {
+    throw new Error('Matrícula inválida');
+  }
+  const result = await pool.query(`
+    UPDATE acareacaojad
+    SET "OperadorMatricula" = $1
+    WHERE id = $2
+  `, [matInt, id]);
+  return { id, matricula: matInt, atualizado: result.rowCount > 0 };
+}
+
 export async function deletarReclamacao(id) {
   const result = await pool.query(`DELETE FROM acareacaojad WHERE id = $1`, [id]);
   return result.rowCount > 0;

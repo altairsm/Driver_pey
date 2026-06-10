@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { uploadReclamacoes, listarReclamacoes, atualizarCte, deletarReclamacao, listarReclamacoesSemMotorista, getQuinzenasReclamacoes } from '../services/reclamacoesService.js';
+import { uploadReclamacoes, listarReclamacoes, atualizarCte, deletarReclamacao, listarReclamacoesSemMotorista, getQuinzenasReclamacoes, atualizarMotorista } from '../services/reclamacoesService.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -59,6 +59,21 @@ router.put('/reclamacoes/:id/cte', async (req, res) => {
   } catch (err) {
     console.error('Erro ao atualizar CTE:', err);
     res.status(500).json({ error: 'Erro ao atualizar CTE' });
+  }
+});
+
+router.put('/reclamacoes/:id/motorista', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { matricula } = req.body;
+    if (matricula === undefined || matricula === null || matricula === '') {
+      return res.status(400).json({ error: 'Matrícula é obrigatória' });
+    }
+    const result = await atualizarMotorista(id, matricula);
+    res.json(result);
+  } catch (err) {
+    console.error('Erro ao atualizar motorista:', err);
+    res.status(500).json({ error: 'Erro ao atualizar motorista' });
   }
 });
 
