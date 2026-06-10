@@ -116,7 +116,7 @@ export async function atualizarMatriculasPendentes() {
         AND LOWER(r."Evento") = 'entrega'
       LIMIT 1
     )
-    WHERE a."OperadorMatricula" IS NULL
+    WHERE (a."OperadorMatricula" IS NULL OR a."OperadorMatricula" = 0)
       AND a."NCTE" IS NOT NULL
   `);
   return result.rowCount || 0;
@@ -169,7 +169,7 @@ export async function listarReclamacoes(inicio, fim) {
     LEFT JOIN matriculos_jad m ON m."OperadorMatricula"::bigint = a."OperadorMatricula"
     ${whereClause}
     ORDER BY
-      CASE WHEN a."NCTE" IS NULL OR a."OperadorMatricula" IS NULL THEN 0 ELSE 1 END,
+      CASE WHEN a."NCTE" IS NULL OR a."OperadorMatricula" IS NULL OR a."OperadorMatricula" = 0 THEN 0 ELSE 1 END,
       a.data_criacao DESC,
       a.id DESC
   `;
@@ -243,7 +243,7 @@ export async function vincularTodosPendentes() {
         AND LOWER(r."Evento") = 'entrega'
       LIMIT 1
     )
-    WHERE a."OperadorMatricula" IS NULL
+    WHERE (a."OperadorMatricula" IS NULL OR a."OperadorMatricula" = 0)
       AND a."NCTE" IS NOT NULL
       AND EXISTS (
         SELECT 1 FROM relatorioentrega_export r2
@@ -271,11 +271,11 @@ export async function listarReclamacoesSemMotorista() {
       a.data_criacao,
       CASE
         WHEN a."NCTE" IS NULL THEN 'CTE pendente'
-        WHEN a."OperadorMatricula" IS NULL THEN 'CTE não encontrado'
+        WHEN a."OperadorMatricula" IS NULL OR a."OperadorMatricula" = 0 THEN 'CTE não encontrado'
         ELSE 'ok'
       END AS situacao
     FROM acareacaojad a
-    WHERE a."OperadorMatricula" IS NULL
+    WHERE (a."OperadorMatricula" IS NULL OR a."OperadorMatricula" = 0)
     ORDER BY a.data_criacao DESC
   `);
   return result.rows;
