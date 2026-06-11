@@ -603,7 +603,11 @@ export async function runMigrations() {
     console.log('  solicitacoes_pagamento columns expanded');
 
     // ── Step 7: matriculos_jad column migrations ──
-    await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS leu_regras BOOLEAN DEFAULT false');
+    try {
+      await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS leu_regras BOOLEAN DEFAULT false');
+    } catch (err) {
+      console.log('  Note: leu_regras column exists or could not be converted to boolean automatically');
+    }
     await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS cnpj_mei VARCHAR(18)');
     await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS pix_tipo VARCHAR(3) DEFAULT \'CPF\'');
     console.log('  matriculos_jad columns expanded (leu_regras, cnpj_mei, pix_tipo)');
@@ -611,19 +615,31 @@ export async function runMigrations() {
     // ── Step 8: Seeds ──
     console.log('Migrations: checking seed data...');
 
-    await seedIfEmpty('faixas_peso', seedFaixasPeso);
-    await seedIfEmpty('tabela_frete_motorista', seedFreteMotorista);
-    await seedIfEmpty('ceps_bairros', seedCepsBairros);
-    await seedIfEmpty('faixas_peso_entrega_bairro', seedFaixasBairro);
+    try {
+      await seedIfEmpty('faixas_peso', seedFaixasPeso);
+      await seedIfEmpty('tabela_frete_motorista', seedFreteMotorista);
+      await seedIfEmpty('ceps_bairros', seedCepsBairros);
+      await seedIfEmpty('faixas_peso_entrega_bairro', seedFaixasBairro);
 
-    await pool.query(seedMatriculas);
-    console.log('  Seed data inserted into matriculos_jad (ON CONFLICT DO NOTHING)');
+      await pool.query(seedMatriculas);
+      console.log('  Seed data inserted into matriculos_jad');
+    } catch (err) {
+      console.warn('  Warning: Some initial seeds failed (might already exist with different types):', err.message);
+    }
 
-    await pool.query(seedListas);
-    console.log('  Seed data inserted into lista_entregas (ON CONFLICT DO NOTHING)');
+    try {
+      await pool.query(seedListas);
+      console.log('  Seed data inserted into lista_entregas');
+    } catch (err) {
+      console.warn('  Warning: seedListas failed:', err.message);
+    }
 
-    await pool.query(seedRelatorio);
-    console.log('  Seed data inserted into relatorioentrega_export (conditional)');
+    try {
+      await pool.query(seedRelatorio);
+      console.log('  Seed data inserted into relatorioentrega_export');
+    } catch (err) {
+      console.warn('  Warning: seedRelatorio failed:', err.message);
+    }
 
     await pool.query(fixSeedStatus);
     console.log('  Seed list status fixed (Aberto → Finalizado)');
