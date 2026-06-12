@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDriverDashboard, getDriverTrips, getDriverMe, getDriverTripsFaixas, getQuinzenas, getProdutividade, getEficiencia, getReclamacoes, solicitarPagamento, getUltimaImportacaoReclamacoes, getConfig } from '../services/api';
+import { getDriverDashboard, getDriverTrips, getDriverMe, getDriverTripsFaixas, getQuinzenas, getProdutividade, getEficiencia, getReclamacoes, solicitarPagamento, getUltimaImportacaoReclamacoes, getConfig, getTaxasAdiantamento } from '../services/api';
 
 const EVENTOS_INSUCESSO = [
   'tentativa de entrega', 'ausente', 'recusado',
@@ -50,6 +50,19 @@ function calcQuinzenaFim(dataStr) {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
 }
 
+function calcDiasAteFechamento(dataBaixa) {
+  const d = new Date(dataBaixa.slice(0, 10));
+  const dia = d.getUTCDate();
+  let fechamento;
+  if (dia <= 15) {
+    fechamento = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 14));
+  } else {
+    fechamento = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
+  }
+  const diffMs = fechamento.getTime() - d.getTime();
+  return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+}
+
 // ─── Tab navigation ───────────────────────────────────────────────────────────
 const TABS = [
   { id: 'reclamacoes',  label: 'Acareação',   icon: '⚠️' },
@@ -80,6 +93,7 @@ export default function DriverDashboard() {
   const [countdown, setCountdown] = useState({ ativo: false, texto: '' });
   const [cepCache, setCepCache] = useState({});
   const [config, setConfig] = useState(null);
+  const [taxas, setTaxas] = useState([]);
   const [activeTab, setActiveTab] = useState('reclamacoes');
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -121,9 +135,10 @@ export default function DriverDashboard() {
           navigate('/driver/regras-pagamento');
           return;
         }
-        const [qzs, cfg] = await Promise.all([getQuinzenas(), getConfig()]);
+        const [qzs, cfg, tx] = await Promise.all([getQuinzenas(), getConfig(), getTaxasAdiantamento()]);
         setQuinzenas(qzs);
         setConfig(cfg);
+        setTaxas(tx);
         const ultima = await getUltimaImportacaoReclamacoes();
         setUltimaImportacao(ultima.ultima_importacao);
         if (qzs.length > 0) {
@@ -570,7 +585,9 @@ export default function DriverDashboard() {
                     const solicitacaoStatus = t.solicitacao_status || null;
                     const reclamacoesDesatualizadas = !ultimaImportacao || (Date.now() - new Date(ultimaImportacao).getTime()) > 4 * 60 * 60 * 1000;
                     const eficienciaMinima = Number(config?.eficiencia_minima_adiantamento) || 98;
-                    const taxaAdiantamento = Number(config?.taxa_adiantamento) || 0;
+                    const diasAteFech = t.data_baixa ? calcDiasAteFechamento(t.data_baixa) : 14;
+                    const taxaRow = taxas.find(tx => tx.dias_ate_fechamento === Math.min(diasAteFech, 14));
+                    const taxaAdiantamento = Number(taxaRow?.taxa) || 0;
                     const valorLiquido = totalValorLista * (1 - taxaAdiantamento / 100);
                     const elegivel = !t.pago && pctEficiencia >= eficienciaMinima && dataBaixaOk && !t.tem_reclamacao_aberta && totalValorLista > 0 && totalValorLista <= 400 && !emSuspensao && !temSolicitacao && !reclamacoesDesatualizadas && t.status === 'Finalizado';
                     const motivos = [];

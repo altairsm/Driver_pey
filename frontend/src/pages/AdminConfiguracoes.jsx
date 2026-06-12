@@ -32,7 +32,6 @@ export default function AdminConfiguracoes() {
       const updated = await updateConfig({
         dias_uteis_pagamento: Number(config.dias_uteis_pagamento),
         eficiencia_minima_adiantamento: Number(config.eficiencia_minima_adiantamento),
-        taxa_adiantamento: Number(config.taxa_adiantamento),
         multa_reclamacao: Number(config.multa_reclamacao),
       });
       setConfig(updated);
@@ -74,19 +73,6 @@ export default function AdminConfiguracoes() {
               step="0.01"
               value={config.eficiencia_minima_adiantamento}
               onChange={e => handleChange('eficiencia_minima_adiantamento', e.target.value)}
-              style={s.input}
-            />
-          </div>
-
-          <div style={s.field}>
-            <label style={s.label}>Taxa de adiantamento (%) — desconto aplicado sobre o valor adiantado</label>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              step="0.01"
-              value={config.taxa_adiantamento}
-              onChange={e => handleChange('taxa_adiantamento', e.target.value)}
               style={s.input}
             />
           </div>

@@ -20,6 +20,7 @@ const GRUPOS = [
       { label: 'Pagamentos', path: '/admin/pagamentos' },
       { label: 'Tabelas', path: '/admin/tabelas' },
       { label: 'Adiantamentos', path: '/admin/solicitacoes-pagamento' },
+      { label: 'Taxas', path: '/admin/taxas-adiantamento' },
     ],
   },
   {
