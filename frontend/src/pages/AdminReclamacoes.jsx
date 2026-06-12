@@ -91,7 +91,7 @@ export default function AdminReclamacoes() {
     try {
       const r = await uploadReclamacoes(file);
       let msg = `✅ ${r.importadas} importados (${r.com_motorista} c/ motorista, ${r.cte_pendente} CTE pendente, ${r.cte_nao_encontrado} CTE não encontrado`;
-      if (r.duplicatas > 0) msg += `, ${r.duplicatas} duplicatas`;
+      if (r.atualizadas > 0) msg += `, ${r.atualizadas} atualizadas`;
       msg += ')';
       if (r.erros?.length > 0) msg += ` | ⚠️ ${r.erros.length} erro(s): ${r.erros.join('; ')}`;
       setMsgUpload(msg);
