@@ -21,7 +21,7 @@ export default function AdminReclamacoes() {
   const [editMotoristaId, setEditMotoristaId] = useState(null);
   const [editMotoristaVal, setEditMotoristaVal] = useState('');
 
-  const [filtroStatus, setFiltroStatus] = useState('pendentes');
+  const [filtroStatus, setFiltroStatus] = useState('Pendente');
   const [quinzenas, setQuinzenas] = useState([]);
   const [qzIdx, setQzIdx] = useState(0);
 
@@ -29,8 +29,7 @@ export default function AdminReclamacoes() {
 
   const filtradas = useMemo(() => {
     if (filtroStatus === 'todos') return reclamacoes;
-    if (filtroStatus === 'ok') return reclamacoes.filter(r => r.cte && r.matricula);
-    return reclamacoes.filter(r => !r.cte || !r.matricula);
+    return reclamacoes.filter(r => r.status_original === filtroStatus);
   }, [reclamacoes, filtroStatus]);
 
   const carregar = useCallback(async (inicio, fim) => {
@@ -219,8 +218,8 @@ export default function AdminReclamacoes() {
             <label style={{ fontSize: '0.7rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '1px' }}>Status</label>
             <select value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)}
               style={{ background: '#1e2230', border: '1px solid #2a2f3e', color: '#e8eaf0', padding: '6px 12px', borderRadius: 4, fontSize: '0.78rem', fontFamily: "'IBM Plex Mono', monospace" }}>
-              <option value="pendentes">Pendentes</option>
-              <option value="ok">Resolvidos</option>
+              <option value="Pendente">Pendente</option>
+              <option value="Resolvido">Resolvido</option>
               <option value="todos">Todos</option>
             </select>
           </div>
@@ -264,7 +263,7 @@ export default function AdminReclamacoes() {
             {loading ? (
               <div style={s.empty}>Carregando...</div>
             ) : filtradas.length === 0 ? (
-              <div style={s.empty}>Nenhuma reclamação {filtroStatus === 'pendentes' ? 'pendente' : filtroStatus === 'ok' ? 'resolvida' : ''}.</div>
+              <div style={s.empty}>Nenhuma reclamação com status "{filtroStatus}".</div>
             ) : (
               <div style={s.tableWrap}>
                 <table style={s.table}>
