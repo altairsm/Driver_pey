@@ -37,6 +37,23 @@ export async function calcularPagamentos(inicio, fim) {
         CASE WHEN valor_peso > 0 THEN 0 ELSE 1 END,
         valor_peso ASC
     ),
+    multas AS (
+      SELECT
+        e."OperadorMatricula"::bigint AS matricula,
+        COUNT(*)::int AS qtd_reclamacoes,
+        COUNT(*)::int * (SELECT COALESCE(multa_reclamacao, 0) FROM configuracoes WHERE id = 1) AS total_multa
+      FROM acareacaojad r
+      JOIN relatorioentrega_export e ON e."NCTE" = r."NCTE" AND LOWER(e."Evento") = 'entrega'
+      JOIN solicitacoes_pagamento sp ON sp.lista_numero = e."Lista"::bigint
+        AND sp.matricula = e."OperadorMatricula"::bigint
+        AND sp.status = 'aprovado'
+        AND sp.aprovado_em < r.data_criacao::timestamp
+      CROSS JOIN quinzena_params qp
+      WHERE r.data_criacao BETWEEN qp.inicio AND qp.fim
+        AND r."NCTE" IS NOT NULL
+        AND e."OperadorMatricula" IS NOT NULL
+      GROUP BY e."OperadorMatricula"::bigint
+    ),
     resumo_motorista AS (
       SELECT
         matricula,
@@ -59,12 +76,15 @@ export async function calcularPagamentos(inicio, fim) {
       COALESCE(rm.total_ctes, 0)   AS total_ctes,
       COALESCE(rm.total_listas, 0) AS total_listas,
       COALESCE(rm.peso_total, 0)   AS peso_total,
-      COALESCE(rm.total_quinzena, 0)::numeric(10,2) AS total_quinzena,
+      COALESCE(rm.total_quinzena - COALESCE(mu.total_multa, 0), 0)::numeric(10,2) AS total_quinzena,
       COALESCE(rm.total_faturamento, 0)::numeric(10,2) AS receita_total,
-      COALESCE(rm.total_faturamento - rm.total_quinzena, 0)::numeric(10,2) AS margem_bruta,
+      COALESCE(rm.total_faturamento - rm.total_quinzena + COALESCE(mu.total_multa, 0), 0)::numeric(10,2) AS margem_bruta,
+      COALESCE(mu.total_multa, 0)::numeric(10,2) AS total_multa,
+      COALESCE(mu.qtd_reclamacoes, 0) AS qtd_reclamacoes,
       COALESCE(rm.pago, false) AS pago
     FROM matriculos_jad m
     LEFT JOIN resumo_motorista rm ON rm.matricula = m."OperadorMatricula"::bigint
+    LEFT JOIN multas mu ON mu.matricula = m."OperadorMatricula"::bigint
     WHERE rm.matricula IS NOT NULL
     ORDER BY m.nome_completo;
   `;
