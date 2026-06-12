@@ -77,6 +77,7 @@ export default function DriverDashboard() {
   const [solicitando, setSolicitando] = useState({});
   const [msgSolicitacao, setMsgSolicitacao] = useState('');
   const [ultimaImportacao, setUltimaImportacao] = useState(null);
+  const [countdown, setCountdown] = useState({ ativo: false, texto: '' });
   const [cepCache, setCepCache] = useState({});
   const [config, setConfig] = useState(null);
   const [activeTab, setActiveTab] = useState('reclamacoes');
@@ -156,6 +157,31 @@ export default function DriverDashboard() {
       }
     });
   }, [reclamacoes]);
+
+  useEffect(() => {
+    if (!ultimaImportacao) {
+      setCountdown({ ativo: false, texto: '' });
+      return;
+    }
+    const atualizar = () => {
+      const fim = new Date(ultimaImportacao).getTime() + 4 * 60 * 60 * 1000;
+      const restante = fim - Date.now();
+      if (restante <= 0) {
+        setCountdown({ ativo: false, texto: '' });
+        return;
+      }
+      const h = Math.floor(restante / (1000 * 60 * 60));
+      const m = Math.floor((restante % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((restante % (1000 * 60)) / 1000);
+      setCountdown({
+        ativo: true,
+        texto: `${h}h ${m.toString().padStart(2, '0')}m ${s.toString().padStart(2, '0')}s`,
+      });
+    };
+    atualizar();
+    const id = setInterval(atualizar, 1000);
+    return () => clearInterval(id);
+  }, [ultimaImportacao]);
 
   const handlePrev = async () => {
     if (qzIdx < quinzenas.length - 1) {
@@ -502,6 +528,17 @@ export default function DriverDashboard() {
                 <a href="/driver/regras-pagamento" target="_blank" rel="noopener noreferrer" style={s.regrasLink}>📋 Regras</a>
               </div>
               <div style={s.sectionSub}>Valor calculado por faixa de peso e bairro</div>
+              {countdown.ativo ? (
+                <div style={s.countdownBanner}>
+                  <span>🕐</span>
+                  <span>Janela de solicitação ativa por mais <strong>{countdown.texto}</strong></span>
+                </div>
+              ) : ultimaImportacao ? (
+                <div style={s.countdownExpired}>
+                  <span>⏳</span>
+                  <span>Última importação de reclamações há mais de 4h. Aguarde o administrador atualizar para solicitar adiantamento.</span>
+                </div>
+              ) : null}
               {msgSolicitacao && <div style={s.solicMsg}>{msgSolicitacao}</div>}
               {trips.length === 0 ? (
                 <div style={s.empty}>Nenhuma lista encontrada para esta quinzena.</div>
@@ -812,5 +849,9 @@ const s = {
   empty: { textAlign: 'center', padding: '32px 0', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.72rem', color: '#6b7280', letterSpacing: '1px' },
   regrasLink: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.6rem', color: '#5ab4ff', textDecoration: 'none', letterSpacing: '1px', padding: '4px 8px', border: '1px solid #5ab4ff33', borderRadius: 2 },
   solicMsg: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.72rem', color: '#3de8a0', marginBottom: 12, padding: '10px 12px', background: '#1a3a2a', border: '1px solid #3de8a033', borderRadius: 4 },
+
+  countdownBanner: { background: '#0a2a1a', border: '1px solid #3de8a0', borderRadius: 6, padding: '10px 16px', marginBottom: 16, fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem', color: '#3de8a0', display: 'flex', alignItems: 'center', gap: 8 },
+
+  countdownExpired: { background: '#2a1a0a', border: '1px solid #ff9f40', borderRadius: 6, padding: '10px 16px', marginBottom: 16, fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem', color: '#ff9f40', display: 'flex', alignItems: 'center', gap: 8 },
   footer: { padding: '20px 16px', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.55rem', color: '#2a2f3e', letterSpacing: '1px', textAlign: 'center' },
 };
