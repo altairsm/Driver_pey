@@ -179,8 +179,29 @@ export default function DriverRegrasPagamento() {
         </div>
 
         <div style={s.card}>
-          <div style={s.cardHeader('#f0c040')}>
+          <div style={s.cardHeader('#ff5a5a')}>
             <div style={s.cardNum}>08</div>
+            <div style={s.cardTitle}>Multa por reclamação pós-adiantamento</div>
+          </div>
+          <div style={s.cardBody}>
+            Ao solicitar o adiantamento de uma lista, você está <strong style={{ color: '#e8eaf0' }}>automaticamente sujeito</strong> à seguinte regra:
+            <br /><br />
+            Se após o adiantamento ser <strong style={{ color: '#3de8a0' }}>aprovado</strong> surgir
+            <strong style={{ color: '#e8eaf0' }}> qualquer reclamação</strong> (acareação ou comprovante de entrega)
+            vinculada a um CTE daquela lista, será aplicada uma <strong style={{ color: '#ff5a5a' }}>multa</strong> por reclamação.
+            <br /><br />
+            O valor da multa é definido pela administração e pode ser consultado com eles.
+            <br /><br />
+            O valor da multa é <strong style={{ color: '#ff5a5a' }}>abatido automaticamente</strong> do seu pagamento na quinzena onde a reclamação foi registrada.
+            <br /><br />
+            <span style={{ color: '#ff9f40', fontWeight: 600 }}>⚠️ Importante:</span> Esta regra vale mesmo que a lista já tenha sido paga antecipadamente.
+            O adiantamento <strong style={{ color: '#ff5a5a' }}>não isenta</strong> a responsabilidade sobre reclamações futuras.
+          </div>
+        </div>
+
+        <div style={s.card}>
+          <div style={s.cardHeader('#f0c040')}>
+            <div style={s.cardNum}>09</div>
             <div style={s.cardTitle}>Como solicitar</div>
           </div>
           <div style={s.cardBody}>

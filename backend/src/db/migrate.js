@@ -602,6 +602,10 @@ export async function runMigrations() {
     await pool.query('ALTER TABLE solicitacoes_pagamento ADD COLUMN IF NOT EXISTS taxa_aplicada NUMERIC(5,2)');
     console.log('  solicitacoes_pagamento columns expanded');
 
+    // ── Step 6b: configuracoes column migrations ──
+    await pool.query('ALTER TABLE configuracoes ADD COLUMN IF NOT EXISTS multa_reclamacao NUMERIC(10,2) NOT NULL DEFAULT 0.00');
+    console.log('  configuracoes.multa_reclamacao added');
+
     // ── Step 7: matriculos_jad column migrations ──
     try {
       await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS leu_regras BOOLEAN DEFAULT false');

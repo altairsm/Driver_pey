@@ -157,6 +157,14 @@ export default function AdminPagamentos() {
                   {formatBRL(resumo.total_margem)}
                 </span>
               </div>
+              {resumo.total_multa > 0 && (
+                <div style={styles.rCard}>
+                  <span style={styles.rLabel}>Total Multas</span>
+                  <span style={{ ...styles.rValue, color: '#ff9f40' }}>
+                    {formatBRL(resumo.total_multa)}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div style={styles.tableWrap}>
@@ -169,6 +177,7 @@ export default function AdminPagamentos() {
                     <th style={styles.th}>CT-es</th>
                     <th style={styles.th}>Faturamento</th>
                     <th style={styles.th}>Valor Motorista</th>
+                    <th style={styles.th}>Multa</th>
                     <th style={styles.th}>Margem</th>
                     <th style={styles.th}>Ação</th>
                   </tr>
@@ -183,6 +192,26 @@ export default function AdminPagamentos() {
                       <td style={styles.td}>{formatBRL(m.receita_total)}</td>
                       <td style={{ ...styles.td, color: '#3de8a0', fontWeight: 600 }}>
                         {formatBRL(m.total_quinzena)}
+                      </td>
+                      <td style={{ ...styles.td, color: '#ff9f40' }}>
+                        {Number(m.total_multa) > 0 ? (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {formatBRL(m.total_multa)}
+                            <span style={{
+                              display: 'inline-block',
+                              padding: '1px 6px',
+                              fontSize: '0.58rem',
+                              letterSpacing: '1px',
+                              borderRadius: 2,
+                              background: 'rgba(255,159,64,.15)',
+                              color: '#ff9f40',
+                            }}>
+                              {m.qtd_reclamacoes} reclamações
+                            </span>
+                          </span>
+                        ) : (
+                          formatBRL(0)
+                        )}
                       </td>
                       <td
                         style={{
