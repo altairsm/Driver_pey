@@ -606,6 +606,24 @@ export async function runMigrations() {
     await pool.query('ALTER TABLE configuracoes ADD COLUMN IF NOT EXISTS multa_reclamacao NUMERIC(10,2) NOT NULL DEFAULT 0.00');
     console.log('  configuracoes.multa_reclamacao added');
 
+    await pool.query(`CREATE TABLE IF NOT EXISTS taxas_adiantamento (
+      dias_ate_fechamento INTEGER PRIMARY KEY,
+      taxa NUMERIC(5,2) NOT NULL DEFAULT 0.00
+    )`);
+    console.log('  -> taxas_adiantamento');
+
+    const { rows: taxaCount } = await pool.query('SELECT COUNT(*)::int AS cnt FROM taxas_adiantamento');
+    if (taxaCount[0].cnt === 0) {
+      const inserts = [];
+      for (let i = 1; i <= 14; i++) {
+        inserts.push(`(${i}, 0.00)`);
+      }
+      await pool.query(`INSERT INTO taxas_adiantamento (dias_ate_fechamento, taxa) VALUES ${inserts.join(', ')}`);
+      console.log('  taxas_adiantamento seeded (14 rows)');
+    } else {
+      console.log('  taxas_adiantamento already has data, skipping seed');
+    }
+
     // ── Step 7: matriculos_jad column migrations ──
     try {
       await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS leu_regras BOOLEAN DEFAULT false');

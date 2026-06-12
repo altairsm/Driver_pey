@@ -442,4 +442,14 @@ export async function confirmarRegras() {
   return data;
 }
 
+export async function getTaxasAdiantamento() {
+  const { data } = await api.get('/admin/taxas-adiantamento');
+  return data;
+}
+
+export async function updateTaxasAdiantamento(dados) {
+  const { data } = await api.put('/admin/taxas-adiantamento', dados);
+  return data;
+}
+
 export default api;
