@@ -16,7 +16,9 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401 || err.response?.status === 403) {
-      console.warn('🔴 Interceptor 401/403:', err.config?.url, err.response?.data);
+      const info = { url: err.config?.url, status: err.response?.status, data: err.response?.data };
+      console.warn('🔴 Interceptor 401/403:', info);
+      try { sessionStorage.setItem('auth_error', JSON.stringify(info)); } catch {}
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       if (window.location.pathname !== '/login') {
