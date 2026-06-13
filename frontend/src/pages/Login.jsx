@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login, adminLogin, saveFcmToken } from '../services/api';
+import { login, adminLogin } from '../services/api';
+import { sendFcmTokenWithRetry } from '../services/notificationService';
 
 export default function Login() {
   const [cpf, setCpf] = useState('');
@@ -44,13 +45,8 @@ export default function Login() {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.driver));
 
-      // Salvar token do Firebase após um pequeno delay para garantir sincronia
-      setTimeout(() => {
-        const fcmToken = localStorage.getItem('fcm_token');
-        if (fcmToken) {
-          saveFcmToken(fcmToken).catch(console.error);
-        }
-      }, 1500);
+      // Sistema de Retry: Tenta salvar o token do Firebase por até 15 segundos
+      sendFcmTokenWithRetry(10, 1500);
 
       if (rememberMe) {
         localStorage.setItem('savedCpf', cpf);
