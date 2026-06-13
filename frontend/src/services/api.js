@@ -455,4 +455,19 @@ export async function updateTaxasAdiantamento(dados) {
   return data;
 }
 
+export async function getBairrosRotasMapa() {
+  const { data } = await api.get('/admin/bairros-rotas/mapa');
+  return data;
+}
+
+export async function getEstatisticasMapa() {
+  const { data } = await api.get('/admin/bairros-rotas/mapa/estatisticas');
+  return data;
+}
+
+export async function geocodificarBairros() {
+  const { data } = await api.post('/admin/bairros-rotas/geocodificar');
+  return data;
+}
+
 export default api;

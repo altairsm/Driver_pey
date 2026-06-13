@@ -503,6 +503,8 @@ export async function runMigrations() {
       bairro VARCHAR(200) NOT NULL,
       rota VARCHAR(200) NOT NULL,
       nome_tabela VARCHAR(10) NOT NULL,
+      lat NUMERIC(10,7),
+      lng NUMERIC(10,7),
       UNIQUE(bairro, rota)
     )`);
     console.log('  -> bairros_rotas');
@@ -607,6 +609,10 @@ export async function runMigrations() {
     console.log('  configuracoes.multa_reclamacao added');
     await pool.query('ALTER TABLE configuracoes ADD COLUMN IF NOT EXISTS valor_maximo_adiantamento NUMERIC(10,2) NOT NULL DEFAULT 400.00');
     console.log('  configuracoes.valor_maximo_adiantamento added');
+
+    await pool.query('ALTER TABLE bairros_rotas ADD COLUMN IF NOT EXISTS lat NUMERIC(10,7)');
+    await pool.query('ALTER TABLE bairros_rotas ADD COLUMN IF NOT EXISTS lng NUMERIC(10,7)');
+    console.log('  bairros_rotas.lat/lng added');
 
     await pool.query(`CREATE TABLE IF NOT EXISTS taxas_adiantamento (
       dias_ate_fechamento INTEGER PRIMARY KEY,
