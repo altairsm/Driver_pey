@@ -40,12 +40,12 @@ router.get('/motoristas', async (req, res) => {
 
 router.post('/confirmar-pagamento', async (req, res) => {
   try {
-    const { matricula, inicio, fim } = req.body;
+    const { matricula, inicio, fim, pagamento } = req.body;
     if (!matricula || !inicio || !fim) {
       return res.status(400).json({ error: 'Matrícula, inicio e fim são obrigatórios' });
     }
 
-    await confirmarPagamento(matricula, { inicio, fim });
+    await confirmarPagamento(matricula, { inicio, fim }, pagamento || {});
     res.json({ success: true, message: 'Pagamento confirmado com sucesso' });
   } catch (err) {
     console.error('Erro ao confirmar pagamento:', err);
