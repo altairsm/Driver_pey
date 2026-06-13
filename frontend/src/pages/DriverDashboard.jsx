@@ -143,8 +143,13 @@ export default function DriverDashboard() {
         setConfig(cfg);
         setTaxas(tx);
 
+<<<<<<< HEAD
         // Reforço: Tenta sincronizar o token FCM ao entrar no dashboard (com retry)
         sendFcmTokenWithRetry(5, 2000);
+=======
+        // Re-tentar salvar o token do Firebase se ele existir no localStorage
+        sendFcmTokenWithRetry(5);
+>>>>>>> 0fb58107ef72ce739dbd35d2a25bc2bf8fce6dff
 
         const ultima = await getUltimaImportacaoReclamacoes();
         setUltimaImportacao(ultima.ultima_importacao);

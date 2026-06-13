@@ -45,7 +45,7 @@ export default function Login() {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.driver));
 
-      // Sistema de Retry: Tenta salvar o token do Firebase por até 15 segundos
+      // Sistema de Retry para sincronizar token FCM
       sendFcmTokenWithRetry(10, 1500);
 
       if (rememberMe) {
