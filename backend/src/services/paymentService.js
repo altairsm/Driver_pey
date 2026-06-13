@@ -193,6 +193,7 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
     WHERE le."Número"::text = re."Lista"
       AND re."OperadorMatricula"::bigint = $1
       AND LOWER(re."Evento") = 'entrega'
+      AND le.status = 'Finalizado'
       AND (le.pago IS NULL OR le.pago = false)
       AND re."Data"::date BETWEEN $2 AND $3
   `;
