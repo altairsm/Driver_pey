@@ -84,8 +84,8 @@ export async function checkNewComplaints() {
         await LocalNotifications.schedule({
           notifications: [
             {
-              title: "Nova Atualização de Reclamações",
-              body: "O relatório de reclamações foi atualizado. Verifique se há pendências.",
+              title: "📝 Nova Acareação ❌",
+              body: "Entre em contato com a BASE e resolver a acareação",
               id: 1,
               schedule: { at: new Date(Date.now() + 1000) },
               sound: null,

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getDriverDashboard, getDriverTrips, getDriverMe, getDriverTripsFaixas, getQuinzenas, getProdutividade, getEficiencia, getReclamacoes, solicitarPagamento, getUltimaImportacaoReclamacoes, getConfig, getTaxasAdiantamento } from '../services/api';
 import { sendFcmTokenWithRetry } from '../services/notificationService';
+import { LocalNotifications } from '@capacitor/local-notifications';
 
 const EVENTOS_INSUCESSO = [
   'tentativa de entrega', 'ausente', 'recusado',
@@ -190,12 +191,25 @@ export default function DriverDashboard() {
       setCountdown({ ativo: false, texto: '' });
       return;
     }
+    const notifiedKey = `notified_30min_${ultimaImportacao}`;
     const atualizar = () => {
       const fim = new Date(ultimaImportacao).getTime() + 4 * 60 * 60 * 1000;
       const restante = fim - Date.now();
       if (restante <= 0) {
         setCountdown({ ativo: false, texto: '' });
         return;
+      }
+      if (restante <= 30 * 60 * 1000 && !localStorage.getItem(notifiedKey)) {
+        localStorage.setItem(notifiedKey, 'true');
+        LocalNotifications.schedule({
+          notifications: [{
+            title: 'Atenção ⏰ 💲 💵 🤑',
+            body: 'Você ainda tem 30 minutos para solicitar seu adiantamento!',
+            id: 2,
+            schedule: { at: new Date(Date.now() + 1000) },
+            sound: 'dinheiro-caindo-na-conta',
+          }]
+        });
       }
       const h = Math.floor(restante / (1000 * 60 * 60));
       const m = Math.floor((restante % (1000 * 60 * 60)) / (1000 * 60));
