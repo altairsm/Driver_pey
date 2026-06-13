@@ -16,10 +16,8 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401 || err.response?.status === 403) {
-      // Se o erro vier da checagem automática de reclamações, não exibe erro na tela de login
-      if (err.config?.url?.includes('ultima-importacao')) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+      // Se o erro vier de chamadas automáticas de fundo, não exibe erro na tela de login
+      if (err.config?.url?.includes('ultima-importacao') || err.config?.url?.includes('fcm-token')) {
         return Promise.reject(err);
       }
 

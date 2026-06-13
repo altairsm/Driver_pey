@@ -24,12 +24,14 @@ export async function initNotifications() {
 
   // Listeners para Push
   PushNotifications.addListener('registration', (token) => {
-    console.log('FCM Token:', token.value);
+    console.log('FCM Token recebido:', token.value);
     localStorage.setItem('fcm_token', token.value);
-    // Se o usuário já estiver logado, envia o token pro backend
+
+    // Tenta enviar para o backend se já estiver logado
     const userToken = localStorage.getItem('token');
-    if (userToken) {
-      saveFcmToken(token.value).catch(console.error);
+    if (userToken && window.location.pathname !== '/login') {
+      console.log('Enviando token para o servidor...');
+      saveFcmToken(token.value).catch(err => console.error('Falha ao salvar token no servidor:', err));
     }
   });
 
