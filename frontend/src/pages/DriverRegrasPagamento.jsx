@@ -80,10 +80,10 @@ export default function DriverRegrasPagamento() {
         <div style={s.card}>
           <div style={s.cardHeader('#3de8a0')}>
             <div style={s.cardNum}>01</div>
-            <div style={s.cardTitle}>Eficiência mínima ({Number(config?.eficiencia_minima_adiantamento || 98).toFixed(2)}%)</div>
+            <div style={s.cardTitle}>Eficiência mínima <strong style={{ color: '#3de8a0' }}> ({Number(config?.eficiencia_minima_adiantamento || 98).toFixed(2)}%)</strong></div>
           </div>
           <div style={s.cardBody}>
-            Sua eficiência nos <strong style={{ color: '#e8eaf0' }}>últimos 30 dias</strong> deve ser igual ou superior ao valor definido pela administração (padrão {config?.eficiencia_minima_adiantamento || 98}%).
+            Sua eficiência nos <strong style={{ color: '#e8eaf0' }}>últimos 30 dias</strong> deve ser igual ou superior ao valor definido pela administração (padrão<strong style={{ color: '#e8eaf0' }}> {config?.eficiencia_minima_adiantamento || 98}%)</strong>.
             <br /><br />
             A eficiência é calculada como:
             <br />
