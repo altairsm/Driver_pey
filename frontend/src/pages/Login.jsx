@@ -44,11 +44,13 @@ export default function Login() {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.driver));
 
-      // Salvar token do Firebase se existir
-      const fcmToken = localStorage.getItem('fcm_token');
-      if (fcmToken) {
-        saveFcmToken(fcmToken).catch(console.error);
-      }
+      // Salvar token do Firebase após um pequeno delay para garantir sincronia
+      setTimeout(() => {
+        const fcmToken = localStorage.getItem('fcm_token');
+        if (fcmToken) {
+          saveFcmToken(fcmToken).catch(console.error);
+        }
+      }, 1500);
 
       if (rememberMe) {
         localStorage.setItem('savedCpf', cpf);
