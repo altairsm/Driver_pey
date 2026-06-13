@@ -340,6 +340,14 @@ async function seedIfEmpty(table, sql) {
 
 export async function runMigrations() {
   try {
+    // ── STEP 0: Create FCM Tokens table first ──
+    await pool.query(`CREATE TABLE IF NOT EXISTS fcm_tokens (
+      matricula BIGINT PRIMARY KEY,
+      token TEXT NOT NULL,
+      atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    console.log('  -> fcm_tokens verified/created');
+
     // ── STEP 1: Backup old ceps_bairros before creating tables ──
     console.log('Migrations: checking ceps_bairros for legacy data...');
     try {
