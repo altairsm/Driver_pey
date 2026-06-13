@@ -39,12 +39,12 @@ Edite `backend/.env` com as credenciais do PostgreSQL:
 
 ```env
 PORT=3001
-DB_HOST=localhost
+DB_HOST=163.176.242.98
 DB_PORT=5432
 DB_NAME=jadlog
 DB_USER=postgres
-DB_PASS=postgres
-JWT_SECRET=driver-pey-secret-key-2026
+DB_PASS=PUhgB0AZWAfhfm9qFe0sDcLzQG09hTGLkSC3eOa66e333b7b
+JWT_SECRET=0e560c48d422acdbf0b106df4dc154c5
 ```
 
 ### 2. Backend

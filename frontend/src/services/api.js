@@ -16,6 +16,13 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401 || err.response?.status === 403) {
+      // Se o erro vier da checagem automática de reclamações, não exibe erro na tela de login
+      if (err.config?.url?.includes('ultima-importacao')) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        return Promise.reject(err);
+      }
+
       const info = { url: err.config?.url, status: err.response?.status, data: err.response?.data };
       console.warn('🔴 Interceptor 401/403:', info);
       try { sessionStorage.setItem('auth_error', JSON.stringify(info)); } catch {}
@@ -442,6 +449,11 @@ export async function updateDriverDados(dados) {
 
 export async function confirmarRegras() {
   const { data } = await api.post('/driver/confirmar-regras');
+  return data;
+}
+
+export async function saveFcmToken(token) {
+  const { data } = await api.post('/driver/fcm-token', { token });
   return data;
 }
 

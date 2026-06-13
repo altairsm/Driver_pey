@@ -561,6 +561,13 @@ export async function runMigrations() {
     )`);
     console.log('  -> admin_users');
 
+    await pool.query(`CREATE TABLE IF NOT EXISTS fcm_tokens (
+      matricula BIGINT PRIMARY KEY,
+      token TEXT NOT NULL,
+      atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    console.log('  -> fcm_tokens');
+
     // ── Step 3: Create indexes ──
     console.log('Migrations: creating indexes...');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_ceps_bairros_cep ON ceps_bairros (cep_ini, cep_fim)');

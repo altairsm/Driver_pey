@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { initNotifications, checkNewComplaints } from './services/notificationService'
 import Login from './pages/Login'
 import DriverDashboard from './pages/DriverDashboard'
 import DriverRegrasPagamento from './pages/DriverRegrasPagamento'
@@ -32,6 +34,19 @@ function ProtectedRoute({ children, adminOnly }) {
 }
 
 function App() {
+  useEffect(() => {
+    // Inicializar permissões de notificação
+    initNotifications();
+
+    // Verificar reclamações ao abrir o app
+    checkNewComplaints();
+
+    // Verificar a cada 15 minutos se o app estiver aberto
+    const interval = setInterval(checkNewComplaints, 15 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <Routes>
       <Route path="/login" element={<Login />} />

@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">DriverPey</string>
-    <string name="title_activity_main">DriverPey</string>
-    <string name="package_name">com.driverpey.app</string>
-    <string name="custom_url_scheme">com.driverpey.app</string>
+    <string name="app_name">DriverPix</string>
+    <string name="title_activity_main">DriverPix</string>
+    <string name="package_name">com.driverpix.intuitiva.app</string>
+    <string name="custom_url_scheme">com.driverpix.intuitiva.app</string>
 </resources>
