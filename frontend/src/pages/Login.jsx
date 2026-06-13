@@ -14,6 +14,7 @@ export default function Login() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Carregar dados salvos
     const savedCpf = localStorage.getItem('savedCpf');
     const savedMatricula = localStorage.getItem('savedMatricula');
     if (savedCpf && savedMatricula) {
@@ -21,6 +22,16 @@ export default function Login() {
       setMatricula(savedMatricula);
       setRememberMe(true);
     }
+
+    // Verificar erros de autenticação redirecionados
+    try {
+      const saved = sessionStorage.getItem('auth_error');
+      if (saved) {
+        const info = JSON.parse(saved);
+        setError(`🔴 Erro de autenticação em "${info.url}" (${info.status}). Token inválido ou expirado.`);
+        sessionStorage.removeItem('auth_error');
+      }
+    } catch {}
   }, []);
 
   const handleDriverSubmit = async (e) => {

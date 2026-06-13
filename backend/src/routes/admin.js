@@ -40,12 +40,12 @@ router.get('/motoristas', async (req, res) => {
 
 router.post('/confirmar-pagamento', async (req, res) => {
   try {
-    const { matricula, inicio, fim } = req.body;
+    const { matricula, inicio, fim, pagamento } = req.body;
     if (!matricula || !inicio || !fim) {
       return res.status(400).json({ error: 'Matrícula, inicio e fim são obrigatórios' });
     }
 
-    await confirmarPagamento(matricula, { inicio, fim });
+    await confirmarPagamento(matricula, { inicio, fim }, pagamento || {});
     res.json({ success: true, message: 'Pagamento confirmado com sucesso' });
   } catch (err) {
     console.error('Erro ao confirmar pagamento:', err);
@@ -109,6 +109,7 @@ router.get('/resumo', async (req, res) => {
       total_receita: pagamentos.reduce((acc, p) => acc + Number(p.receita_total), 0),
       total_pagar: pagamentos.reduce((acc, p) => acc + Number(p.total_quinzena), 0),
       total_margem: pagamentos.reduce((acc, p) => acc + Number(p.margem_bruta), 0),
+      total_multa: pagamentos.reduce((acc, p) => acc + Number(p.total_multa), 0),
       motoristas: pagamentos,
     };
 

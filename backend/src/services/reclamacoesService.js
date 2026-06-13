@@ -22,7 +22,7 @@ export async function uploadReclamacoes(fileBuffer, fileName) {
     total_lidas: rows.length,
     filtradas: 0,
     importadas: 0,
-    duplicatas: 0,
+    atualizadas: 0,
     com_motorista: 0,
     cte_pendente: 0,
     cte_nao_encontrado: 0,
@@ -61,12 +61,23 @@ export async function uploadReclamacoes(fileBuffer, fileName) {
         }
       }
 
-      const insertResult = await pool.query(`
+      if (ticketId) {
+        const upd = await pool.query(`
+          UPDATE acareacaojad
+          SET status_original = $2,
+              importado_em = CURRENT_TIMESTAMP
+          WHERE ticket_id = $1
+        `, [ticketId, statusOrig]);
+        if (upd.rowCount > 0) {
+          resultado.atualizadas++;
+          continue;
+        }
+      }
+
+      await pool.query(`
         INSERT INTO acareacaojad (ticket_id, "OperadorMatricula", "NCTE", assunto, motivo, status_original, data_criacao)
-        SELECT $1::varchar, $2, $3, $4, $5, $6, $7::date
-        WHERE NOT EXISTS (
-          SELECT 1 FROM acareacaojad WHERE ticket_id IS NOT DISTINCT FROM $1::varchar
-        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7::date)
+        ON CONFLICT (ticket_id) DO NOTHING
       `, [
         ticketId || null,
         matricula,
@@ -76,11 +87,6 @@ export async function uploadReclamacoes(fileBuffer, fileName) {
         statusOrig,
         dataParsed,
       ]);
-
-      if (insertResult.rowCount === 0) {
-        resultado.duplicatas++;
-        continue;
-      }
 
       resultado.importadas++;
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Topbar from '../components/Topbar';
 import { uploadReclamacoes, getAdminReclamacoes, updateReclamacaoCte, updateReclamacaoMotorista, vincularReclamacaoMotorista, vincularReclamacoesPendentes, deleteReclamacao, getReclamacoesQuinzenas } from '../services/api';
 
@@ -21,10 +21,16 @@ export default function AdminReclamacoes() {
   const [editMotoristaId, setEditMotoristaId] = useState(null);
   const [editMotoristaVal, setEditMotoristaVal] = useState('');
 
+  const [filtroStatus, setFiltroStatus] = useState('Pendente');
   const [quinzenas, setQuinzenas] = useState([]);
   const [qzIdx, setQzIdx] = useState(0);
 
   const qzAtual = quinzenas[qzIdx] || null;
+
+  const filtradas = useMemo(() => {
+    if (filtroStatus === 'todos') return reclamacoes;
+    return reclamacoes.filter(r => r.status_original === filtroStatus);
+  }, [reclamacoes, filtroStatus]);
 
   const carregar = useCallback(async (inicio, fim) => {
     setLoading(true);
@@ -85,7 +91,7 @@ export default function AdminReclamacoes() {
     try {
       const r = await uploadReclamacoes(file);
       let msg = `✅ ${r.importadas} importados (${r.com_motorista} c/ motorista, ${r.cte_pendente} CTE pendente, ${r.cte_nao_encontrado} CTE não encontrado`;
-      if (r.duplicatas > 0) msg += `, ${r.duplicatas} duplicatas`;
+      if (r.atualizadas > 0) msg += `, ${r.atualizadas} atualizadas`;
       msg += ')';
       if (r.erros?.length > 0) msg += ` | ⚠️ ${r.erros.length} erro(s): ${r.erros.join('; ')}`;
       setMsgUpload(msg);
@@ -208,6 +214,15 @@ export default function AdminReclamacoes() {
           <button onClick={handleNext} disabled={qzIdx <= 0} style={s.navBtn}>
             Próximo &gt;
           </button>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <label style={{ fontSize: '0.7rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '1px' }}>Status</label>
+            <select value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)}
+              style={{ background: '#1e2230', border: '1px solid #2a2f3e', color: '#e8eaf0', padding: '6px 12px', borderRadius: 4, fontSize: '0.78rem', fontFamily: "'IBM Plex Mono', monospace" }}>
+              <option value="Pendente">Pendente</option>
+              <option value="Resolvido">Resolvido</option>
+              <option value="todos">Todos</option>
+            </select>
+          </div>
         </div>
 
         <div style={s.card}>
@@ -232,7 +247,7 @@ export default function AdminReclamacoes() {
         <div style={s.card}>
           <div style={s.cardHeader('#dc3545')}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <h5 style={s.cardTitle}>Reclamações Importadas ({reclamacoes.length})</h5>
+              <h5 style={s.cardTitle}>Reclamações Importadas ({filtradas.length}/{reclamacoes.length})</h5>
               {msgAuto && <span style={{ fontSize: '0.72rem', color: '#3de8a0', fontFamily: "'IBM Plex Mono', monospace" }}>{msgAuto}</span>}
             </div>
             {(() => {
@@ -247,8 +262,8 @@ export default function AdminReclamacoes() {
           <div style={s.cardBody}>
             {loading ? (
               <div style={s.empty}>Carregando...</div>
-            ) : reclamacoes.length === 0 ? (
-              <div style={s.empty}>Nenhuma reclamação importada.</div>
+            ) : filtradas.length === 0 ? (
+              <div style={s.empty}>Nenhuma reclamação com status "{filtroStatus}".</div>
             ) : (
               <div style={s.tableWrap}>
                 <table style={s.table}>
@@ -264,7 +279,7 @@ export default function AdminReclamacoes() {
                     </tr>
                   </thead>
                   <tbody>
-                    {reclamacoes.map((r) => {
+                    {filtradas.map((r) => {
                       const semCte = !r.cte;
                       const semMotorista = !r.matricula;
                       const pendente = semCte || semMotorista;

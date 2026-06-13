@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getConfig, atualizarConfig } from '../services/configuracaoService.js';
+import { requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -13,7 +14,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.put('/', async (req, res) => {
+router.put('/', requireAdmin, async (req, res) => {
   try {
     const config = await atualizarConfig(req.body);
     res.json(config);
