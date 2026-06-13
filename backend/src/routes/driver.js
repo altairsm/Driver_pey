@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { pool } from '../db/index.js';
 import { authenticateToken } from '../middleware/auth.js';
 import {
   getDriverData, getDriverDashboard, getDriverTrips, getDriverTripsFaixas,
