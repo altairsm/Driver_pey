@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login, adminLogin } from '../services/api';
+import { login, adminLogin, saveFcmToken } from '../services/api';
 
 export default function Login() {
   const [cpf, setCpf] = useState('');
@@ -43,6 +43,12 @@ export default function Login() {
       const data = await login(cpf, matricula);
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.driver));
+
+      // Salvar token do Firebase se existir
+      const fcmToken = localStorage.getItem('fcm_token');
+      if (fcmToken) {
+        saveFcmToken(fcmToken).catch(console.error);
+      }
 
       if (rememberMe) {
         localStorage.setItem('savedCpf', cpf);

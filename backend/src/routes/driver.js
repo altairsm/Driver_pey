@@ -160,4 +160,22 @@ router.post('/confirmar-regras', async (req, res) => {
   }
 });
 
+router.post('/fcm-token', async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ error: 'Token é obrigatório' });
+
+    await pool.query(`
+      INSERT INTO fcm_tokens (matricula, token)
+      VALUES ($1, $2)
+      ON CONFLICT (matricula) DO UPDATE SET token = $2, atualizado_em = CURRENT_TIMESTAMP
+    `, [req.user.matricula, token]);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Erro ao salvar FCM token:', err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
 export default router;
