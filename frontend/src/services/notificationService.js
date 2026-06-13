@@ -6,13 +6,11 @@ import { Capacitor } from '@capacitor/core';
 export async function initNotifications() {
   if (Capacitor.getPlatform() === 'web') return;
 
-  // Notificações Locais (Permissão)
   const localPerm = await LocalNotifications.checkPermissions();
   if (localPerm.display !== 'granted') {
     await LocalNotifications.requestPermissions();
   }
 
-  // Push Notifications (Firebase)
   let pushPerm = await PushNotifications.checkPermissions();
   if (pushPerm.receive !== 'granted') {
     pushPerm = await PushNotifications.requestPermissions();
@@ -22,19 +20,21 @@ export async function initNotifications() {
     await PushNotifications.register();
   }
 
-  // Listeners para Push
   PushNotifications.addListener('registration', (token) => {
     console.log('FCM Token recebido do Capacitor:', token.value);
     localStorage.setItem('fcm_token', token.value);
-    localStorage.removeItem('fcm_error'); // Limpa erro se conseguiu registrar
+    localStorage.removeItem('fcm_failed');
 
-    // Tenta enviar imediatamente se já estiver logado
-    sendFcmTokenToServer(token.value);
+    const userToken = localStorage.getItem('token');
+    if (userToken) {
+      console.log('Enviando token para o servidor...');
+      saveFcmToken(token.value).catch(err => console.error('Falha ao salvar token no servidor:', err));
+    }
   });
 
   PushNotifications.addListener('registrationError', (err) => {
-    console.error('Erro fatal no registro de Push:', err.error);
-    localStorage.setItem('fcm_error', err.error);
+    console.error('Erro no registro de Push:', err);
+    localStorage.setItem('fcm_failed', 'true');
   });
 
   PushNotifications.addListener('pushNotificationReceived', (notification) => {
@@ -42,52 +42,29 @@ export async function initNotifications() {
   });
 }
 
-/**
- * Tenta enviar o token para o servidor se o usuário estiver autenticado.
- */
-export async function sendFcmTokenToServer(tokenValue) {
-  const userToken = localStorage.getItem('token');
-  const token = tokenValue || localStorage.getItem('fcm_token');
+export async function sendFcmTokenWithRetry(maxRetries = 15, intervalMs = 1500) {
+  for (let i = 0; i < maxRetries; i++) {
+    const userToken = localStorage.getItem('token');
+    const fcmToken = localStorage.getItem('fcm_token');
 
-  if (userToken && token) {
-    try {
-      console.log('Enviando FCM Token para a VPS...');
-      await saveFcmToken(token);
-      console.log('FCM Token salvo com sucesso na tabela fcm_tokens.');
-      return true;
-    } catch (err) {
-      console.error('Erro ao enviar token para a VPS:', err.message);
-      return false;
+    if (userToken && fcmToken) {
+      try {
+        await saveFcmToken(fcmToken);
+        console.log('Token FCM enviado com sucesso');
+        return true;
+      } catch (err) {
+        console.error('Erro ao enviar token FCM, retentando...', err);
+      }
     }
+    await new Promise(r => setTimeout(r, intervalMs));
+  }
+
+  if (localStorage.getItem('fcm_failed')) {
+    console.warn('FCM: registro falhou permanentemente');
+  } else {
+    console.warn('FCM: token não disponível após o tempo limite');
   }
   return false;
-}
-
-/**
- * Tenta enviar o token com sistema de repetição (Retry)
- * Útil para quando o app acaba de abrir e o token do Google ainda não chegou.
- */
-export async function sendFcmTokenWithRetry(maxRetries = 10, delay = 1500) {
-  let attempts = 0;
-
-  const attempt = async () => {
-    attempts++;
-    const success = await sendFcmTokenToServer();
-
-    if (success) {
-      console.log(`Token sincronizado após ${attempts} tentativas.`);
-      return;
-    }
-
-    if (attempts < maxRetries) {
-      console.log(`Tentativa ${attempts}/${maxRetries} falhou. Retentando em ${delay}ms...`);
-      setTimeout(attempt, delay);
-    } else {
-      console.warn('Esgotadas as tentativas de sincronização do Token de Notificação.');
-    }
-  };
-
-  attempt();
 }
 
 export async function checkNewComplaints() {
