@@ -384,8 +384,9 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
     return { success: false, motivo: 'Lista possui reclamações abertas' };
   }
 
-  if (valorSolicitado <= 0 || valorSolicitado > 400) {
-    return { success: false, motivo: 'Valor da lista deve ser entre R$ 0,01 e R$ 400,00' };
+  const maximo = Number(config.valor_maximo_adiantamento) || 400;
+  if (valorSolicitado <= 0 || valorSolicitado > maximo) {
+    return { success: false, motivo: `Valor da lista deve ser entre R$ 0,01 e R$ ${maximo.toFixed(2)}` };
   }
 
   const dias = l['Data Baixa'] ? calcDiasAteFechamento(l['Data Baixa']) : 14;

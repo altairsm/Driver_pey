@@ -33,6 +33,7 @@ export default function AdminConfiguracoes() {
         dias_uteis_pagamento: Number(config.dias_uteis_pagamento),
         eficiencia_minima_adiantamento: Number(config.eficiencia_minima_adiantamento),
         multa_reclamacao: Number(config.multa_reclamacao),
+        valor_maximo_adiantamento: Number(config.valor_maximo_adiantamento),
       });
       setConfig(updated);
       setMsg('Configurações salvas com sucesso!');
@@ -86,6 +87,19 @@ export default function AdminConfiguracoes() {
               step="0.01"
               value={config.multa_reclamacao}
               onChange={e => handleChange('multa_reclamacao', e.target.value)}
+              style={s.input}
+            />
+          </div>
+
+          <div style={s.field}>
+            <label style={s.label}>Valor máximo para adiantamento (R$) — limite por lista</label>
+            <input
+              type="number"
+              min="0"
+              max="9999"
+              step="0.01"
+              value={config.valor_maximo_adiantamento}
+              onChange={e => handleChange('valor_maximo_adiantamento', e.target.value)}
               style={s.input}
             />
           </div>
