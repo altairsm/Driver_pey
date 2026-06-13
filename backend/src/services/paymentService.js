@@ -94,27 +94,82 @@ export async function calcularPagamentos(inicio, fim) {
 }
 
 export async function confirmarPagamento(matricula, periodo, pagamento) {
-  const query = `
-    UPDATE lista_entregas le
-    SET pago = true
+  const { inicio, fim } = periodo;
+
+  const { rows: [driver] } = await pool.query(
+    `SELECT nome_completo FROM matriculos_jad WHERE "OperadorMatricula" = $1`,
+    [matricula]
+  );
+
+  const { rows: [entregas] } = await pool.query(`
+    SELECT COUNT(DISTINCT (re."NCTE", re."Lista"))::int AS total_entregas
     FROM relatorioentrega_export re
-    WHERE le."Número"::text = re."Lista"
-      AND re."OperadorMatricula"::bigint = $1
+    JOIN lista_entregas le ON le."Número"::text = re."Lista"
+    WHERE re."OperadorMatricula"::bigint = $1
       AND LOWER(re."Evento") = 'entrega'
+      AND le.status = 'Finalizado'
       AND (le.pago IS NULL OR le.pago = false)
       AND re."Data"::date BETWEEN $2 AND $3
-  `;
-  await pool.query(query, [matricula, periodo.inicio, periodo.fim]);
+  `, [matricula, inicio, fim]);
+
+  const { rows: [gross] } = await pool.query(`
+    SELECT COALESCE(SUM(sub.valor_peso), 0)::numeric(10,2) AS total_quinzena
+    FROM (
+      SELECT DISTINCT ON (re."NCTE", re."Lista")
+        re."NCTE", re."Lista",
+        COALESCE(fb.valor_peso, 0) AS valor_peso
+      FROM relatorioentrega_export re
+      LEFT JOIN ceps_especificos ce ON ce.cep = NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '')
+      LEFT JOIN faixas_peso_entrega_bairro fb
+        ON re."Peso"::numeric BETWEEN fb.peso_de AND fb.peso_ate
+        AND fb.nome_tabela = ce.nome_tabela
+      JOIN lista_entregas le ON le."Número"::text = re."Lista"
+      WHERE re."OperadorMatricula"::bigint = $1
+        AND LOWER(re."Evento") = 'entrega'
+        AND le.status = 'Finalizado'
+        AND (le.pago IS NULL OR le.pago = false)
+        AND re."Data"::date BETWEEN $2 AND $3
+      ORDER BY re."NCTE", re."Lista",
+        CASE WHEN fb.valor_peso > 0 THEN 0 ELSE 1 END,
+        fb.valor_peso ASC
+    ) sub
+  `, [matricula, inicio, fim]);
+
+  const { rows: [multaRow] } = await pool.query(`
+    SELECT COALESCE(COUNT(*)::int * (SELECT COALESCE(multa_reclamacao, 0) FROM configuracoes WHERE id = 1), 0)::numeric(10,2) AS total_multa
+    FROM acareacaojad r
+    JOIN relatorioentrega_export e ON e."NCTE" = r."NCTE" AND LOWER(e."Evento") = 'entrega'
+    JOIN solicitacoes_pagamento sp ON sp.lista_numero = e."Lista"::bigint
+      AND sp.matricula = e."OperadorMatricula"::bigint
+      AND sp.status = 'aprovado'
+      AND sp.aprovado_em < r.data_criacao::timestamp
+    WHERE r.data_criacao BETWEEN $2 AND $3
+      AND r."NCTE" IS NOT NULL
+      AND e."OperadorMatricula"::bigint = $1
+  `, [matricula, inicio, fim]);
+
+  const { rows: [adiantadoRow] } = await pool.query(`
+    SELECT COALESCE(SUM(valor_solicitado), 0)::numeric(10,2) AS total_adiantado
+    FROM solicitacoes_pagamento
+    WHERE matricula = $1
+      AND status = 'aprovado'
+      AND aprovado_em::date BETWEEN $2 AND $3
+  `, [matricula, inicio, fim]);
+
+  const total_quinzena = parseFloat(gross?.total_quinzena) || 0;
+  const total_multa = parseFloat(multaRow?.total_multa) || 0;
+  const total_adiantado = parseFloat(adiantadoRow?.total_adiantado) || 0;
+  const total_pagar = total_quinzena - total_multa - total_adiantado;
 
   const payload = {
     matricula: Number(matricula),
-    nome: pagamento.nome || '',
-    quinzena_inicio: periodo.inicio,
-    quinzena_fim: periodo.fim,
-    total_entregas: Number(pagamento.total_entregas) || 0,
-    total_pagar: Number(pagamento.total_pagar) || 0,
-    total_multa: Number(pagamento.total_multa) || 0,
-    total_adiantado: Number(pagamento.total_adiantado) || 0,
+    nome: driver?.nome_completo || '',
+    quinzena_inicio: inicio,
+    quinzena_fim: fim,
+    total_entregas: entregas?.total_entregas || 0,
+    total_pagar: total_pagar < 0 ? 0 : total_pagar,
+    total_multa,
+    total_adiantado,
     data_pagamento: new Date().toISOString().slice(0, 10),
   };
 
@@ -130,6 +185,18 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
   } catch (err) {
     console.error('Webhook error:', err.message);
   }
+
+  const query = `
+    UPDATE lista_entregas le
+    SET pago = true
+    FROM relatorioentrega_export re
+    WHERE le."Número"::text = re."Lista"
+      AND re."OperadorMatricula"::bigint = $1
+      AND LOWER(re."Evento") = 'entrega'
+      AND (le.pago IS NULL OR le.pago = false)
+      AND re."Data"::date BETWEEN $2 AND $3
+  `;
+  await pool.query(query, [matricula, inicio, fim]);
 }
 
 export async function listarMotoristas() {
