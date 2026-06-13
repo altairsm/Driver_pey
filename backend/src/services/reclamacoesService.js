@@ -31,6 +31,7 @@ export async function uploadReclamacoes(fileBuffer, fileName) {
   };
 
   const matriculasAfetadas = new Set();
+  const ctesNaoEncontrados = [];
 
   for (const row of rows) {
     const assuntoRaw = String(row['ASSUNTO'] || row['Assunto'] || '').trim();
@@ -100,10 +101,24 @@ export async function uploadReclamacoes(fileBuffer, fileName) {
         resultado.cte_pendente++;
       } else {
         resultado.cte_nao_encontrado++;
+        if (cte) ctesNaoEncontrados.push(cte);
       }
     } catch (err) {
       resultado.erros.push(`Ticket ${ticketId}: ${err.message}`);
     }
+  }
+
+  // Resolver matrículas pendentes antes de notificar
+  if (ctesNaoEncontrados.length > 0) {
+    await atualizarMatriculasPendentes();
+    const { rows } = await pool.query(`
+      SELECT DISTINCT "OperadorMatricula"::bigint AS matricula
+      FROM acareacaojad
+      WHERE "NCTE" = ANY($1::text[])
+        AND "OperadorMatricula" IS NOT NULL
+        AND "OperadorMatricula" != 0
+    `, [ctesNaoEncontrados]);
+    rows.forEach(r => { if (r.matricula) matriculasAfetadas.add(r.matricula); });
   }
 
   // Notificar motoristas que receberam novas reclamações
