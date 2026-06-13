@@ -59,7 +59,9 @@ function calcDiasAteFechamento(dataBaixa) {
   } else {
     fechamento = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
   }
-  const diffMs = fechamento.getTime() - d.getTime();
+  const hoje = new Date();
+  hoje.setUTCHours(0, 0, 0, 0);
+  const diffMs = fechamento.getTime() - hoje.getTime();
   return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 }
 
