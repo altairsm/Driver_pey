@@ -61,7 +61,7 @@ app.use('/api/admin', cepsRoutes);
 app.use('/api/admin', reclamacoesRoutes);
 app.use('/api/admin', solicitacoesRoutes);
 app.use('/api/admin', analyticsRoutes);
-app.use('/api/configuracoes', configuracoesRoutes);
+app.use('/api/configuracoes', authenticateToken, configuracoesRoutes);
 app.use('/api/taxas-adiantamento', authenticateToken, taxasAdiantamentoRoutes);
 
 app.use((err, req, res, next) => {
