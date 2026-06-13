@@ -42,6 +42,7 @@ const GRUPOS = [
     ativoPrefix: '/admin/analytics',
     items: [
       { label: 'Por Bairro', path: '/admin/analytics/bairros' },
+      { label: 'Mapa de Bairros', path: '/admin/mapa' },
     ],
   },
   {
