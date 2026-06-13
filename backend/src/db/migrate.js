@@ -605,6 +605,8 @@ export async function runMigrations() {
     // ── Step 6b: configuracoes column migrations ──
     await pool.query('ALTER TABLE configuracoes ADD COLUMN IF NOT EXISTS multa_reclamacao NUMERIC(10,2) NOT NULL DEFAULT 0.00');
     console.log('  configuracoes.multa_reclamacao added');
+    await pool.query('ALTER TABLE configuracoes ADD COLUMN IF NOT EXISTS valor_maximo_adiantamento NUMERIC(10,2) NOT NULL DEFAULT 400.00');
+    console.log('  configuracoes.valor_maximo_adiantamento added');
 
     await pool.query(`CREATE TABLE IF NOT EXISTS taxas_adiantamento (
       dias_ate_fechamento INTEGER PRIMARY KEY,
