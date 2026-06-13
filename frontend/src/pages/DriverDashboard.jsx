@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDriverDashboard, getDriverTrips, getDriverMe, getDriverTripsFaixas, getQuinzenas, getProdutividade, getEficiencia, getReclamacoes, solicitarPagamento, getUltimaImportacaoReclamacoes, getConfig, getTaxasAdiantamento } from '../services/api';
+import { saveFcmToken, getDriverDashboard, getDriverTrips, getDriverMe, getDriverTripsFaixas, getQuinzenas, getProdutividade, getEficiencia, getReclamacoes, solicitarPagamento, getUltimaImportacaoReclamacoes, getConfig, getTaxasAdiantamento } from '../services/api';
 
 const EVENTOS_INSUCESSO = [
   'tentativa de entrega', 'ausente', 'recusado',
@@ -141,6 +141,13 @@ export default function DriverDashboard() {
         setQuinzenas(qzs);
         setConfig(cfg);
         setTaxas(tx);
+
+        // Re-tentar salvar o token do Firebase se ele existir no localStorage
+        const fcmToken = localStorage.getItem('fcm_token');
+        if (fcmToken) {
+          saveFcmToken(fcmToken).catch(err => console.error('Erro ao reenviar token:', err));
+        }
+
         const ultima = await getUltimaImportacaoReclamacoes();
         setUltimaImportacao(ultima.ultima_importacao);
         if (qzs.length > 0) {
