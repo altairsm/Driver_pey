@@ -84,8 +84,8 @@ export async function getResumo(inicio, fim) {
   return data;
 }
 
-export async function confirmarPagamento(matricula, inicio, fim) {
-  const { data } = await api.post('/admin/confirmar-pagamento', { matricula, inicio, fim });
+export async function confirmarPagamento(matricula, inicio, fim, pagamento) {
+  const { data } = await api.post('/admin/confirmar-pagamento', { matricula, inicio, fim, pagamento });
   return data;
 }
 

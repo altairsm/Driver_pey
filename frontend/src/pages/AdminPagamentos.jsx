@@ -85,7 +85,15 @@ export default function AdminPagamentos() {
     if (!qzAtual) return;
     setConfirmando(matricula);
     try {
-      await confirmarPagamento(matricula, qzAtual.inicio.slice(0, 10), qzAtual.fim.slice(0, 10));
+      const motorista = resumo?.motoristas?.find(m => Number(m.matricula) === Number(matricula));
+      const pagamento = {
+        nome: motorista?.nome_completo || '',
+        total_entregas: Number(motorista?.total_ctes) || 0,
+        total_multa: Number(motorista?.total_multa) || 0,
+        total_adiantado: Number(motorista?.total_adiantado) || 0,
+        total_pagar: Number(motorista?.total_pagar) || 0,
+      };
+      await confirmarPagamento(matricula, qzAtual.inicio.slice(0, 10), qzAtual.fim.slice(0, 10), pagamento);
       const data = await getResumo(qzAtual.inicio.slice(0, 10), qzAtual.fim.slice(0, 10));
       setResumo(data);
     } catch (err) {

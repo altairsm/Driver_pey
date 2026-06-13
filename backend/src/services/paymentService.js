@@ -93,7 +93,7 @@ export async function calcularPagamentos(inicio, fim) {
   return result.rows;
 }
 
-export async function confirmarPagamento(matricula, periodo) {
+export async function confirmarPagamento(matricula, periodo, pagamento) {
   const query = `
     UPDATE lista_entregas le
     SET pago = true
@@ -105,6 +105,31 @@ export async function confirmarPagamento(matricula, periodo) {
       AND re."Data"::date BETWEEN $2 AND $3
   `;
   await pool.query(query, [matricula, periodo.inicio, periodo.fim]);
+
+  const payload = {
+    matricula: Number(matricula),
+    nome: pagamento.nome || '',
+    quinzena_inicio: periodo.inicio,
+    quinzena_fim: periodo.fim,
+    total_entregas: Number(pagamento.total_entregas) || 0,
+    total_pagar: Number(pagamento.total_pagar) || 0,
+    total_multa: Number(pagamento.total_multa) || 0,
+    total_adiantado: Number(pagamento.total_adiantado) || 0,
+    data_pagamento: new Date().toISOString().slice(0, 10),
+  };
+
+  try {
+    const res = await fetch('https://webhook.sactudo.com.br/webhook/Driver_Pix', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      console.error(`Webhook responded with ${res.status}: ${await res.text().catch(() => '')}`);
+    }
+  } catch (err) {
+    console.error('Webhook error:', err.message);
+  }
 }
 
 export async function listarMotoristas() {

@@ -6,10 +6,10 @@ import Topbar from '../components/Topbar';
 
 const CORES_TABELA = {
   Tab_1: { fill: '#3de8a0', label: 'Verde' },
-  Tab_2: { fill: '#5ab4ff', label: 'Azul' },
-  Tab_3: { fill: '#f0c040', label: 'Amarelo' },
-  Tab_4: { fill: '#ff9f40', label: 'Laranja' },
-  Tab_5: { fill: '#ff5a5a', label: 'Vermelho' },
+  Tab_2: { fill: '#0008f8', label: 'Azul' },
+  Tab_3: { fill: '#f9e506', label: 'Amarelo' },
+  Tab_4: { fill: '#fa1e05', label: 'Laranja' },
+  Tab_5: { fill: '#050505', label: 'Vermelho' },
 };
 
 export default function AdminMapaBairros() {
