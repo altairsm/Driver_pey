@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login, adminLogin } from '../services/api';
 
@@ -10,7 +10,18 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const savedCpf = localStorage.getItem('savedCpf');
+    const savedMatricula = localStorage.getItem('savedMatricula');
+    if (savedCpf && savedMatricula) {
+      setCpf(savedCpf);
+      setMatricula(savedMatricula);
+      setRememberMe(true);
+    }
+  }, []);
 
   const handleDriverSubmit = async (e) => {
     e.preventDefault();
@@ -21,6 +32,15 @@ export default function Login() {
       const data = await login(cpf, matricula);
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.driver));
+
+      if (rememberMe) {
+        localStorage.setItem('savedCpf', cpf);
+        localStorage.setItem('savedMatricula', matricula);
+      } else {
+        localStorage.removeItem('savedCpf');
+        localStorage.removeItem('savedMatricula');
+      }
+
       if (data.driver.leu_regras) {
         navigate('/driver');
       } else {
@@ -85,6 +105,16 @@ export default function Login() {
                   required
                 />
               </div>
+              <div style={s.rememberMe}>
+                <input
+                  type="checkbox"
+                  id="rememberMe"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  style={s.checkbox}
+                />
+                <label htmlFor="rememberMe" style={s.rememberLabel}>Lembrar meus dados</label>
+              </div>
               {error && <div style={s.error}>{error}</div>}
               <button
                 type="submit"
@@ -117,6 +147,16 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
+              </div>
+              <div style={s.rememberMe}>
+                <input
+                  type="checkbox"
+                  id="rememberMe"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  style={s.checkbox}
+                />
+                <label htmlFor="rememberMe" style={s.rememberLabel}>Lembrar meus dados</label>
               </div>
               {error && <div style={s.error}>{error}</div>}
               <button
@@ -241,5 +281,23 @@ const s = {
     borderRadius: 4,
     cursor: 'pointer',
     fontSize: '0.85rem',
+  },
+  rememberMe: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: -8,
+  },
+  checkbox: {
+    cursor: 'pointer',
+    accentColor: '#f0c040',
+    width: 16,
+    height: 16,
+  },
+  rememberLabel: {
+    color: '#9ca3af',
+    fontSize: '0.85rem',
+    cursor: 'pointer',
+    userSelect: 'none',
   },
 };
