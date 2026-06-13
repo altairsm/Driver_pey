@@ -6,13 +6,11 @@ import { Capacitor } from '@capacitor/core';
 export async function initNotifications() {
   if (Capacitor.getPlatform() === 'web') return;
 
-  // Notificações Locais (Permissão)
   const localPerm = await LocalNotifications.checkPermissions();
   if (localPerm.display !== 'granted') {
     await LocalNotifications.requestPermissions();
   }
 
-  // Push Notifications (Firebase)
   let pushPerm = await PushNotifications.checkPermissions();
   if (pushPerm.receive !== 'granted') {
     pushPerm = await PushNotifications.requestPermissions();
@@ -22,14 +20,13 @@ export async function initNotifications() {
     await PushNotifications.register();
   }
 
-  // Listeners para Push
   PushNotifications.addListener('registration', (token) => {
     console.log('FCM Token recebido:', token.value);
     localStorage.setItem('fcm_token', token.value);
+    localStorage.removeItem('fcm_failed');
 
-    // Tenta enviar para o backend se já estiver logado
     const userToken = localStorage.getItem('token');
-    if (userToken && window.location.pathname !== '/login') {
+    if (userToken) {
       console.log('Enviando token para o servidor...');
       saveFcmToken(token.value).catch(err => console.error('Falha ao salvar token no servidor:', err));
     }
@@ -37,6 +34,7 @@ export async function initNotifications() {
 
   PushNotifications.addListener('registrationError', (err) => {
     console.error('Erro no registro de Push:', err);
+    localStorage.setItem('fcm_failed', 'true');
   });
 
   PushNotifications.addListener('pushNotificationReceived', (notification) => {
@@ -44,7 +42,29 @@ export async function initNotifications() {
   });
 }
 
-// Esta função ainda é útil como fallback ou para checagem manual
+export async function sendFcmTokenWithRetry(maxRetries = 15, intervalMs = 1000) {
+  for (let i = 0; i < maxRetries; i++) {
+    const fcmToken = localStorage.getItem('fcm_token');
+    if (fcmToken) {
+      try {
+        await saveFcmToken(fcmToken);
+        console.log('Token FCM enviado com sucesso');
+        return true;
+      } catch (err) {
+        console.error('Erro ao enviar token FCM, retentando...', err);
+      }
+    }
+    await new Promise(r => setTimeout(r, intervalMs));
+  }
+
+  if (localStorage.getItem('fcm_failed')) {
+    console.warn('FCM: registro falhou permanentemente');
+  } else {
+    console.warn('FCM: token não disponível após', maxRetries * intervalMs / 1000, 'segundos');
+  }
+  return false;
+}
+
 export async function checkNewComplaints() {
   try {
     const token = localStorage.getItem('token');
