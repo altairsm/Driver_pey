@@ -62,7 +62,7 @@ app.use('/api/admin', reclamacoesRoutes);
 app.use('/api/admin', solicitacoesRoutes);
 app.use('/api/admin', analyticsRoutes);
 app.use('/api/configuracoes', configuracoesRoutes);
-app.use('/api/admin/taxas-adiantamento', authenticateToken, requireAdmin, taxasAdiantamentoRoutes);
+app.use('/api/taxas-adiantamento', authenticateToken, taxasAdiantamentoRoutes);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);

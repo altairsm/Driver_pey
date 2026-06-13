@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { listarTaxas, atualizarTaxas } from '../services/taxasAdiantamentoService.js';
 
 const router = Router();
@@ -13,7 +14,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.put('/', async (req, res) => {
+router.put('/', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const taxas = await atualizarTaxas(req.body);
     res.json(taxas);
