@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login, adminLogin } from '../services/api';
 
@@ -11,6 +11,17 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem('auth_error');
+      if (saved) {
+        const info = JSON.parse(saved);
+        setError(`🔴 Erro de autenticação em "${info.url}" (${info.status}). Token inválido ou expirado.`);
+        sessionStorage.removeItem('auth_error');
+      }
+    } catch {}
+  }, []);
 
   const handleDriverSubmit = async (e) => {
     e.preventDefault();
