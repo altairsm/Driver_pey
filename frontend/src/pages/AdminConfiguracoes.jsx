@@ -32,7 +32,8 @@ export default function AdminConfiguracoes() {
       const updated = await updateConfig({
         dias_uteis_pagamento: Number(config.dias_uteis_pagamento),
         eficiencia_minima_adiantamento: Number(config.eficiencia_minima_adiantamento),
-        taxa_adiantamento: Number(config.taxa_adiantamento),
+        multa_reclamacao: Number(config.multa_reclamacao),
+        valor_maximo_adiantamento: Number(config.valor_maximo_adiantamento),
       });
       setConfig(updated);
       setMsg('Configurações salvas com sucesso!');
@@ -77,15 +78,28 @@ export default function AdminConfiguracoes() {
             />
           </div>
 
-          <div style={s.field}>
-            <label style={s.label}>Taxa de adiantamento (%) — desconto aplicado sobre o valor adiantado</label>
+          <div style={{ ...s.field, borderTop: '1px solid #2a2f3e', paddingTop: 16 }}>
+            <label style={s.label}>Multa por reclamação pós-adiantamento (R$) — valor abatido na quinzena</label>
             <input
               type="number"
               min="0"
-              max="100"
+              max="9999"
               step="0.01"
-              value={config.taxa_adiantamento}
-              onChange={e => handleChange('taxa_adiantamento', e.target.value)}
+              value={config.multa_reclamacao}
+              onChange={e => handleChange('multa_reclamacao', e.target.value)}
+              style={s.input}
+            />
+          </div>
+
+          <div style={s.field}>
+            <label style={s.label}>Valor máximo para adiantamento (R$) — limite por lista</label>
+            <input
+              type="number"
+              min="0"
+              max="9999"
+              step="0.01"
+              value={config.valor_maximo_adiantamento}
+              onChange={e => handleChange('valor_maximo_adiantamento', e.target.value)}
               style={s.input}
             />
           </div>

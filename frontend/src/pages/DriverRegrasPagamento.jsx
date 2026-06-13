@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDriverDados, confirmarRegras } from '../services/api';
+import { getDriverDados, confirmarRegras, getConfig } from '../services/api';
 
 export default function DriverRegrasPagamento() {
   const navigate = useNavigate();
   const [confirmado, setConfirmado] = useState(false);
   const [loading, setLoading] = useState(true);
   const [confirmando, setConfirmando] = useState(false);
+  const [config, setConfig] = useState(null);
 
   useEffect(() => {
     const check = async () => {
@@ -15,6 +16,8 @@ export default function DriverRegrasPagamento() {
         if (user.leu_regras) {
           setConfirmado(true);
         }
+        const cfg = await getConfig();
+        setConfig(cfg);
       } catch {}
       setLoading(false);
     };
@@ -70,17 +73,17 @@ export default function DriverRegrasPagamento() {
         <h1 style={s.title}>Pagamento Antecipado</h1>
         <div style={s.sub}>
           Regras para solicitar o adiantamento do pagamento de uma lista.<br />
-          O pagamento normal é feito em até <strong style={{ color: '#e8eaf0' }}>N dias úteis</strong> após o fechamento da quinzena
+          O pagamento normal é feito em até <strong style={{ color: '#e8eaf0' }}>{config?.dias_uteis_pagamento || 'N'} dias úteis</strong> após o fechamento da quinzena
           (configurado pela administração). Com o adiantamento, você pode receber antes se a lista atender todos os critérios abaixo.
         </div>
 
         <div style={s.card}>
           <div style={s.cardHeader('#3de8a0')}>
             <div style={s.cardNum}>01</div>
-            <div style={s.cardTitle}>Eficiência mínima (configurável)</div>
+            <div style={s.cardTitle}>Eficiência mínima <strong style={{ color: '#3de8a0' }}> ({Number(config?.eficiencia_minima_adiantamento || 98).toFixed(2)}%)</strong></div>
           </div>
           <div style={s.cardBody}>
-            Sua eficiência nos <strong style={{ color: '#e8eaf0' }}>últimos 30 dias</strong> deve ser igual ou superior ao valor definido pela administração (padrão 98%).
+            Sua eficiência nos <strong style={{ color: '#e8eaf0' }}>últimos 30 dias</strong> deve ser igual ou superior ao valor definido pela administração (padrão<strong style={{ color: '#e8eaf0' }}> {config?.eficiencia_minima_adiantamento || 98}%)</strong>.
             <br /><br />
             A eficiência é calculada como:
             <br />
@@ -124,11 +127,11 @@ export default function DriverRegrasPagamento() {
         <div style={s.card}>
           <div style={s.cardHeader('#f0c040')}>
             <div style={s.cardNum}>04</div>
-            <div style={s.cardTitle}>Valor máximo de R$ 400,00</div>
+            <div style={s.cardTitle}>Valor máximo de R$ {Number(config?.valor_maximo_adiantamento || 400).toFixed(2)}</div>
           </div>
           <div style={s.cardBody}>
             O valor calculado da lista (soma de todas as faixas de peso por bairro) deve ser de
-            <strong style={{ color: '#e8eaf0' }}> até R$ 400,00</strong>.
+            <strong style={{ color: '#e8eaf0' }}> até R$ {Number(config?.valor_maximo_adiantamento || 400).toFixed(2)}</strong>.
             <br /><br />
             Listas com valor superior seguem o fluxo normal da quinzena.
           </div>
@@ -179,8 +182,27 @@ export default function DriverRegrasPagamento() {
         </div>
 
         <div style={s.card}>
-          <div style={s.cardHeader('#f0c040')}>
+          <div style={s.cardHeader('#ff5a5a')}>
             <div style={s.cardNum}>08</div>
+            <div style={s.cardTitle}>Multa por reclamação pós-adiantamento</div>
+          </div>
+          <div style={s.cardBody}>
+            Ao solicitar o adiantamento de uma lista, você está <strong style={{ color: '#e8eaf0' }}>automaticamente sujeito</strong> à seguinte regra:
+            <br /><br />
+            Se após o adiantamento ser <strong style={{ color: '#3de8a0' }}>aprovado</strong> surgir
+            <strong style={{ color: '#e8eaf0' }}> qualquer reclamação</strong> (acareação ou comprovante de entrega)
+            vinculada a um CTE daquela lista, será aplicada uma <strong style={{ color: '#ff5a5a' }}>multa de R$ {Number(config?.multa_reclamacao || 0).toFixed(2)}</strong> por reclamação.
+            <br /><br />
+            O valor da multa é <strong style={{ color: '#ff5a5a' }}>abatido automaticamente</strong> do seu pagamento na quinzena onde a reclamação foi registrada.
+            <br /><br />
+            <span style={{ color: '#ff9f40', fontWeight: 600 }}>⚠️ Importante:</span> Esta regra vale mesmo que a lista já tenha sido paga antecipadamente.
+            O adiantamento <strong style={{ color: '#ff5a5a' }}>não isenta</strong> a responsabilidade sobre reclamações futuras.
+          </div>
+        </div>
+
+        <div style={s.card}>
+          <div style={s.cardHeader('#f0c040')}>
+            <div style={s.cardNum}>09</div>
             <div style={s.cardTitle}>Como solicitar</div>
           </div>
           <div style={s.cardBody}>

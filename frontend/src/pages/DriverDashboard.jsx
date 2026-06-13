@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDriverDashboard, getDriverTrips, getDriverMe, getDriverTripsFaixas, getQuinzenas, getProdutividade, getEficiencia, getReclamacoes, solicitarPagamento, getUltimaImportacaoReclamacoes, getConfig } from '../services/api';
+import { getDriverDashboard, getDriverTrips, getDriverMe, getDriverTripsFaixas, getQuinzenas, getProdutividade, getEficiencia, getReclamacoes, solicitarPagamento, getUltimaImportacaoReclamacoes, getConfig, getTaxasAdiantamento } from '../services/api';
 
 const EVENTOS_INSUCESSO = [
   'tentativa de entrega', 'ausente', 'recusado',
@@ -50,6 +50,21 @@ function calcQuinzenaFim(dataStr) {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
 }
 
+function calcDiasAteFechamento(dataBaixa) {
+  const d = new Date(dataBaixa.slice(0, 10));
+  const dia = d.getUTCDate();
+  let fechamento;
+  if (dia <= 15) {
+    fechamento = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 14));
+  } else {
+    fechamento = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
+  }
+  const hoje = new Date();
+  hoje.setUTCHours(0, 0, 0, 0);
+  const diffMs = fechamento.getTime() - hoje.getTime();
+  return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+}
+
 // ─── Tab navigation ───────────────────────────────────────────────────────────
 const TABS = [
   { id: 'reclamacoes',  label: 'Acareação',   icon: '⚠️' },
@@ -77,8 +92,10 @@ export default function DriverDashboard() {
   const [solicitando, setSolicitando] = useState({});
   const [msgSolicitacao, setMsgSolicitacao] = useState('');
   const [ultimaImportacao, setUltimaImportacao] = useState(null);
+  const [countdown, setCountdown] = useState({ ativo: false, texto: '' });
   const [cepCache, setCepCache] = useState({});
   const [config, setConfig] = useState(null);
+  const [taxas, setTaxas] = useState([]);
   const [activeTab, setActiveTab] = useState('reclamacoes');
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -120,9 +137,10 @@ export default function DriverDashboard() {
           navigate('/driver/regras-pagamento');
           return;
         }
-        const [qzs, cfg] = await Promise.all([getQuinzenas(), getConfig()]);
+        const [qzs, cfg, tx] = await Promise.all([getQuinzenas(), getConfig(), getTaxasAdiantamento()]);
         setQuinzenas(qzs);
         setConfig(cfg);
+        setTaxas(tx);
         const ultima = await getUltimaImportacaoReclamacoes();
         setUltimaImportacao(ultima.ultima_importacao);
         if (qzs.length > 0) {
@@ -156,6 +174,31 @@ export default function DriverDashboard() {
       }
     });
   }, [reclamacoes]);
+
+  useEffect(() => {
+    if (!ultimaImportacao) {
+      setCountdown({ ativo: false, texto: '' });
+      return;
+    }
+    const atualizar = () => {
+      const fim = new Date(ultimaImportacao).getTime() + 4 * 60 * 60 * 1000;
+      const restante = fim - Date.now();
+      if (restante <= 0) {
+        setCountdown({ ativo: false, texto: '' });
+        return;
+      }
+      const h = Math.floor(restante / (1000 * 60 * 60));
+      const m = Math.floor((restante % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((restante % (1000 * 60)) / 1000);
+      setCountdown({
+        ativo: true,
+        texto: `${h}h ${m.toString().padStart(2, '0')}m ${s.toString().padStart(2, '0')}s`,
+      });
+    };
+    atualizar();
+    const id = setInterval(atualizar, 1000);
+    return () => clearInterval(id);
+  }, [ultimaImportacao]);
 
   const handlePrev = async () => {
     if (qzIdx < quinzenas.length - 1) {
@@ -502,6 +545,17 @@ export default function DriverDashboard() {
                 <a href="/driver/regras-pagamento" target="_blank" rel="noopener noreferrer" style={s.regrasLink}>📋 Regras</a>
               </div>
               <div style={s.sectionSub}>Valor calculado por faixa de peso e bairro</div>
+              {countdown.ativo ? (
+                <div style={s.countdownBanner}>
+                  <span>🕐</span>
+                  <span>Janela de solicitação ativa por mais <strong>{countdown.texto}</strong></span>
+                </div>
+              ) : ultimaImportacao ? (
+                <div style={s.countdownExpired}>
+                  <span>⏳</span>
+                  <span>Última importação de reclamações há mais de 4h. Aguarde o administrador atualizar para solicitar adiantamento.</span>
+                </div>
+              ) : null}
               {msgSolicitacao && <div style={s.solicMsg}>{msgSolicitacao}</div>}
               {trips.length === 0 ? (
                 <div style={s.empty}>Nenhuma lista encontrada para esta quinzena.</div>
@@ -533,15 +587,18 @@ export default function DriverDashboard() {
                     const solicitacaoStatus = t.solicitacao_status || null;
                     const reclamacoesDesatualizadas = !ultimaImportacao || (Date.now() - new Date(ultimaImportacao).getTime()) > 4 * 60 * 60 * 1000;
                     const eficienciaMinima = Number(config?.eficiencia_minima_adiantamento) || 98;
-                    const taxaAdiantamento = Number(config?.taxa_adiantamento) || 0;
+                    const maximoAdiantamento = Number(config?.valor_maximo_adiantamento) || 400;
+                    const diasAteFech = t.data_baixa ? calcDiasAteFechamento(t.data_baixa) : 14;
+                    const taxaRow = taxas.find(tx => tx.dias_ate_fechamento === Math.min(diasAteFech, 14));
+                    const taxaAdiantamento = Number(taxaRow?.taxa) || 0;
                     const valorLiquido = totalValorLista * (1 - taxaAdiantamento / 100);
-                    const elegivel = !t.pago && pctEficiencia >= eficienciaMinima && dataBaixaOk && !t.tem_reclamacao_aberta && totalValorLista > 0 && totalValorLista <= 400 && !emSuspensao && !temSolicitacao && !reclamacoesDesatualizadas && t.status === 'Finalizado';
+                    const elegivel = !t.pago && pctEficiencia >= eficienciaMinima && dataBaixaOk && !t.tem_reclamacao_aberta && totalValorLista > 0 && totalValorLista <= maximoAdiantamento && !emSuspensao && !temSolicitacao && !reclamacoesDesatualizadas && t.status === 'Finalizado';
                     const motivos = [];
                     if (pctEficiencia < eficienciaMinima) motivos.push(`Eficiência abaixo de ${eficienciaMinima}%`);
                     if (!dataBaixaOk) motivos.push('Data Baixa deve ser anterior a hoje');
                     if (t.tem_reclamacao_aberta) motivos.push('Lista possui reclamação');
                     if (totalValorLista <= 0) motivos.push('Valor da lista é zero');
-                    if (totalValorLista > 400) motivos.push('Valor excede R$ 400,00');
+                    if (totalValorLista > maximoAdiantamento) motivos.push(`Valor excede R$ ${maximoAdiantamento.toFixed(2)}`);
                     if (emSuspensao) motivos.push('Quinzena em processamento');
                     if (t.status !== 'Finalizado') motivos.push('Lista não finalizada');
                     if (t.pago) motivos.push('Já paga');
@@ -812,5 +869,9 @@ const s = {
   empty: { textAlign: 'center', padding: '32px 0', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.72rem', color: '#6b7280', letterSpacing: '1px' },
   regrasLink: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.6rem', color: '#5ab4ff', textDecoration: 'none', letterSpacing: '1px', padding: '4px 8px', border: '1px solid #5ab4ff33', borderRadius: 2 },
   solicMsg: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.72rem', color: '#3de8a0', marginBottom: 12, padding: '10px 12px', background: '#1a3a2a', border: '1px solid #3de8a033', borderRadius: 4 },
+
+  countdownBanner: { background: '#0a2a1a', border: '1px solid #3de8a0', borderRadius: 6, padding: '10px 16px', marginBottom: 16, fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem', color: '#3de8a0', display: 'flex', alignItems: 'center', gap: 8 },
+
+  countdownExpired: { background: '#2a1a0a', border: '1px solid #ff9f40', borderRadius: 6, padding: '10px 16px', marginBottom: 16, fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem', color: '#ff9f40', display: 'flex', alignItems: 'center', gap: 8 },
   footer: { padding: '20px 16px', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.55rem', color: '#2a2f3e', letterSpacing: '1px', textAlign: 'center' },
 };

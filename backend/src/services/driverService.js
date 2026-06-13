@@ -272,6 +272,21 @@ function emPeriodoSuspensao(dataBaixa, diasUteis) {
   return hoje >= qf && hoje <= pd;
 }
 
+function calcDiasAteFechamento(dataBaixa) {
+  const d = new Date(dataBaixa);
+  const dia = d.getUTCDate();
+  let fechamento;
+  if (dia <= 15) {
+    fechamento = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 14));
+  } else {
+    fechamento = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
+  }
+  const hoje = new Date();
+  hoje.setUTCHours(0, 0, 0, 0);
+  const diffMs = fechamento.getTime() - hoje.getTime();
+  return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+}
+
 export async function solicitarPagamento(matricula, listaNumero, valorSolicitado) {
   const config = await getConfig();
 
@@ -369,11 +384,16 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
     return { success: false, motivo: 'Lista possui reclamações abertas' };
   }
 
-  if (valorSolicitado <= 0 || valorSolicitado > 400) {
-    return { success: false, motivo: 'Valor da lista deve ser entre R$ 0,01 e R$ 400,00' };
+  const maximo = Number(config.valor_maximo_adiantamento) || 400;
+  if (valorSolicitado <= 0 || valorSolicitado > maximo) {
+    return { success: false, motivo: `Valor da lista deve ser entre R$ 0,01 e R$ ${maximo.toFixed(2)}` };
   }
 
-  const taxaAplicada = Number(config.taxa_adiantamento) || 0;
+  const dias = l['Data Baixa'] ? calcDiasAteFechamento(l['Data Baixa']) : 14;
+  const { rows: taxaRow } = await pool.query(`
+    SELECT taxa FROM taxas_adiantamento WHERE dias_ate_fechamento = $1
+  `, [Math.min(dias, 14)]);
+  const taxaAplicada = Number(taxaRow[0]?.taxa) || 0;
 
   try {
     await pool.query(`

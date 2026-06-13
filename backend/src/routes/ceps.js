@@ -15,6 +15,9 @@ import {
   listarCepsSemTabela,
   listarBairrosSemBairrosRotas, criarBairroRota,
 } from '../services/cepsService.js';
+import {
+  geocodificarBairros, listarBairrosRotasMapa, getEstatisticasMapa,
+} from '../services/geocodingService.js';
 import { parseXLSX } from '../services/xlsxService.js';
 
 const router = Router();
@@ -86,6 +89,38 @@ router.put('/bairros-rotas/:id', async (req, res) => {
   } catch (err) {
     console.error('Erro ao atualizar bairro/rota:', err);
     res.status(500).json({ error: 'Erro ao atualizar bairro/rota' });
+  }
+});
+
+// ==================== MAPA DE BAIRROS ====================
+
+router.get('/bairros-rotas/mapa', async (req, res) => {
+  try {
+    const dados = await listarBairrosRotasMapa();
+    res.json(dados);
+  } catch (err) {
+    console.error('Erro ao buscar dados do mapa:', err);
+    res.status(500).json({ error: 'Erro ao buscar dados do mapa' });
+  }
+});
+
+router.get('/bairros-rotas/mapa/estatisticas', async (req, res) => {
+  try {
+    const stats = await getEstatisticasMapa();
+    res.json(stats);
+  } catch (err) {
+    console.error('Erro ao buscar estatísticas do mapa:', err);
+    res.status(500).json({ error: 'Erro ao buscar estatísticas' });
+  }
+});
+
+router.post('/bairros-rotas/geocodificar', async (req, res) => {
+  try {
+    const resultado = await geocodificarBairros();
+    res.json(resultado);
+  } catch (err) {
+    console.error('Erro ao geocodificar bairros:', err);
+    res.status(500).json({ error: `Erro ao geocodificar: ${err.message}` });
   }
 });
 

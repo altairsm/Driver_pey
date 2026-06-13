@@ -16,6 +16,9 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401 || err.response?.status === 403) {
+      const info = { url: err.config?.url, status: err.response?.status, data: err.response?.data };
+      console.warn('🔴 Interceptor 401/403:', info);
+      try { sessionStorage.setItem('auth_error', JSON.stringify(info)); } catch {}
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       if (window.location.pathname !== '/login') {
@@ -81,8 +84,8 @@ export async function getResumo(inicio, fim) {
   return data;
 }
 
-export async function confirmarPagamento(matricula, inicio, fim) {
-  const { data } = await api.post('/admin/confirmar-pagamento', { matricula, inicio, fim });
+export async function confirmarPagamento(matricula, inicio, fim, pagamento) {
+  const { data } = await api.post('/admin/confirmar-pagamento', { matricula, inicio, fim, pagamento });
   return data;
 }
 
@@ -439,6 +442,31 @@ export async function updateDriverDados(dados) {
 
 export async function confirmarRegras() {
   const { data } = await api.post('/driver/confirmar-regras');
+  return data;
+}
+
+export async function getTaxasAdiantamento() {
+  const { data } = await api.get('/taxas-adiantamento');
+  return data;
+}
+
+export async function updateTaxasAdiantamento(dados) {
+  const { data } = await api.put('/taxas-adiantamento', dados);
+  return data;
+}
+
+export async function getBairrosRotasMapa() {
+  const { data } = await api.get('/admin/bairros-rotas/mapa');
+  return data;
+}
+
+export async function getEstatisticasMapa() {
+  const { data } = await api.get('/admin/bairros-rotas/mapa/estatisticas');
+  return data;
+}
+
+export async function geocodificarBairros() {
+  const { data } = await api.post('/admin/bairros-rotas/geocodificar');
   return data;
 }
 

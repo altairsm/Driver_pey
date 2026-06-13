@@ -503,6 +503,8 @@ export async function runMigrations() {
       bairro VARCHAR(200) NOT NULL,
       rota VARCHAR(200) NOT NULL,
       nome_tabela VARCHAR(10) NOT NULL,
+      lat NUMERIC(10,7),
+      lng NUMERIC(10,7),
       UNIQUE(bairro, rota)
     )`);
     console.log('  -> bairros_rotas');
@@ -601,6 +603,34 @@ export async function runMigrations() {
     await pool.query('ALTER TABLE solicitacoes_pagamento ADD COLUMN IF NOT EXISTS recusado_em TIMESTAMP');
     await pool.query('ALTER TABLE solicitacoes_pagamento ADD COLUMN IF NOT EXISTS taxa_aplicada NUMERIC(5,2)');
     console.log('  solicitacoes_pagamento columns expanded');
+
+    // ── Step 6b: configuracoes column migrations ──
+    await pool.query('ALTER TABLE configuracoes ADD COLUMN IF NOT EXISTS multa_reclamacao NUMERIC(10,2) NOT NULL DEFAULT 0.00');
+    console.log('  configuracoes.multa_reclamacao added');
+    await pool.query('ALTER TABLE configuracoes ADD COLUMN IF NOT EXISTS valor_maximo_adiantamento NUMERIC(10,2) NOT NULL DEFAULT 400.00');
+    console.log('  configuracoes.valor_maximo_adiantamento added');
+
+    await pool.query('ALTER TABLE bairros_rotas ADD COLUMN IF NOT EXISTS lat NUMERIC(10,7)');
+    await pool.query('ALTER TABLE bairros_rotas ADD COLUMN IF NOT EXISTS lng NUMERIC(10,7)');
+    console.log('  bairros_rotas.lat/lng added');
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS taxas_adiantamento (
+      dias_ate_fechamento INTEGER PRIMARY KEY,
+      taxa NUMERIC(5,2) NOT NULL DEFAULT 0.00
+    )`);
+    console.log('  -> taxas_adiantamento');
+
+    const { rows: taxaCount } = await pool.query('SELECT COUNT(*)::int AS cnt FROM taxas_adiantamento');
+    if (taxaCount[0].cnt === 0) {
+      const inserts = [];
+      for (let i = 1; i <= 14; i++) {
+        inserts.push(`(${i}, 0.00)`);
+      }
+      await pool.query(`INSERT INTO taxas_adiantamento (dias_ate_fechamento, taxa) VALUES ${inserts.join(', ')}`);
+      console.log('  taxas_adiantamento seeded (14 rows)');
+    } else {
+      console.log('  taxas_adiantamento already has data, skipping seed');
+    }
 
     // ── Step 7: matriculos_jad column migrations ──
     try {

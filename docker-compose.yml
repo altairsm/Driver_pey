@@ -32,7 +32,7 @@ services:
       DB_NAME: jadlog
       DB_USER: postgres
       DB_PASS: PUhgB0AZWAfhfm9qFe0sDcLzQG09hTGLkSC3eOa66e333b7b
-      JWT_SECRET: driver-pey-secret-key-2026
+      JWT_SECRET: 0e560c48d422acdbf0b106df4dc154c5
     depends_on:
       postgres:
         condition: service_healthy
