@@ -36,6 +36,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    volumes:
+      - ./backend/firebase-service-account.json:/app/firebase-service-account.json:ro
     restart: unless-stopped
 
   frontend:
