@@ -1,9 +1,42 @@
 import { pool } from '../db/index.js';
 
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
+const VIACEP_URL = 'https://viacep.com.br/ws';
 
 function delay(ms) {
   return new Promise(r => setTimeout(r, ms));
+}
+
+async function viaCep(cep) {
+  const url = `${VIACEP_URL}/${cep}/json/`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.erro) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+async function nominatimPorEndereco(logradouro, bairro, cidade, uf) {
+  const parts = [logradouro, bairro, cidade, uf].filter(Boolean);
+  const query = parts.join(', ');
+  const url = `${NOMINATIM_URL}?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=br`;
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'DriverPey/1.0 (intuitiva.log.br)' },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.length > 0 && data[0].lat && data[0].lon) {
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export async function geocodificarBairros() {
@@ -80,57 +113,89 @@ export async function getEstatisticasMapa() {
 
 export async function geocodificarCeps(limite = 50) {
   const { rows: ceps } = await pool.query(`
-    SELECT cep, bairro FROM ceps_especificos
+    SELECT cep, bairro, geocode_attempts FROM ceps_especificos
     WHERE lat IS NULL OR lng IS NULL
+      AND (geocode_attempts IS NULL OR geocode_attempts < 3)
     LIMIT $1
   `, [limite]);
-
-  if (ceps.length === 0) {
-    const { rows: total } = await pool.query('SELECT COUNT(*)::int AS cnt FROM ceps_especificos');
-    const { rows: comCoord } = await pool.query(
-      "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE lat IS NOT NULL AND lng IS NOT NULL"
-    );
-    return {
-      geocoded: 0,
-      total: total[0].cnt,
-      restantes: total[0].cnt - comCoord[0].cnt,
-      message: 'Nenhum CEP pendente de geocodificação.',
-    };
-  }
-
-  let geocoded = 0;
-  for (const { cep } of ceps) {
-    const query = `${cep}, Salvador, BA`;
-    const url = `${NOMINATIM_URL}?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=br`;
-    try {
-      const res = await fetch(url, {
-        headers: { 'User-Agent': 'DriverPey/1.0 (intuitiva.log.br)' },
-      });
-      if (!res.ok) continue;
-      const data = await res.json();
-      if (data.length > 0 && data[0].lat && data[0].lon) {
-        const lat = parseFloat(data[0].lat);
-        const lng = parseFloat(data[0].lon);
-        await pool.query(`
-          UPDATE ceps_especificos SET lat = $1, lng = $2 WHERE cep = $3
-        `, [lat, lng, cep]);
-        geocoded++;
-      }
-    } catch (err) {
-      console.error(`  Geocode error for CEP ${cep}:`, err.message);
-    }
-    await delay(1100);
-  }
 
   const { rows: total } = await pool.query('SELECT COUNT(*)::int AS cnt FROM ceps_especificos');
   const { rows: comCoord } = await pool.query(
     "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE lat IS NOT NULL AND lng IS NOT NULL"
   );
+  const { rows: skipped } = await pool.query(
+    "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE (lat IS NULL OR lng IS NULL) AND geocode_attempts >= 3"
+  );
+  const restantes = total[0].cnt - comCoord[0].cnt - skipped[0].cnt;
+
+  if (ceps.length === 0) {
+    return {
+      geocoded: 0,
+      failed: 0,
+      skipped: skipped[0].cnt,
+      total: total[0].cnt,
+      restantes,
+      message: restantes === 0 && skipped[0].cnt === 0
+        ? 'Todos os CEPs já possuem coordenadas.'
+        : `${total[0].cnt - comCoord[0].cnt} CEPs pendentes, mas todos já tentados 3+ vezes.`,
+    };
+  }
+
+  let geocoded = 0;
+  let failed = 0;
+
+  for (const { cep, bairro } of ceps) {
+    const via = await viaCep(cep);
+    if (!via) {
+      await pool.query('UPDATE ceps_especificos SET geocode_attempts = COALESCE(geocode_attempts, 0) + 1 WHERE cep = $1', [cep]);
+      failed++;
+      await delay(300);
+      continue;
+    }
+
+    const logradouro = via.logradouro || '';
+    const bairroVia = via.bairro || bairro || '';
+    const cidade = via.localidade || 'Salvador';
+    const uf = via.uf || 'BA';
+
+    let coord = null;
+    if (logradouro) {
+      coord = await nominatimPorEndereco(logradouro, bairroVia, cidade, uf);
+    }
+    if (!coord && bairroVia) {
+      coord = await nominatimPorEndereco('', bairroVia, cidade, uf);
+    }
+    if (!coord) {
+      coord = await nominatimPorEndereco('', '', cidade, uf);
+    }
+
+    if (coord) {
+      await pool.query(`
+        UPDATE ceps_especificos SET lat = $1, lng = $2, geocode_attempts = COALESCE(geocode_attempts, 0) + 1 WHERE cep = $3
+      `, [coord.lat, coord.lng, cep]);
+      geocoded++;
+    } else {
+      await pool.query('UPDATE ceps_especificos SET geocode_attempts = COALESCE(geocode_attempts, 0) + 1 WHERE cep = $1', [cep]);
+      failed++;
+    }
+
+    await delay(1200);
+  }
+
+  const { rows: comCoord2 } = await pool.query(
+    "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE lat IS NOT NULL AND lng IS NOT NULL"
+  );
+  const { rows: skipped2 } = await pool.query(
+    "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE (lat IS NULL OR lng IS NULL) AND geocode_attempts >= 3"
+  );
+  const restantes2 = total[0].cnt - comCoord2[0].cnt - skipped2[0].cnt;
 
   return {
     geocoded,
+    failed,
+    skipped: skipped2[0].cnt,
     total: total[0].cnt,
-    restantes: total[0].cnt - comCoord[0].cnt,
-    message: `${geocoded} CEPs geocodificados. ${total[0].cnt - comCoord[0].cnt} ainda pendentes.`,
+    restantes: restantes2,
+    message: `${geocoded} geocodificados, ${failed} falha(s). ${restantes2} pendentes, ${skipped2[0].cnt} pulados (3+ tentativas).`,
   };
 }
