@@ -310,6 +310,7 @@ export default function DriverDashboard() {
           </div>
           <div style={s.drawerDivider} />
           <button style={s.drawerItem} onClick={() => { setMenuOpen(false); navigate('/driver/regras-pagamento'); }}>📋 Regras de Pagamento</button>
+          <button style={s.drawerItem} onClick={() => { setMenuOpen(false); navigate('/driver/mapa'); }}>🗺️ Mapa de Entregas</button>
           <button style={s.drawerItem} onClick={() => { setMenuOpen(false); navigate('/driver/meus-dados'); }}>👤 Meus Dados</button>
           <div style={s.drawerDivider} />
           <button style={{ ...s.drawerItem, color: '#ff5a5a' }} onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = '/login'; }}>⏻ Sair</button>
