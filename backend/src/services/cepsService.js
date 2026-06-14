@@ -152,15 +152,25 @@ export async function buscarCep(cep) {
 
 export async function adicionarCep(cep, bairro, rota, nome_tabela) {
   const cepLimpo = cep.replace(/\D/g, '');
+  const { rows: br } = await pool.query(
+    'SELECT lat, lng FROM bairros_rotas WHERE bairro = $1 AND lat IS NOT NULL LIMIT 1',
+    [bairro]
+  );
+  const lat = br.length > 0 ? br[0].lat : null;
+  const lng = br.length > 0 ? br[0].lng : null;
+  const geocodeSource = lat ? 'bairro_fallback' : null;
   const result = await pool.query(`
-    INSERT INTO ceps_especificos (cep, bairro, rota, nome_tabela)
-    VALUES ($1, $2, $3, $4)
+    INSERT INTO ceps_especificos (cep, bairro, rota, nome_tabela, lat, lng, geocode_source)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
     ON CONFLICT (cep) DO UPDATE SET
       bairro = COALESCE(EXCLUDED.bairro, ceps_especificos.bairro),
       rota = COALESCE(EXCLUDED.rota, ceps_especificos.rota),
-      nome_tabela = COALESCE(EXCLUDED.nome_tabela, ceps_especificos.nome_tabela)
+      nome_tabela = COALESCE(EXCLUDED.nome_tabela, ceps_especificos.nome_tabela),
+      lat = COALESCE(EXCLUDED.lat, ceps_especificos.lat),
+      lng = COALESCE(EXCLUDED.lng, ceps_especificos.lng),
+      geocode_source = COALESCE(EXCLUDED.geocode_source, ceps_especificos.geocode_source)
     RETURNING *
-  `, [cepLimpo, bairro || null, rota || null, nome_tabela || null]);
+  `, [cepLimpo, bairro || null, rota || null, nome_tabela || null, lat, lng, geocodeSource]);
   return result.rows[0];
 }
 

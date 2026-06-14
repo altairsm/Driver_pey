@@ -631,15 +631,19 @@ export async function runMigrations() {
 
     await pool.query('ALTER TABLE ceps_especificos ADD COLUMN IF NOT EXISTS lat NUMERIC(10,7)');
     await pool.query('ALTER TABLE ceps_especificos ADD COLUMN IF NOT EXISTS lng NUMERIC(10,7)');
-    await pool.query('ALTER TABLE ceps_especificos ADD COLUMN IF NOT EXISTS geocode_attempts INTEGER DEFAULT 0');
-    console.log('  ceps_especificos.lat/lng/geocode_attempts added');
+    await pool.query('ALTER TABLE ceps_especificos ADD COLUMN IF NOT EXISTS geocode_source VARCHAR(20)');
+    console.log('  ceps_especificos.lat/lng/geocode_source added');
 
     await pool.query(`
       UPDATE ceps_especificos ce
-      SET lat = br.lat, lng = br.lng
+      SET lat = br.lat, lng = br.lng, geocode_source = 'bairro_fallback'
       FROM bairros_rotas br
       WHERE ce.bairro = br.bairro
         AND ce.lat IS NULL
+    `);
+    await pool.query(`
+      UPDATE ceps_especificos SET geocode_source = 'bairro_fallback'
+      WHERE lat IS NOT NULL AND geocode_source IS NULL
     `);
     console.log('  ceps_especificos backfilled from bairros_rotas');
 
@@ -733,16 +737,11 @@ export async function runMigrations() {
 
     console.log('Migrations: all seed data done');
 
-    // ── Reset geocode_attempts for CEPs stuck at 3+ tries ──
-    const { rows: stuck } = await pool.query(
-      "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE (lat IS NULL OR lng IS NULL) AND geocode_attempts >= 3"
-    );
-    if (stuck[0].cnt > 0) {
-      await pool.query(
-        "UPDATE ceps_especificos SET geocode_attempts = 0 WHERE (lat IS NULL OR lng IS NULL) AND geocode_attempts >= 3"
-      );
-      console.log(`  geocode_attempts reset: ${stuck[0].cnt} CEPs liberados para nova tentativa`);
-    }
+    // ── Ensure geocode_source for CEPs that got lat/lng via old backfill ──
+    await pool.query(`
+      UPDATE ceps_especificos SET geocode_source = 'bairro_fallback'
+      WHERE lat IS NOT NULL AND geocode_source IS NULL
+    `);
   } catch (err) {
     console.error('Migration error:', err);
     throw err;
