@@ -16,7 +16,7 @@ import {
   listarBairrosSemBairrosRotas, criarBairroRota,
 } from '../services/cepsService.js';
 import {
-  geocodificarBairros, listarBairrosRotasMapa, getEstatisticasMapa,
+  geocodificarBairros, listarBairrosRotasMapa, getEstatisticasMapa, geocodificarCeps,
 } from '../services/geocodingService.js';
 import { parseXLSX } from '../services/xlsxService.js';
 
@@ -121,6 +121,17 @@ router.post('/bairros-rotas/geocodificar', async (req, res) => {
   } catch (err) {
     console.error('Erro ao geocodificar bairros:', err);
     res.status(500).json({ error: `Erro ao geocodificar: ${err.message}` });
+  }
+});
+
+router.post('/ceps/geocodificar', async (req, res) => {
+  try {
+    const { limite } = req.body;
+    const resultado = await geocodificarCeps(limite || 50);
+    res.json(resultado);
+  } catch (err) {
+    console.error('Erro ao geocodificar CEPs:', err);
+    res.status(500).json({ error: `Erro ao geocodificar CEPs: ${err.message}` });
   }
 });
 

@@ -629,6 +629,19 @@ export async function runMigrations() {
     await pool.query('ALTER TABLE bairros_rotas ADD COLUMN IF NOT EXISTS lng NUMERIC(10,7)');
     console.log('  bairros_rotas.lat/lng added');
 
+    await pool.query('ALTER TABLE ceps_especificos ADD COLUMN IF NOT EXISTS lat NUMERIC(10,7)');
+    await pool.query('ALTER TABLE ceps_especificos ADD COLUMN IF NOT EXISTS lng NUMERIC(10,7)');
+    console.log('  ceps_especificos.lat/lng added');
+
+    await pool.query(`
+      UPDATE ceps_especificos ce
+      SET lat = br.lat, lng = br.lng
+      FROM bairros_rotas br
+      WHERE ce.bairro = br.bairro
+        AND ce.lat IS NULL
+    `);
+    console.log('  ceps_especificos backfilled from bairros_rotas');
+
     await pool.query(`CREATE TABLE IF NOT EXISTS taxas_adiantamento (
       dias_ate_fechamento INTEGER PRIMARY KEY,
       taxa NUMERIC(5,2) NOT NULL DEFAULT 0.00

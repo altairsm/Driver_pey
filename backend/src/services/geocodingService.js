@@ -77,3 +77,60 @@ export async function getEstatisticasMapa() {
     total: total[0].cnt,
   };
 }
+
+export async function geocodificarCeps(limite = 50) {
+  const { rows: ceps } = await pool.query(`
+    SELECT cep, bairro FROM ceps_especificos
+    WHERE lat IS NULL OR lng IS NULL
+    LIMIT $1
+  `, [limite]);
+
+  if (ceps.length === 0) {
+    const { rows: total } = await pool.query('SELECT COUNT(*)::int AS cnt FROM ceps_especificos');
+    const { rows: comCoord } = await pool.query(
+      "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE lat IS NOT NULL AND lng IS NOT NULL"
+    );
+    return {
+      geocoded: 0,
+      total: total[0].cnt,
+      restantes: total[0].cnt - comCoord[0].cnt,
+      message: 'Nenhum CEP pendente de geocodificação.',
+    };
+  }
+
+  let geocoded = 0;
+  for (const { cep } of ceps) {
+    const query = `${cep}, Salvador, BA`;
+    const url = `${NOMINATIM_URL}?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=br`;
+    try {
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'DriverPey/1.0 (intuitiva.log.br)' },
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data.length > 0 && data[0].lat && data[0].lon) {
+        const lat = parseFloat(data[0].lat);
+        const lng = parseFloat(data[0].lon);
+        await pool.query(`
+          UPDATE ceps_especificos SET lat = $1, lng = $2 WHERE cep = $3
+        `, [lat, lng, cep]);
+        geocoded++;
+      }
+    } catch (err) {
+      console.error(`  Geocode error for CEP ${cep}:`, err.message);
+    }
+    await delay(1100);
+  }
+
+  const { rows: total } = await pool.query('SELECT COUNT(*)::int AS cnt FROM ceps_especificos');
+  const { rows: comCoord } = await pool.query(
+    "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE lat IS NOT NULL AND lng IS NOT NULL"
+  );
+
+  return {
+    geocoded,
+    total: total[0].cnt,
+    restantes: total[0].cnt - comCoord[0].cnt,
+    message: `${geocoded} CEPs geocodificados. ${total[0].cnt - comCoord[0].cnt} ainda pendentes.`,
+  };
+}

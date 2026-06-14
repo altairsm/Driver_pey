@@ -485,4 +485,9 @@ export async function geocodificarBairros() {
   return data;
 }
 
+export async function geocodificarCeps(limite = 50) {
+  const { data } = await api.post('/admin/ceps/geocodificar', { limite });
+  return data;
+}
+
 export default api;

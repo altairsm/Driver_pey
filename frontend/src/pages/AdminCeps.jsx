@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { getBairros, getCepsPorBairro, getBairrosRotas, atualizarBairroRota, criarBairroRota, getTabelas } from '../services/api';
+import { getBairros, getCepsPorBairro, getBairrosRotas, atualizarBairroRota, criarBairroRota, getTabelas, geocodificarCeps } from '../services/api';
 import Topbar from '../components/Topbar';
 
 export default function AdminCeps() {
@@ -16,6 +16,8 @@ export default function AdminCeps() {
   const [tabelas, setTabelas] = useState([]);
   const [msg, setMsg] = useState('');
   const [salvando, setSalvando] = useState(false);
+  const [geocodificando, setGeocodificando] = useState(false);
+  const [msgGeo, setMsgGeo] = useState('');
 
   const handleBuscar = async () => {
     if (!termo.trim() || termo.trim().length < 2) return;
@@ -168,6 +170,22 @@ export default function AdminCeps() {
               <button style={s.btn('#f0c040', '#0d0f14')} onClick={handleBuscar} disabled={buscando}>
                 {buscando ? 'Buscando...' : 'Buscar'}
               </button>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ ...s.card, marginTop: 8 }}>
+          <div style={s.cardBody}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.82rem', color: '#6b7280' }}>Geolocalização dos CEPs</span>
+              <button style={s.btn('#3de8a0', '#0d0f14')} onClick={async () => {
+                setGeocodificando(true); setMsgGeo('');
+                try { const r = await geocodificarCeps(50); setMsgGeo(r.message); } catch (e) { setMsgGeo('❌ ' + (e.response?.data?.error || e.message)); }
+                finally { setGeocodificando(false); }
+              }} disabled={geocodificando}>
+                {geocodificando ? 'Geocodificando...' : 'Geocodificar CEPs (50)'}
+              </button>
+              {msgGeo && <span style={{ fontSize: '0.75rem', color: msgGeo.startsWith('❌') ? '#ff5a5a' : '#3de8a0' }}>{msgGeo}</span>}
             </div>
           </div>
         </div>

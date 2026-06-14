@@ -432,22 +432,26 @@ export async function confirmarRegras(matricula) {
 
 export async function getDriverMapaQuinzena(matricula, inicio, fim) {
   const { rows } = await pool.query(`
-    SELECT
-      re."Cep" AS cep,
-      COUNT(*)::int AS total_entregas,
-      cb.bairro,
-      br.lat,
-      br.lng
-    FROM relatorioentrega_export re
-    LEFT JOIN ceps_bairros cb
-      ON re."Cep" >= cb.cep_ini AND re."Cep" <= cb.cep_fim
-    LEFT JOIN bairros_rotas br ON br.bairro = cb.bairro
-    WHERE re."OperadorMatricula"::bigint = $1
-      AND re."Data" BETWEEN $2::date AND $3::date
-      AND LOWER(re."Evento") = 'entrega'
-      AND br.lat IS NOT NULL
-    GROUP BY re."Cep", cb.bairro, br.lat, br.lng
-    ORDER BY COUNT(*) DESC
+    WITH entregas AS (
+      SELECT "Cep", COUNT(*)::int AS total
+      FROM relatorioentrega_export
+      WHERE "OperadorMatricula"::bigint = $1
+        AND "Data" BETWEEN $2::date AND $3::date
+        AND LOWER("Evento") = 'entrega'
+      GROUP BY "Cep"
+    )
+    SELECT DISTINCT ON (e."Cep")
+      e."Cep" AS cep,
+      e.total AS total_entregas,
+      COALESCE(ce.bairro, cb.bairro) AS bairro,
+      COALESCE(ce.lat, br.lat) AS lat,
+      COALESCE(ce.lng, br.lng) AS lng
+    FROM entregas e
+    LEFT JOIN ceps_especificos ce ON ce.cep = e."Cep"
+    LEFT JOIN ceps_bairros cb ON e."Cep" >= cb.cep_ini AND e."Cep" <= cb.cep_fim
+    LEFT JOIN bairros_rotas br ON br.bairro = COALESCE(ce.bairro, cb.bairro) AND br.lat IS NOT NULL
+    WHERE ce.lat IS NOT NULL OR br.lat IS NOT NULL
+    ORDER BY e."Cep", (CASE WHEN ce.lat IS NOT NULL THEN 0 ELSE 1 END)
   `, [matricula, inicio, fim]);
   return rows;
 }
