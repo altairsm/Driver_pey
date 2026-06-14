@@ -120,16 +120,13 @@ export async function geocodificarCeps(limite = 100) {
   `, [limite]);
 
   const { rows: total } = await pool.query('SELECT COUNT(*)::int AS cnt FROM ceps_especificos');
-  const { rows: comCoord } = await pool.query(
-    "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE lat IS NOT NULL AND lng IS NOT NULL"
-  );
   const { rows: semCobertura } = await pool.query(
     "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE geocode_source = 'no_coverage'"
   );
   const { rows: individuais } = await pool.query(
     "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE geocode_source = 'individual'"
   );
-  const pendentes = total[0].cnt - comCoord[0].cnt - semCobertura[0].cnt;
+  const pendentes = total[0].cnt - individuais[0].cnt - semCobertura[0].cnt;
 
   if (ceps.length === 0) {
     return {
@@ -186,16 +183,13 @@ export async function geocodificarCeps(limite = 100) {
     await delay(2000);
   }
 
-  const { rows: comCoord2 } = await pool.query(
-    "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE lat IS NOT NULL AND lng IS NOT NULL"
-  );
   const { rows: semCobertura2 } = await pool.query(
     "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE geocode_source = 'no_coverage'"
   );
   const { rows: individuais2 } = await pool.query(
     "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE geocode_source = 'individual'"
   );
-  const pendentes2 = total[0].cnt - comCoord2[0].cnt - semCobertura2[0].cnt;
+  const pendentes2 = total[0].cnt - individuais2[0].cnt - semCobertura2[0].cnt;
 
   return {
     geocoded,
