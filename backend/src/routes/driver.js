@@ -5,7 +5,8 @@ import {
   getDriverData, getDriverDashboard, getDriverTrips, getDriverTripsFaixas,
   getQuinzenasDisponiveis, getProdutividade, getEficiencia, getReclamacoes,
   solicitarPagamento, getUltimaImportacao,
-  getDriverDados, atualizarDriverDados, confirmarRegras
+  getDriverDados, atualizarDriverDados, confirmarRegras,
+  getDriverMapaQuinzena
 } from '../services/driverService.js';
 
 const router = Router();
@@ -175,6 +176,18 @@ router.post('/fcm-token', async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('Erro ao salvar FCM token:', err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+router.get('/mapa-quinzena', async (req, res) => {
+  try {
+    const { inicio, fim } = req.query;
+    if (!inicio || !fim) return res.status(400).json({ error: 'inicio e fim são obrigatórios' });
+    const dados = await getDriverMapaQuinzena(req.user.matricula, inicio, fim);
+    res.json(dados);
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Erro interno' });
   }
 });
