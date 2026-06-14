@@ -139,6 +139,9 @@ export default function Topbar({ user }) {
             <span style={styles.navLink} onClick={() => navigate('/driver/regras-pagamento')}>
               Regras
             </span>
+            <span style={styles.navLink} onClick={() => navigate('/driver/mapa')}>
+              🗺️ Mapa
+            </span>
             <span style={styles.navLink} onClick={() => navigate('/driver/meus-dados')}>
               Meus Dados
             </span>

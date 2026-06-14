@@ -144,7 +144,6 @@ export default function DriverDashboard() {
         setConfig(cfg);
         setTaxas(tx);
 
-        // Reforço: Tenta sincronizar o token FCM ao entrar no dashboard (com retry)
         sendFcmTokenWithRetry(5, 2000);
 
         const ultima = await getUltimaImportacaoReclamacoes();

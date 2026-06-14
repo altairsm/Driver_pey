@@ -4,6 +4,7 @@ import { initNotifications, checkNewComplaints } from './services/notificationSe
 import Login from './pages/Login'
 import DriverDashboard from './pages/DriverDashboard'
 import DriverRegrasPagamento from './pages/DriverRegrasPagamento'
+import DriverMapaQuinzena from './pages/DriverMapaQuinzena'
 import MeusDados from './pages/MeusDados'
 import AdminPagamentos from './pages/AdminPagamentos'
 import AdminUpload from './pages/AdminUpload'
@@ -63,6 +64,14 @@ function App() {
         element={
           <ProtectedRoute>
             <DriverRegrasPagamento />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/driver/mapa"
+        element={
+          <ProtectedRoute>
+            <DriverMapaQuinzena />
           </ProtectedRoute>
         }
       />

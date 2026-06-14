@@ -429,3 +429,25 @@ export async function confirmarRegras(matricula) {
   `, [matricula]);
   return { success: true };
 }
+
+export async function getDriverMapaQuinzena(matricula, inicio, fim) {
+  const { rows } = await pool.query(`
+    SELECT
+      re."Cep" AS cep,
+      COUNT(*)::int AS total_entregas,
+      cb.bairro,
+      br.lat,
+      br.lng
+    FROM relatorioentrega_export re
+    LEFT JOIN ceps_bairros cb
+      ON re."Cep" >= cb.cep_ini AND re."Cep" <= cb.cep_fim
+    LEFT JOIN bairros_rotas br ON br.bairro = cb.bairro
+    WHERE re."OperadorMatricula"::bigint = $1
+      AND re."Data" BETWEEN $2::date AND $3::date
+      AND LOWER(re."Evento") = 'entrega'
+      AND br.lat IS NOT NULL
+    GROUP BY re."Cep", cb.bairro, br.lat, br.lng
+    ORDER BY COUNT(*) DESC
+  `, [matricula, inicio, fim]);
+  return rows;
+}

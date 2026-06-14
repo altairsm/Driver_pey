@@ -465,6 +465,11 @@ export async function updateTaxasAdiantamento(dados) {
   return data;
 }
 
+export async function getDriverMapaQuinzena(inicio, fim) {
+  const { data } = await api.get('/driver/mapa-quinzena', { params: { inicio, fim } });
+  return data;
+}
+
 export async function getBairrosRotasMapa() {
   const { data } = await api.get('/admin/bairros-rotas/mapa');
   return data;
