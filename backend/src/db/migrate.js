@@ -732,6 +732,17 @@ export async function runMigrations() {
     }
 
     console.log('Migrations: all seed data done');
+
+    // ── Reset geocode_attempts for CEPs stuck at 3+ tries ──
+    const { rows: stuck } = await pool.query(
+      "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE (lat IS NULL OR lng IS NULL) AND geocode_attempts >= 3"
+    );
+    if (stuck[0].cnt > 0) {
+      await pool.query(
+        "UPDATE ceps_especificos SET geocode_attempts = 0 WHERE (lat IS NULL OR lng IS NULL) AND geocode_attempts >= 3"
+      );
+      console.log(`  geocode_attempts reset: ${stuck[0].cnt} CEPs liberados para nova tentativa`);
+    }
   } catch (err) {
     console.error('Migration error:', err);
     throw err;

@@ -114,7 +114,7 @@ export async function getEstatisticasMapa() {
 export async function geocodificarCeps(limite = 50) {
   const { rows: ceps } = await pool.query(`
     SELECT cep, bairro, geocode_attempts FROM ceps_especificos
-    WHERE lat IS NULL OR lng IS NULL
+    WHERE (lat IS NULL OR lng IS NULL)
       AND (geocode_attempts IS NULL OR geocode_attempts < 3)
     LIMIT $1
   `, [limite]);
