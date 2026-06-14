@@ -10,7 +10,7 @@ const serviceAccountPath = join(__dirname, '../../firebase-service-account.json'
 try {
   const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
   admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
+    credential: admin.cert(serviceAccount)
   });
   console.log('Firebase Admin inicializado com sucesso.');
 } catch (err) {
