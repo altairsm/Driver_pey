@@ -180,10 +180,10 @@ export default function AdminCeps() {
               <span style={{ fontSize: '0.82rem', color: '#6b7280' }}>Geolocalização dos CEPs</span>
               <button style={s.btn('#3de8a0', '#0d0f14')} onClick={async () => {
                 setGeocodificando(true); setMsgGeo('');
-                try { const r = await geocodificarCeps(50); setMsgGeo(r.message); } catch (e) { setMsgGeo('❌ ' + (e.response?.data?.error || e.message)); }
+                try { const r = await geocodificarCeps(100); setMsgGeo(r.message); } catch (e) { setMsgGeo('❌ ' + (e.response?.data?.error || e.message)); }
                 finally { setGeocodificando(false); }
               }} disabled={geocodificando}>
-                {geocodificando ? 'Geocodificando...' : 'Geocodificar CEPs (50)'}
+                {geocodificando ? 'Geocodificando...' : 'Geocodificar CEPs (100)'}
               </button>
               {msgGeo && <span style={{ fontSize: '0.75rem', color: msgGeo.startsWith('❌') ? '#ff5a5a' : '#3de8a0' }}>{msgGeo}</span>}
             </div>

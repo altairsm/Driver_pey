@@ -111,7 +111,7 @@ export async function getEstatisticasMapa() {
   };
 }
 
-export async function geocodificarCeps(limite = 50) {
+export async function geocodificarCeps(limite = 100) {
   const { rows: ceps } = await pool.query(`
     SELECT cep, bairro FROM ceps_especificos
     WHERE geocode_source IS DISTINCT FROM 'individual'
@@ -183,7 +183,7 @@ export async function geocodificarCeps(limite = 50) {
       `, [cep]);
     }
 
-    await delay(1200);
+    await delay(2000);
   }
 
   const { rows: comCoord2 } = await pool.query(
