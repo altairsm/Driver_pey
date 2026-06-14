@@ -37,8 +37,22 @@ export async function initNotifications() {
     localStorage.setItem('fcm_failed', 'true');
   });
 
-  PushNotifications.addListener('pushNotificationReceived', (notification) => {
+  PushNotifications.addListener('pushNotificationReceived', async (notification) => {
     console.log('Push recebida em tempo real:', notification);
+
+    // Se o app estiver aberto, forçamos a exibição visual via notificação local
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          title: notification.title || "📝 Nova Acareação ❌",
+          body: notification.body || "Entre em contato com a BASE e resolver a acareação",
+          id: Date.now(),
+          schedule: { at: new Date(Date.now() + 100) },
+          sound: 'dinheiro_caindo_na_conta.mp3', // Nome corrigido (usando underscore)
+          extra: notification.data
+        }
+      ]
+    });
   });
 }
 
