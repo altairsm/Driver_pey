@@ -113,9 +113,9 @@ export async function getEstatisticasMapa() {
 
 export async function geocodificarCeps(limite = 50) {
   const { rows: ceps } = await pool.query(`
-    SELECT cep, bairro, geocode_attempts FROM ceps_especificos
-    WHERE (lat IS NULL OR lng IS NULL)
-      AND (geocode_attempts IS NULL OR geocode_attempts < 3)
+    SELECT cep, bairro FROM ceps_especificos
+    WHERE geocode_source IS DISTINCT FROM 'individual'
+      AND geocode_source IS DISTINCT FROM 'no_coverage'
     LIMIT $1
   `, [limite]);
 
@@ -123,32 +123,35 @@ export async function geocodificarCeps(limite = 50) {
   const { rows: comCoord } = await pool.query(
     "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE lat IS NOT NULL AND lng IS NOT NULL"
   );
-  const { rows: skipped } = await pool.query(
-    "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE (lat IS NULL OR lng IS NULL) AND geocode_attempts >= 3"
+  const { rows: semCobertura } = await pool.query(
+    "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE geocode_source = 'no_coverage'"
   );
-  const restantes = total[0].cnt - comCoord[0].cnt - skipped[0].cnt;
+  const { rows: individuais } = await pool.query(
+    "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE geocode_source = 'individual'"
+  );
+  const pendentes = total[0].cnt - comCoord[0].cnt - semCobertura[0].cnt;
 
   if (ceps.length === 0) {
     return {
       geocoded: 0,
-      failed: 0,
-      skipped: skipped[0].cnt,
+      sem_cobertura: semCobertura[0].cnt,
+      individuais: individuais[0].cnt,
       total: total[0].cnt,
-      restantes,
-      message: restantes === 0 && skipped[0].cnt === 0
-        ? 'Todos os CEPs já possuem coordenadas.'
-        : `${total[0].cnt - comCoord[0].cnt} CEPs pendentes, mas todos já tentados 3+ vezes.`,
+      pendentes,
+      message: pendentes === 0
+        ? `Todos os CEPs processados. ${individuais[0].cnt} com geolocalização individual, ${semCobertura[0].cnt} sem cobertura.`
+        : `${pendentes} CEPs pendentes aguardando.`,
     };
   }
 
   let geocoded = 0;
-  let failed = 0;
 
   for (const { cep, bairro } of ceps) {
     const via = await viaCep(cep);
     if (!via) {
-      await pool.query('UPDATE ceps_especificos SET geocode_attempts = COALESCE(geocode_attempts, 0) + 1 WHERE cep = $1', [cep]);
-      failed++;
+      await pool.query(`
+        UPDATE ceps_especificos SET geocode_source = 'no_coverage' WHERE cep = $1
+      `, [cep]);
       await delay(300);
       continue;
     }
@@ -171,12 +174,13 @@ export async function geocodificarCeps(limite = 50) {
 
     if (coord) {
       await pool.query(`
-        UPDATE ceps_especificos SET lat = $1, lng = $2, geocode_attempts = COALESCE(geocode_attempts, 0) + 1 WHERE cep = $3
+        UPDATE ceps_especificos SET lat = $1, lng = $2, geocode_source = 'individual' WHERE cep = $3
       `, [coord.lat, coord.lng, cep]);
       geocoded++;
     } else {
-      await pool.query('UPDATE ceps_especificos SET geocode_attempts = COALESCE(geocode_attempts, 0) + 1 WHERE cep = $1', [cep]);
-      failed++;
+      await pool.query(`
+        UPDATE ceps_especificos SET geocode_source = 'no_coverage' WHERE cep = $1
+      `, [cep]);
     }
 
     await delay(1200);
@@ -185,17 +189,20 @@ export async function geocodificarCeps(limite = 50) {
   const { rows: comCoord2 } = await pool.query(
     "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE lat IS NOT NULL AND lng IS NOT NULL"
   );
-  const { rows: skipped2 } = await pool.query(
-    "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE (lat IS NULL OR lng IS NULL) AND geocode_attempts >= 3"
+  const { rows: semCobertura2 } = await pool.query(
+    "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE geocode_source = 'no_coverage'"
   );
-  const restantes2 = total[0].cnt - comCoord2[0].cnt - skipped2[0].cnt;
+  const { rows: individuais2 } = await pool.query(
+    "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE geocode_source = 'individual'"
+  );
+  const pendentes2 = total[0].cnt - comCoord2[0].cnt - semCobertura2[0].cnt;
 
   return {
     geocoded,
-    failed,
-    skipped: skipped2[0].cnt,
+    sem_cobertura: semCobertura2[0].cnt,
+    individuais: individuais2[0].cnt,
     total: total[0].cnt,
-    restantes: restantes2,
-    message: `${geocoded} geocodificados, ${failed} falha(s). ${restantes2} pendentes, ${skipped2[0].cnt} pulados (3+ tentativas).`,
+    pendentes: pendentes2,
+    message: `${geocoded} geocodificados, ${semCobertura2[0].cnt} sem cobertura, ${pendentes2} pendentes.`,
   };
 }
