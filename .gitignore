@@ -4,3 +4,5 @@ dist
 backend/uploads/*
 !backend/uploads/.gitkeep
 *.log
+backend/firebase-service-account.json
+fix_firebase.js
