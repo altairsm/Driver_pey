@@ -632,7 +632,9 @@ export async function runMigrations() {
     await pool.query('ALTER TABLE ceps_especificos ADD COLUMN IF NOT EXISTS lat NUMERIC(10,7)');
     await pool.query('ALTER TABLE ceps_especificos ADD COLUMN IF NOT EXISTS lng NUMERIC(10,7)');
     await pool.query('ALTER TABLE ceps_especificos ADD COLUMN IF NOT EXISTS geocode_source VARCHAR(20)');
-    console.log('  ceps_especificos.lat/lng/geocode_source added');
+    await pool.query('ALTER TABLE ceps_especificos ADD COLUMN IF NOT EXISTS logradouro VARCHAR(255)');
+    await pool.query('ALTER TABLE ceps_especificos ADD COLUMN IF NOT EXISTS bairro_viacep VARCHAR(255)');
+    console.log('  ceps_especificos.lat/lng/geocode_source/logradouro/bairro_viacep added');
 
     await pool.query(`
       UPDATE ceps_especificos ce

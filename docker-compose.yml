@@ -33,6 +33,7 @@ services:
       DB_USER: postgres
       DB_PASS: PUhgB0AZWAfhfm9qFe0sDcLzQG09hTGLkSC3eOa66e333b7b
       JWT_SECRET: 0e560c48d422acdbf0b106df4dc154c5
+      GOOGLE_MAPS_API_KEY: AIzaSyArrv1bWt3ye29tPLyDkj38qc6P70jCctM
     depends_on:
       postgres:
         condition: service_healthy
