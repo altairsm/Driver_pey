@@ -109,6 +109,7 @@ export default function DriverMapaQuinzena() {
     if (!mapRef.current || mapInstance.current) return;
 
     getMapLoader().load().then(() => {
+      if (!mapRef.current) return;
       const map = new google.maps.Map(mapRef.current, {
         center: { lat: -12.971, lng: -38.501 },
         zoom: 12,
@@ -121,6 +122,9 @@ export default function DriverMapaQuinzena() {
       mapInstance.current = map;
       infoWindowRef.current = new google.maps.InfoWindow();
       setMapReady(true);
+    }).catch(err => {
+      console.error('Google Maps error:', err);
+      setMsg('Erro ao carregar o Google Maps. Verifique se a chave da API tem a Maps JavaScript API habilitada no Google Cloud Console.');
     });
 
     return () => {
