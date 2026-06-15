@@ -1,27 +1,93 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { Loader } from '@googlemaps/js-api-loader';
 import { getDriverMapaQuinzena, getQuinzenas } from '../services/api';
 
+const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
 function getHeatColor(proporcao) {
-  if (proporcao < 0.25) return { fill: 'rgba(59, 130, 246, 0.5)', border: 'rgba(59, 130, 246, 0.9)' };
-  if (proporcao < 0.5) return { fill: 'rgba(234, 179, 8, 0.6)', border: 'rgba(234, 179, 8, 0.9)' };
-  if (proporcao < 0.75) return { fill: 'rgba(249, 115, 22, 0.75)', border: 'rgba(249, 115, 22, 0.9)' };
-  return { fill: 'rgba(239, 68, 68, 0.9)', border: 'rgba(239, 68, 68, 1)' };
+  if (proporcao < 0.25) return { fill: '#3b82f6', border: '#3b82f6', opacity: 0.5 };
+  if (proporcao < 0.5) return { fill: '#eab308', border: '#eab308', opacity: 0.6 };
+  if (proporcao < 0.75) return { fill: '#f97316', border: '#f97316', opacity: 0.75 };
+  return { fill: '#ef4444', border: '#ef4444', opacity: 0.9 };
+}
+
+const DARK_STYLE = [
+  { elementType: 'geometry', stylers: [{ color: '#0d0f14' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#0d0f14' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#6b7280' }] },
+  {
+    featureType: 'road',
+    elementType: 'geometry',
+    stylers: [{ color: '#1e2230' }],
+  },
+  {
+    featureType: 'road',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#9ca3af' }],
+  },
+  {
+    featureType: 'water',
+    elementType: 'geometry',
+    stylers: [{ color: '#111827' }],
+  },
+  {
+    featureType: 'poi',
+    elementType: 'geometry',
+    stylers: [{ color: '#1a1d26' }],
+  },
+  {
+    featureType: 'transit',
+    elementType: 'geometry',
+    stylers: [{ color: '#1e2230' }],
+  },
+  {
+    featureType: 'administrative',
+    elementType: 'geometry.stroke',
+    stylers: [{ color: '#2a2f3e' }],
+  },
+  {
+    featureType: 'administrative.country',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#6b7280' }],
+  },
+  {
+    featureType: 'administrative.province',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#6b7280' }],
+  },
+  {
+    featureType: 'administrative.locality',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#9ca3af' }],
+  },
+];
+
+let mapLoader = null;
+
+function getMapLoader() {
+  if (!mapLoader) {
+    mapLoader = new Loader({
+      apiKey: GMAPS_KEY,
+      version: 'weekly',
+    });
+  }
+  return mapLoader;
 }
 
 export default function DriverMapaQuinzena() {
   const navigate = useNavigate();
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
-  const markersRef = useRef([]);
+  const circlesRef = useRef([]);
+  const infoWindowRef = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [dados, setDados] = useState([]);
   const [quinzenas, setQuinzenas] = useState([]);
   const [qzIdx, setQzIdx] = useState(0);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
+  const [mapReady, setMapReady] = useState(false);
 
   const qzAtual = quinzenas[qzIdx] || null;
 
@@ -40,64 +106,82 @@ export default function DriverMapaQuinzena() {
   }, [qzAtual]);
 
   useEffect(() => {
-    if (!mapInstance.current && mapRef.current) {
-      mapInstance.current = L.map(mapRef.current, {
-        center: [-12.971, -38.501],
+    if (!mapRef.current || mapInstance.current) return;
+
+    getMapLoader().load().then(() => {
+      const map = new google.maps.Map(mapRef.current, {
+        center: { lat: -12.971, lng: -38.501 },
         zoom: 12,
         zoomControl: true,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        styles: DARK_STYLE,
       });
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
-        maxZoom: 18,
-      }).addTo(mapInstance.current);
-    }
+      mapInstance.current = map;
+      infoWindowRef.current = new google.maps.InfoWindow();
+      setMapReady(true);
+    });
+
     return () => {
-      if (mapInstance.current) {
-        mapInstance.current.remove();
-        mapInstance.current = null;
-      }
+      mapInstance.current = null;
     };
   }, []);
 
   useEffect(() => {
     const map = mapInstance.current;
-    if (!map) return;
-    markersRef.current.forEach(m => map.removeLayer(m));
-    markersRef.current = [];
+    if (!map || !dados.length) return;
 
-    if (dados.length === 0) return;
+    circlesRef.current.forEach(c => c.setMap(null));
+    circlesRef.current = [];
 
     const maxEntregas = Math.max(...dados.map(d => d.total_entregas), 1);
+    const bounds = new google.maps.LatLngBounds();
+    const circles = [];
 
     dados.forEach(d => {
       if (!d.lat || !d.lng) return;
       const prop = d.total_entregas / maxEntregas;
       const raio = 8 + prop * 27;
       const cor = getHeatColor(prop);
-      const marker = L.circleMarker([d.lat, d.lng], {
-        radius: raio,
+      const pos = { lat: d.lat, lng: d.lng };
+
+      const circle = new google.maps.Circle({
+        strokeColor: cor.border,
+        strokeOpacity: 0.9,
+        strokeWeight: 1.5,
         fillColor: cor.fill,
-        color: cor.border,
-        weight: 1.5,
-        opacity: 0.9,
-        fillOpacity: 0.7,
-      }).addTo(map);
-      marker.bindPopup(`
-        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem;">
+        fillOpacity: cor.opacity,
+        map,
+        center: pos,
+        radius: raio,
+      });
+
+      const content = `
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: #e8eaf0;">
           ${d.logradouro ? `<strong>${d.logradouro}</strong><br/>` : ''}
           ${d.bairro_viacep || d.bairro ? `<span style="color:#6b7280">${d.bairro_viacep || d.bairro}</span><br/>` : ''}
           <span style="color:#f0c040">CEP: ${d.cep}</span><br/>
           <strong style="color:#3de8a0">${d.total_entregas} ${d.total_entregas === 1 ? 'entrega' : 'entregas'}</strong>
         </div>
-      `);
-      markersRef.current.push(marker);
+      `;
+
+      circle.addListener('click', () => {
+        infoWindowRef.current.setContent(content);
+        infoWindowRef.current.setPosition(pos);
+        infoWindowRef.current.open(map);
+      });
+
+      bounds.extend(pos);
+      circles.push(circle);
     });
 
-    if (markersRef.current.length > 0) {
-      const group = L.featureGroup(markersRef.current);
-      map.fitBounds(group.getBounds().pad(0.15));
+    circlesRef.current = circles;
+
+    if (circles.length > 0) {
+      map.fitBounds(bounds, 60);
     }
-  }, [dados]);
+  }, [dados, mapReady]);
 
   const handlePrev = () => {
     if (qzIdx < quinzenas.length - 1) setQzIdx(qzIdx + 1);
@@ -108,7 +192,6 @@ export default function DriverMapaQuinzena() {
 
   return (
     <div style={s.container}>
-      {/* ── TOPBAR C/ HAMBURGUER ── */}
       <div style={s.topbar}>
         <div style={s.brand}>DRIVER PIX</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -120,7 +203,7 @@ export default function DriverMapaQuinzena() {
 
       <div style={s.header}>
         <div>
-          <h2 style={s.title}>🗺️ Mapa de Entregas</h2>
+          <h2 style={s.title}>Mapa de Entregas</h2>
         </div>
         <div style={s.qzNav}>
           <button onClick={handlePrev} disabled={qzIdx >= quinzenas.length - 1} style={{ ...s.qzBtn, opacity: qzIdx >= quinzenas.length - 1 ? 0.3 : 1 }}>&#8249;</button>
@@ -167,7 +250,6 @@ export default function DriverMapaQuinzena() {
         </div>
       )}
 
-      {/* ── DRAWER ── */}
       {menuOpen && <div style={s.overlay} onClick={() => setMenuOpen(false)} />}
       {menuOpen && (
         <div style={s.drawer}>
@@ -323,7 +405,6 @@ const s = {
     letterSpacing: '1px',
     color: '#3de8a0',
   },
-  // ── Topbar ──
   topbar: {
     background: '#161920',
     borderBottom: '1px solid #2a2f3e',
@@ -355,7 +436,6 @@ const s = {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // ── Drawer ──
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 200 },
   drawer: { position: 'fixed', top: 0, right: 0, width: 260, height: '100%', background: '#161920', borderLeft: '1px solid #2a2f3e', zIndex: 201, display: 'flex', flexDirection: 'column', padding: '20px 0' },
   drawerHeader: { padding: '0 20px 20px' },
