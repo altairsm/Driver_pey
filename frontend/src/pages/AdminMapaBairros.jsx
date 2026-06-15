@@ -1,9 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
-import { Loader } from '@googlemaps/js-api-loader';
+﻿import { useState, useEffect, useRef } from 'react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { getBairrosRotasMapa, getEstatisticasMapa, geocodificarBairros } from '../services/api';
 import Topbar from '../components/Topbar';
-
-const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 const CORES_TABELA = {
   Tab_1: { fill: '#3de8a0', label: 'Verde' },
@@ -13,80 +12,15 @@ const CORES_TABELA = {
   Tab_5: { fill: '#050505', label: 'Vermelho' },
 };
 
-const DARK_STYLE = [
-  { elementType: 'geometry', stylers: [{ color: '#0d0f14' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#0d0f14' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#6b7280' }] },
-  {
-    featureType: 'road',
-    elementType: 'geometry',
-    stylers: [{ color: '#1e2230' }],
-  },
-  {
-    featureType: 'road',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#9ca3af' }],
-  },
-  {
-    featureType: 'water',
-    elementType: 'geometry',
-    stylers: [{ color: '#111827' }],
-  },
-  {
-    featureType: 'poi',
-    elementType: 'geometry',
-    stylers: [{ color: '#1a1d26' }],
-  },
-  {
-    featureType: 'transit',
-    elementType: 'geometry',
-    stylers: [{ color: '#1e2230' }],
-  },
-  {
-    featureType: 'administrative',
-    elementType: 'geometry.stroke',
-    stylers: [{ color: '#2a2f3e' }],
-  },
-  {
-    featureType: 'administrative.country',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#6b7280' }],
-  },
-  {
-    featureType: 'administrative.province',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#6b7280' }],
-  },
-  {
-    featureType: 'administrative.locality',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#9ca3af' }],
-  },
-];
-
-let mapLoader = null;
-
-function getMapLoader() {
-  if (!mapLoader) {
-    mapLoader = new Loader({
-      apiKey: GMAPS_KEY,
-      version: 'weekly',
-    });
-  }
-  return mapLoader;
-}
-
 export default function AdminMapaBairros() {
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
-  const circlesRef = useRef([]);
-  const infoWindowRef = useRef(null);
+  const markersRef = useRef([]);
   const [bairros, setBairros] = useState([]);
   const [stats, setStats] = useState({ com_coordenadas: 0, total: 0 });
   const [filtro, setFiltro] = useState('');
   const [geocoding, setGeocoding] = useState(false);
   const [msg, setMsg] = useState('');
-  const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
     carregarDados();
@@ -106,86 +40,61 @@ export default function AdminMapaBairros() {
   }
 
   useEffect(() => {
-    if (!mapRef.current || mapInstance.current) return;
-
-    getMapLoader().load().then(() => {
-      if (!mapRef.current) return;
-      const map = new google.maps.Map(mapRef.current, {
-        center: { lat: -12.971, lng: -38.501 },
+    if (!mapInstance.current && mapRef.current) {
+      mapInstance.current = L.map(mapRef.current, {
+        center: [-12.971, -38.501],
         zoom: 12,
         zoomControl: true,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
-        styles: DARK_STYLE,
       });
-      mapInstance.current = map;
-      infoWindowRef.current = new google.maps.InfoWindow();
-      setMapReady(true);
-    }).catch(err => {
-      console.error('Google Maps error:', err);
-      setMsg('Erro ao carregar o Google Maps. Verifique se a chave da API tem a Maps JavaScript API habilitada no Google Cloud Console.');
-    });
-
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 18,
+      }).addTo(mapInstance.current);
+    }
     return () => {
-      mapInstance.current = null;
+      if (mapInstance.current) {
+        mapInstance.current.remove();
+        mapInstance.current = null;
+      }
     };
   }, []);
 
   useEffect(() => {
     const map = mapInstance.current;
     if (!map) return;
-
-    circlesRef.current.forEach(c => c.setMap(null));
-    circlesRef.current = [];
+    markersRef.current.forEach(m => map.removeLayer(m));
+    markersRef.current = [];
 
     const filtered = filtro
       ? bairros.filter(b => b.bairro.toLowerCase().includes(filtro.toLowerCase()))
       : bairros;
 
-    const bounds = new google.maps.LatLngBounds();
-    const circles = [];
-
     filtered.forEach(b => {
       if (!b.lat || !b.lng) return;
       const cor = CORES_TABELA[b.nome_tabela] || { fill: '#6b7280' };
-      const pos = { lat: b.lat, lng: b.lng };
-
-      const circle = new google.maps.Circle({
-        strokeColor: '#fff',
-        strokeOpacity: 0.9,
-        strokeWeight: 1.5,
+      const marker = L.circleMarker([b.lat, b.lng], {
+        radius: 10,
         fillColor: cor.fill,
+        color: '#fff',
+        weight: 1.5,
+        opacity: 0.9,
         fillOpacity: 0.7,
-        map,
-        center: pos,
-        radius: 200,
-      });
-
-      const content = `
-        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: #e8eaf0;">
+      }).addTo(map);
+      marker.bindPopup(`
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem;">
           <strong>${b.bairro}</strong><br/>
           Rota: ${b.rota}<br/>
           Tabela: ${b.nome_tabela}
         </div>
-      `;
-
-      circle.addListener('click', () => {
-        infoWindowRef.current.setContent(content);
-        infoWindowRef.current.setPosition(pos);
-        infoWindowRef.current.open(map);
-      });
-
-      bounds.extend(pos);
-      circles.push(circle);
+      `);
+      markersRef.current.push(marker);
     });
 
-    circlesRef.current = circles;
-
-    if (circles.length > 0) {
-      map.fitBounds(bounds, 60);
+    if (markersRef.current.length > 0) {
+      const group = L.featureGroup(markersRef.current);
+      map.fitBounds(group.getBounds().pad(0.1));
     }
-  }, [bairros, filtro, mapReady]);
+  }, [bairros, filtro]);
 
   const handleGeocodificar = async () => {
     setGeocoding(true);
@@ -211,7 +120,7 @@ export default function AdminMapaBairros() {
           <h2 style={s.title}>Mapa de Bairros</h2>
           <p style={s.sub}>
             {stats.com_coordenadas} de {stats.total} bairros com coordenadas &middot;{' '}
-            {bairrosUnicos.length} bairros únicos
+            {bairrosUnicos.length} bairros ├║nicos
           </p>
         </div>
         <div style={s.headerRight}>
@@ -283,3 +192,4 @@ const s = {
   legendItem: { display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.72rem', fontFamily: "'IBM Plex Mono', monospace", color: '#b0b4c0', marginBottom: 4 },
   legendDot: { width: 12, height: 12, borderRadius: '50%', display: 'inline-block' },
 };
+
