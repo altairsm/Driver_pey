@@ -84,9 +84,10 @@ export default function DriverMapaQuinzena() {
       }).addTo(map);
       marker.bindPopup(`
         <div style="font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem;">
-          <strong>CEP: ${d.cep}</strong><br/>
-          Bairro: ${d.bairro}<br/>
-          Entregas: ${d.total_entregas}
+          ${d.logradouro ? `<strong>${d.logradouro}</strong><br/>` : ''}
+          ${d.bairro_viacep || d.bairro ? `<span style="color:#6b7280">${d.bairro_viacep || d.bairro}</span><br/>` : ''}
+          <span style="color:#f0c040">CEP: ${d.cep}</span><br/>
+          <strong style="color:#3de8a0">${d.total_entregas} ${d.total_entregas === 1 ? 'entrega' : 'entregas'}</strong>
         </div>
       `);
       markersRef.current.push(marker);
@@ -157,7 +158,7 @@ export default function DriverMapaQuinzena() {
               <div key={d.cep} style={{ ...s.listaRow, borderTop: i > 0 ? '1px solid #1e2230' : 'none' }}>
                 <div style={s.listaInfo}>
                   <span style={{ color: '#f0c040', fontSize: '0.88rem' }}>{d.cep}</span>
-                  <span style={{ color: '#e8eaf0', fontSize: '0.75rem', opacity: 0.8 }}>{d.bairro}</span>
+                  <span style={{ color: '#e8eaf0', fontSize: '0.75rem', opacity: 0.8 }}>{d.logradouro || ''}{d.logradouro && (d.bairro_viacep || d.bairro) ? ', ' : ''}{d.bairro_viacep || d.bairro || ''}</span>
                 </div>
                 <span style={{ ...s.listaQtd, fontSize: d.total_entregas >= 10 ? '1.1rem' : '0.95rem' }}>{d.total_entregas} {d.total_entregas === 1 ? 'entrega' : 'entregas'}</span>
               </div>
