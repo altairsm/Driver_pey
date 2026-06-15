@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { getDriverMapaQuinzena, getQuinzenas } from '../services/api';
-import Topbar from '../components/Topbar';
 
 function getHeatColor(proporcao) {
   if (proporcao < 0.25) return { fill: 'rgba(59, 130, 246, 0.5)', border: 'rgba(59, 130, 246, 0.9)' };
@@ -12,9 +12,11 @@ function getHeatColor(proporcao) {
 }
 
 export default function DriverMapaQuinzena() {
+  const navigate = useNavigate();
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const markersRef = useRef([]);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [dados, setDados] = useState([]);
   const [quinzenas, setQuinzenas] = useState([]);
   const [qzIdx, setQzIdx] = useState(0);
@@ -105,7 +107,16 @@ export default function DriverMapaQuinzena() {
 
   return (
     <div style={s.container}>
-      <Topbar user={{ nome: '' }} />
+      {/* ── TOPBAR C/ HAMBURGUER ── */}
+      <div style={s.topbar}>
+        <div style={s.brand}>DRIVER PIX</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button style={s.menuBtn} onClick={() => setMenuOpen(o => !o)} aria-label="Menu">
+            {menuOpen ? '✕' : '☰'}
+          </button>
+        </div>
+      </div>
+
       <div style={s.header}>
         <div>
           <h2 style={s.title}>🗺️ Mapa de Entregas</h2>
@@ -152,6 +163,22 @@ export default function DriverMapaQuinzena() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* ── DRAWER ── */}
+      {menuOpen && <div style={s.overlay} onClick={() => setMenuOpen(false)} />}
+      {menuOpen && (
+        <div style={s.drawer}>
+          <div style={s.drawerHeader}>
+            <div style={s.drawerName}>DRIVER PIX</div>
+          </div>
+          <div style={s.drawerDivider} />
+          <button style={s.drawerItem} onClick={() => { setMenuOpen(false); navigate('/driver/regras-pagamento'); }}>📋 Regras de Pagamento</button>
+          <button style={{ ...s.drawerItem, color: '#f0c040' }} onClick={() => { setMenuOpen(false); navigate('/driver/mapa'); }}>🗺️ Mapa de Entregas</button>
+          <button style={s.drawerItem} onClick={() => { setMenuOpen(false); navigate('/driver/meus-dados'); }}>👤 Meus Dados</button>
+          <div style={s.drawerDivider} />
+          <button style={{ ...s.drawerItem, color: '#ff5a5a' }} onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = '/login'; }}>⏻ Sair</button>
         </div>
       )}
     </div>
@@ -295,4 +322,43 @@ const s = {
     letterSpacing: '1px',
     color: '#3de8a0',
   },
+  // ── Topbar ──
+  topbar: {
+    background: '#161920',
+    borderBottom: '1px solid #2a2f3e',
+    padding: '0 16px',
+    height: 56,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    position: 'sticky',
+    top: 0,
+    zIndex: 50,
+  },
+  brand: {
+    fontFamily: "'Bebas Neue', sans-serif",
+    fontSize: '1.3rem',
+    letterSpacing: '3px',
+    color: '#f0c040',
+  },
+  menuBtn: {
+    background: 'transparent',
+    border: '1px solid #2a2f3e',
+    color: '#e8eaf0',
+    width: 36,
+    height: 36,
+    cursor: 'pointer',
+    fontSize: '1rem',
+    borderRadius: 4,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // ── Drawer ──
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 200 },
+  drawer: { position: 'fixed', top: 0, right: 0, width: 260, height: '100%', background: '#161920', borderLeft: '1px solid #2a2f3e', zIndex: 201, display: 'flex', flexDirection: 'column', padding: '20px 0' },
+  drawerHeader: { padding: '0 20px 20px' },
+  drawerName: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.1rem', letterSpacing: '2px', color: '#e8eaf0' },
+  drawerDivider: { height: 1, background: '#2a2f3e', margin: '8px 0' },
+  drawerItem: { background: 'transparent', border: 'none', color: '#e8eaf0', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.8rem', letterSpacing: '1px', padding: '14px 20px', cursor: 'pointer', textAlign: 'left', width: '100%' },
 };
