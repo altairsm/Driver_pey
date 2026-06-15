@@ -444,6 +444,8 @@ export async function getDriverMapaQuinzena(matricula, inicio, fim) {
       e."Cep" AS cep,
       e.total AS total_entregas,
       COALESCE(ce.bairro, cb.bairro) AS bairro,
+      ce.logradouro,
+      ce.bairro_viacep,
       COALESCE(ce.lat, br.lat) AS lat,
       COALESCE(ce.lng, br.lng) AS lng
     FROM entregas e

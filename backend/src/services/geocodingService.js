@@ -1,10 +1,16 @@
 import { pool } from '../db/index.js';
 
-const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
 const VIACEP_URL = 'https://viacep.com.br/ws';
+const GMAPS_GEOCODE_URL = 'https://maps.googleapis.com/maps/api/geocode/json';
 
 function delay(ms) {
   return new Promise(r => setTimeout(r, ms));
+}
+
+function getApiKey() {
+  const key = process.env.GOOGLE_MAPS_API_KEY;
+  if (!key) throw new Error('GOOGLE_MAPS_API_KEY not set');
+  return key;
 }
 
 async function viaCep(cep) {
@@ -20,20 +26,15 @@ async function viaCep(cep) {
   }
 }
 
-async function nominatimPorEndereco(logradouro, bairro, cidade, uf) {
-  const parts = [logradouro, bairro, cidade, uf].filter(Boolean);
-  const query = parts.join(', ');
-  const url = `${NOMINATIM_URL}?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=br`;
+async function googleGeocode(address) {
+  const url = `${GMAPS_GEOCODE_URL}?address=${encodeURIComponent(address)}&key=${getApiKey()}`;
   try {
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'DriverPey/1.0 (intuitiva.log.br)' },
-    });
+    const res = await fetch(url);
     if (!res.ok) return null;
     const data = await res.json();
-    if (data.length > 0 && data[0].lat && data[0].lon) {
-      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-    }
-    return null;
+    if (data.status !== 'OK' || !data.results?.length) return null;
+    const loc = data.results[0].geometry.location;
+    return { lat: loc.lat, lng: loc.lng };
   } catch {
     return null;
   }
@@ -55,23 +56,12 @@ export async function geocodificarBairros() {
   let geocoded = 0;
   for (const { bairro } of bairros) {
     const query = `${bairro}, Salvador, BA`;
-    const url = `${NOMINATIM_URL}?q=${encodeURIComponent(query)}&format=json&limit=1`;
-    try {
-      const res = await fetch(url, {
-        headers: { 'User-Agent': 'DriverPey/1.0 (intuitiva.log.br)' },
-      });
-      if (!res.ok) continue;
-      const data = await res.json();
-      if (data.length > 0 && data[0].lat && data[0].lon) {
-        const lat = parseFloat(data[0].lat);
-        const lng = parseFloat(data[0].lon);
-        await pool.query(`
-          UPDATE bairros_rotas SET lat = $1, lng = $2 WHERE bairro = $3
-        `, [lat, lng, bairro]);
-        geocoded++;
-      }
-    } catch (err) {
-      console.error(`  Geocode error for "${bairro}":`, err.message);
+    const coord = await googleGeocode(query);
+    if (coord) {
+      await pool.query(`
+        UPDATE bairros_rotas SET lat = $1, lng = $2 WHERE bairro = $3
+      `, [coord.lat, coord.lng, bairro]);
+      geocoded++;
     }
     await delay(1100);
   }
@@ -158,15 +148,19 @@ export async function geocodificarCeps(limite = 100) {
     const cidade = via.localidade || 'Salvador';
     const uf = via.uf || 'BA';
 
+    await pool.query(`
+      UPDATE ceps_especificos SET logradouro = $1, bairro_viacep = $2 WHERE cep = $3
+    `, [logradouro || null, bairroVia || null, cep]);
+
+    const parts = [logradouro, bairroVia, cidade, uf].filter(Boolean);
+    const address = parts.join(', ');
+
     let coord = null;
-    if (logradouro) {
-      coord = await nominatimPorEndereco(logradouro, bairroVia, cidade, uf);
+    if (address) {
+      coord = await googleGeocode(address);
     }
     if (!coord && bairroVia) {
-      coord = await nominatimPorEndereco('', bairroVia, cidade, uf);
-    }
-    if (!coord) {
-      coord = await nominatimPorEndereco('', '', cidade, uf);
+      coord = await googleGeocode(`${bairroVia}, ${cidade}, ${uf}`);
     }
 
     if (coord) {
@@ -180,7 +174,7 @@ export async function geocodificarCeps(limite = 100) {
       `, [cep]);
     }
 
-    await delay(2000);
+    await delay(200);
   }
 
   const { rows: semCobertura2 } = await pool.query(
