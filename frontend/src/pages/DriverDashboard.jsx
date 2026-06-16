@@ -88,7 +88,7 @@ export default function DriverDashboard() {
   const [trips, setTrips] = useState([]);
   const [faixas, setFaixas] = useState({});
   const [produtividade, setProdutividade] = useState([]);
-  const [bonusD0, setBonusD0] = useState({ dias: [], total_entregas: 0, total_bonus: 0, valor_unitario: 0 });
+  const [bonusD0, setBonusD0] = useState({ dias: [], total_entregas: 0, total_bonus: 0, valor_unitario_medio: 0 });
   const [eficiencia, setEficiencia] = useState([]);
   const [reclamacoes, setReclamacoes] = useState([]);
   const [expandido, setExpandido] = useState({});
@@ -113,7 +113,7 @@ export default function DriverDashboard() {
         getDriverDashboard(inicio, fim),
         getDriverTrips(inicio, fim),
         getDriverTripsFaixas(inicio, fim),
-        getBonusD0(inicio, fim).catch(() => ({ dias: [], total_entregas: 0, total_bonus: 0, valor_unitario: 0 })),
+        getBonusD0(inicio, fim).catch(() => ({ dias: [], total_entregas: 0, total_bonus: 0, valor_unitario_medio: 0 })),
       ]);
       setProdutividade(prod);
       setBonusD0(bD0);
@@ -425,12 +425,12 @@ export default function DriverDashboard() {
           {/* PRODUTIVIDADE */}
           {activeTab === 'produtividade' && (
             <>
-            {bonusD0.valor_unitario > 0 && (
+            {bonusD0.valor_unitario_medio > 0 && (
               <div style={s.section}>
                 <div style={{ ...s.sectionTitle, color: '#3de8a0' }}>🏆 BÔNUS D0</div>
                 <div style={s.sectionSub}>Valor acumulado por data (entrega no mesmo dia da emissão)</div>
                 <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '0.9rem', color: '#3de8a0', marginBottom: 12, letterSpacing: '2px' }}>
-                  Total: R$ {bonusD0.total_bonus.toFixed(2)} · {bonusD0.total_entregas} entregas · R$ {bonusD0.valor_unitario.toFixed(2)}/un
+                  Total: R$ {bonusD0.total_bonus.toFixed(2)} · {bonusD0.total_entregas} entregas · Média R$ {bonusD0.valor_unitario_medio.toFixed(2)}/un
                 </div>
                 <div style={s.barChart}>
                   {(() => {
