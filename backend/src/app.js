@@ -42,27 +42,27 @@ function getCommitHash() {
   } catch { return 'unknown'; }
 }
 
-app.get('/api/health', (req, res) => {
+app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.get('/api/version', (req, res) => {
+app.get('/version', (req, res) => {
   res.json({ commit: getCommitHash() });
 });
 
-app.use('/api/auth', authRoutes);
-app.use('/api/driver', driverRoutes);
-app.use('/api/admin', authenticateToken, requireAdmin);
-app.use('/api/admin', adminRoutes);
-app.use('/api/upload', uploadRoutes);
-app.use('/api/admin', listasRoutes);
-app.use('/api/admin', tabelasRoutes);
-app.use('/api/admin', cepsRoutes);
-app.use('/api/admin', reclamacoesRoutes);
-app.use('/api/admin', solicitacoesRoutes);
-app.use('/api/admin', analyticsRoutes);
-app.use('/api/configuracoes', authenticateToken, configuracoesRoutes);
-app.use('/api/taxas-adiantamento', authenticateToken, taxasAdiantamentoRoutes);
+app.use('/auth', authRoutes);
+app.use('/driver', driverRoutes);
+app.use('/admin', authenticateToken, requireAdmin);
+app.use('/admin', adminRoutes);
+app.use('/upload', uploadRoutes);
+app.use('/admin', listasRoutes);
+app.use('/admin', tabelasRoutes);
+app.use('/admin', cepsRoutes);
+app.use('/admin', reclamacoesRoutes);
+app.use('/admin', solicitacoesRoutes);
+app.use('/admin', analyticsRoutes);
+app.use('/configuracoes', authenticateToken, configuracoesRoutes);
+app.use('/taxas-adiantamento', authenticateToken, taxasAdiantamentoRoutes);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
