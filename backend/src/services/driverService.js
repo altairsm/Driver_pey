@@ -4,7 +4,7 @@ import { getConfig } from './configuracaoService.js';
 export async function getDriverData(matricula) {
   const result = await pool.query(`
     SELECT "OperadorMatricula"::bigint AS matricula, nome_completo, cpf, telefone,
-           leu_regras, cnpj_mei, pix_tipo
+           leu_regras, cnpj_mei, pix_tipo, bonus_d0
     FROM matriculos_jad
     WHERE "OperadorMatricula"::bigint = $1
   `, [matricula]);
@@ -456,4 +456,53 @@ export async function getDriverMapaQuinzena(matricula, inicio, fim) {
     ORDER BY e."Cep", (CASE WHEN ce.lat IS NOT NULL THEN 0 ELSE 1 END)
   `, [matricula, inicio, fim]);
   return rows;
+}
+
+export async function getBonusD0(matricula, inicio, fim) {
+  const { rows: [{ bonus_d0: valorUnitario = 0 } = {}] } = await pool.query(`
+    SELECT bonus_d0 FROM matriculos_jad WHERE "OperadorMatricula"::bigint = $1
+  `, [matricula]);
+
+  const result = await pool.query(`
+    WITH ctes_d0 AS (
+      SELECT DISTINCT ON (re."NCTE", re."Lista")
+        re."NCTE" AS ncte,
+        re."Lista" AS lista,
+        re."Data"::date AS data
+      FROM relatorioentrega_export re
+      JOIN lista_entregas le ON le."Número"::text = re."Lista"
+      WHERE re."OperadorMatricula"::bigint = $1
+        AND LOWER(re."Evento") = 'entrega'
+        AND re."Data"::date = le."Data Emissão"
+        AND le.status = 'Finalizado'
+        AND re."Data"::date >= $2::date
+        AND re."Data"::date <= $3::date
+    ),
+    listas_com_reclamacao AS (
+      SELECT DISTINCT re2."Lista"
+      FROM acareacaojad a
+      JOIN relatorioentrega_export re2 ON re2."NCTE" = a."NCTE"
+      WHERE re2."OperadorMatricula"::bigint = $1
+        AND re2."Lista" IN (SELECT lista FROM ctes_d0)
+    )
+    SELECT
+      d.data,
+      COUNT(*)::int AS entregas_d0,
+      (COUNT(*) * $4::numeric)::numeric(10,2) AS valor_total
+    FROM ctes_d0 d
+    WHERE d.lista NOT IN (SELECT lista FROM listas_com_reclamacao)
+    GROUP BY d.data
+    ORDER BY d.data
+  `, [matricula, inicio, fim, valorUnitario]);
+
+  const dias = result.rows;
+  const totalEntregas = dias.reduce((s, d) => s + Number(d.entregas_d0), 0);
+  const totalBonus = dias.reduce((s, d) => s + Number(d.valor_total), 0);
+
+  return {
+    dias,
+    total_entregas: totalEntregas,
+    total_bonus: totalBonus,
+    valor_unitario: Number(valorUnitario),
+  };
 }

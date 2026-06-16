@@ -119,6 +119,17 @@ export default function MeusDados() {
               <span className="info-label" style={s.infoLabel}>CPF:</span>
               <span style={s.infoValue}>{dados?.cpf || '-'}</span>
             </div>
+            <div style={{ background: '#0a2a1a', borderRadius: 8, padding: '12px 16px', marginTop: 16, border: '1px solid #3de8a033' }}>
+              <div style={{ ...s.infoRow, marginBottom: 0 }}>
+                <span className="info-label" style={s.infoLabel}>💎 Bônus D0:</span>
+                <span style={{ ...s.infoValue, color: '#3de8a0', fontSize: '1.2rem', fontWeight: 'bold' }}>
+                  R$ {Number(dados?.bonus_d0 || 0).toFixed(2)} / entrega
+                </span>
+              </div>
+              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.6rem', color: '#3de8a088', marginTop: 4, letterSpacing: '1px' }}>
+                Entregas no mesmo dia da emissão da lista
+              </div>
+            </div>
           </div>
         </div>
 
