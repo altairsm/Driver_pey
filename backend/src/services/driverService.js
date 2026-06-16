@@ -4,7 +4,7 @@ import { getConfig } from './configuracaoService.js';
 export async function getDriverData(matricula) {
   const result = await pool.query(`
     SELECT "OperadorMatricula"::bigint AS matricula, nome_completo, cpf, telefone,
-           leu_regras, cnpj_mei, pix_tipo, bonus_d0
+           leu_regras, cnpj_mei, pix_tipo
     FROM matriculos_jad
     WHERE "OperadorMatricula"::bigint = $1
   `, [matricula]);
@@ -459,18 +459,19 @@ export async function getDriverMapaQuinzena(matricula, inicio, fim) {
 }
 
 export async function getBonusD0(matricula, inicio, fim) {
-  const { rows: [{ bonus_d0: valorUnitario = 0 } = {}] } = await pool.query(`
-    SELECT bonus_d0 FROM matriculos_jad WHERE "OperadorMatricula"::bigint = $1
-  `, [matricula]);
-
   const result = await pool.query(`
     WITH ctes_d0 AS (
       SELECT DISTINCT ON (re."NCTE", re."Lista")
         re."NCTE" AS ncte,
         re."Lista" AS lista,
-        re."Data"::date AS data
+        re."Data"::date AS data,
+        COALESCE(br.bonus_d0, 0)::numeric AS bonus_d0
       FROM relatorioentrega_export re
       JOIN lista_entregas le ON le."Número"::text = re."Lista"
+      LEFT JOIN ceps_bairros cb
+        ON NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '') >= cb.cep_ini
+        AND NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '') <= cb.cep_fim
+      LEFT JOIN bairros_rotas br ON LOWER(br.bairro) = LOWER(cb.bairro)
       WHERE re."OperadorMatricula"::bigint = $1
         AND LOWER(re."Evento") = 'entrega'
         AND re."Data"::date = le."Data Emissão"
@@ -488,21 +489,22 @@ export async function getBonusD0(matricula, inicio, fim) {
     SELECT
       d.data,
       COUNT(*)::int AS entregas_d0,
-      (COUNT(*) * $4::numeric)::numeric(10,2) AS valor_total
+      SUM(d.bonus_d0)::numeric(10,2) AS valor_total
     FROM ctes_d0 d
     WHERE d.lista NOT IN (SELECT lista FROM listas_com_reclamacao)
     GROUP BY d.data
     ORDER BY d.data
-  `, [matricula, inicio, fim, valorUnitario]);
+  `, [matricula, inicio, fim]);
 
   const dias = result.rows;
   const totalEntregas = dias.reduce((s, d) => s + Number(d.entregas_d0), 0);
   const totalBonus = dias.reduce((s, d) => s + Number(d.valor_total), 0);
+  const valorUnitarioMedio = totalEntregas > 0 ? totalBonus / totalEntregas : 0;
 
   return {
     dias,
     total_entregas: totalEntregas,
     total_bonus: totalBonus,
-    valor_unitario: Number(valorUnitario),
+    valor_unitario_medio: Number(valorUnitarioMedio.toFixed(2)),
   };
 }

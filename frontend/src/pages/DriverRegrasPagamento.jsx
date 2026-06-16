@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDriverDados, confirmarRegras, getConfig } from '../services/api';
+import { confirmarRegras, getConfig } from '../services/api';
 
 export default function DriverRegrasPagamento() {
   const navigate = useNavigate();
@@ -8,7 +8,6 @@ export default function DriverRegrasPagamento() {
   const [loading, setLoading] = useState(true);
   const [confirmando, setConfirmando] = useState(false);
   const [config, setConfig] = useState(null);
-  const [driverBonusD0, setDriverBonusD0] = useState(0);
 
   useEffect(() => {
     const check = async () => {
@@ -17,12 +16,8 @@ export default function DriverRegrasPagamento() {
         if (user.leu_regras) {
           setConfirmado(true);
         }
-        const [cfg, dados] = await Promise.all([
-          getConfig(),
-          getDriverDados().catch(() => ({ bonus_d0: 0 })),
-        ]);
+        const cfg = await getConfig();
         setConfig(cfg);
-        setDriverBonusD0(Number(dados?.bonus_d0 || 0));
       } catch {}
       setLoading(false);
     };
@@ -235,8 +230,8 @@ export default function DriverRegrasPagamento() {
             <strong style={{ color: '#e8eaf0' }}>nenhum CTE da lista</strong> tiver reclamação registrada,
             você recebe o <strong style={{ color: '#3de8a0' }}>bônus D0</strong> por cada entrega qualificada.
             <br /><br />
-            <span style={s.highlight('#3de8a0')}>
-              💎 Seu bônus atual: R$ {driverBonusD0.toFixed(2)} por entrega D0
+            <span style={{ color: '#6b7280', fontStyle: 'italic' }}>
+              💡 O valor do bônus varia por bairro e é definido pela administração.
             </span>
             <br /><br />
             O bônus é acumulado por data e exibido no gráfico "Bônus D0" dentro da aba Produção do seu painel.

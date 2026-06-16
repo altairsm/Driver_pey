@@ -13,6 +13,8 @@ export default function AdminCeps() {
   const [tabelaSel, setTabelaSel] = useState('');
   const [rotaAtual, setRotaAtual] = useState('');
   const [rotaSel, setRotaSel] = useState('');
+  const [bonusD0Atual, setBonusD0Atual] = useState(0);
+  const [bonusD0Sel, setBonusD0Sel] = useState('');
   const [tabelas, setTabelas] = useState([]);
   const [msg, setMsg] = useState('');
   const [salvando, setSalvando] = useState(false);
@@ -61,12 +63,16 @@ export default function AdminCeps() {
         setTabelaSel(br.nome_tabela);
         setRotaAtual(br.rota || '');
         setRotaSel(br.rota || '');
+        setBonusD0Atual(Number(br.bonus_d0 || 0));
+        setBonusD0Sel(String(br.bonus_d0 || '0'));
       } else {
         setBairroRotaId(null);
         setTabelaAtual('');
         setTabelaSel('');
         setRotaAtual('');
         setRotaSel('');
+        setBonusD0Atual(0);
+        setBonusD0Sel('0');
       }
     } catch (err) {
       setMsg(err.response?.data?.error || 'Erro ao carregar dados');
@@ -81,7 +87,8 @@ export default function AdminCeps() {
     const dados = {};
     if (tabelaSel) dados.nome_tabela = tabelaSel;
     if (rotaSel !== rotaAtual) dados.rota = rotaSel;
-    if (!dados.nome_tabela && !dados.rota) {
+    if (bonusD0Sel !== '' && Number(bonusD0Sel) !== bonusD0Atual) dados.bonus_d0 = Number(bonusD0Sel);
+    if (!dados.nome_tabela && dados.rota === undefined && dados.bonus_d0 === undefined) {
       setMsg('❌ Nenhuma alteração para salvar.');
       return;
     }
@@ -94,6 +101,7 @@ export default function AdminCeps() {
       setMsg(`✅ Bairro "${bairroSel}" atualizado`);
       if (dados.nome_tabela) setTabelaAtual(tabelaSel);
       if (dados.rota !== undefined) setRotaAtual(rotaSel);
+      if (dados.bonus_d0 !== undefined) setBonusD0Atual(Number(bonusD0Sel));
     } catch (err) {
       setMsg(`❌ ${err.response?.data?.error || 'Erro ao salvar'}`);
     } finally {
@@ -236,8 +244,13 @@ export default function AdminCeps() {
                     <input style={s.inp} placeholder="Rota" value={rotaSel}
                       onChange={(e) => setRotaSel(e.target.value)} />
                   </div>
+                  <div>
+                    <label style={s.label}>Bônus D0 (R$)</label>
+                    <input style={s.inp} type="number" step="0.01" min="0" placeholder="0.00"
+                      value={bonusD0Sel} onChange={(e) => setBonusD0Sel(e.target.value)} />
+                  </div>
                   <button style={s.btn('#198754', '#fff')} onClick={handleAtribuir}
-                    disabled={salvando || (tabelaSel === tabelaAtual && rotaSel === rotaAtual)}>
+                    disabled={salvando}>
                     {salvando ? 'Salvando...' : 'Salvar'}
                   </button>
                 </div>
@@ -254,6 +267,11 @@ export default function AdminCeps() {
                     <label style={s.label}>Rota</label>
                     <input style={s.inp} placeholder="Rota" value={rotaSel}
                       onChange={(e) => setRotaSel(e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={s.label}>Bônus D0 (R$)</label>
+                    <input style={s.inp} type="number" step="0.01" min="0" placeholder="0.00"
+                      value={bonusD0Sel} onChange={(e) => setBonusD0Sel(e.target.value)} />
                   </div>
                   <button style={s.btn('#f0c040', '#0d0f14')} onClick={handleCriarCadastro} disabled={salvando}>
                     {salvando ? 'Criando...' : 'Criar cadastro'}
