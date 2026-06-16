@@ -262,7 +262,7 @@ export default function DriverDashboard() {
   const totalEventos = eficiencia.reduce((s, e) => s + Number(e.quantidade), 0);
   const totalEntregasNum = soEntregasQ.reduce((s, e) => s + Number(e.quantidade), 0);
   const totalInsucessos = eficiencia.filter(e => isInsucesso(e.evento)).reduce((s, e) => s + Number(e.quantidade), 0);
-  const pctEficiencia = totalEventos > 0 ? Math.round((totalEntregasNum / totalEventos) * 100) : 0;
+  const pctEficiencia = totalEventos > 0 ? ((totalEntregasNum / totalEventos) * 100) : 0;
   const totalReclamacoes = reclamacoes.length;
   const pctReclamacao = totalEntregasNum > 0 ? ((totalReclamacoes / totalEntregasNum) * 100) : 0;
 
@@ -398,7 +398,7 @@ export default function DriverDashboard() {
               <div style={s.resumoGrid}>
                 <div style={s.resumoItem}>
                   <div style={s.resumoLbl}>Eficiência</div>
-                  <div style={{ ...s.resumoVal, color: pctEficiencia < 70 ? '#ff5a5a' : pctEficiencia < 85 ? '#ff9f40' : '#3de8a0' }}>{pctEficiencia}%</div>
+                  <div style={{ ...s.resumoVal, color: pctEficiencia < 70 ? '#ff5a5a' : pctEficiencia < 85 ? '#ff9f40' : '#3de8a0' }}>{pctEficiencia.toFixed(2).replace('.', ',')}%</div>
                 </div>
                 <div style={s.resumoItem}>
                   <div style={s.resumoLbl}>CTes</div>
@@ -465,7 +465,7 @@ export default function DriverDashboard() {
                       style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(.23,1,.32,1)' }} />
                   </svg>
                   <div style={s.gaugeCenter}>
-                    <div style={{ ...s.gaugePct, color: pctEficiencia < 70 ? '#ff5a5a' : pctEficiencia < 85 ? '#ff9f40' : '#3de8a0' }}>{pctEficiencia}%</div>
+                    <div style={{ ...s.gaugePct, color: pctEficiencia < 70 ? '#ff5a5a' : pctEficiencia < 85 ? '#ff9f40' : '#3de8a0' }}>{pctEficiencia.toFixed(2).replace('.', ',')}%</div>
                     <div style={s.gaugeSubLabel}>eficiência</div>
                   </div>
                 </div>
