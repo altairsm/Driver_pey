@@ -465,6 +465,11 @@ export async function updateTaxasAdiantamento(dados) {
   return data;
 }
 
+export async function getBonusD0(inicio, fim) {
+  const { data } = await api.get('/driver/bonus-d0', { params: { inicio, fim } });
+  return data;
+}
+
 export async function getDriverMapaQuinzena(inicio, fim) {
   const { data } = await api.get('/driver/mapa-quinzena', { params: { inicio, fim } });
   return data;

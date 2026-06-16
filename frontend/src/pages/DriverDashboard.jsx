@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDriverDashboard, getDriverTrips, getDriverMe, getDriverTripsFaixas, getQuinzenas, getProdutividade, getEficiencia, getReclamacoes, solicitarPagamento, getUltimaImportacaoReclamacoes, getConfig, getTaxasAdiantamento } from '../services/api';
+import { getDriverDashboard, getDriverTrips, getDriverMe, getDriverTripsFaixas, getQuinzenas, getProdutividade, getEficiencia, getReclamacoes, solicitarPagamento, getUltimaImportacaoReclamacoes, getConfig, getTaxasAdiantamento, getBonusD0 } from '../services/api';
 import { sendFcmTokenWithRetry } from '../services/notificationService';
 import { LocalNotifications } from '@capacitor/local-notifications';
 
@@ -88,6 +88,7 @@ export default function DriverDashboard() {
   const [trips, setTrips] = useState([]);
   const [faixas, setFaixas] = useState({});
   const [produtividade, setProdutividade] = useState([]);
+  const [bonusD0, setBonusD0] = useState({ dias: [], total_entregas: 0, total_bonus: 0, valor_unitario: 0 });
   const [eficiencia, setEficiencia] = useState([]);
   const [reclamacoes, setReclamacoes] = useState([]);
   const [expandido, setExpandido] = useState({});
@@ -105,15 +106,17 @@ export default function DriverDashboard() {
 
   const fetchQuinzenaData = useCallback(async (inicio, fim) => {
     try {
-      const [prod, ef, rec, dash, tripList, faixasData] = await Promise.all([
+      const [prod, ef, rec, dash, tripList, faixasData, bD0] = await Promise.all([
         getProdutividade(inicio, fim),
         getEficiencia(inicio, fim),
         getReclamacoes(inicio, fim),
         getDriverDashboard(inicio, fim),
         getDriverTrips(inicio, fim),
         getDriverTripsFaixas(inicio, fim),
+        getBonusD0(inicio, fim).catch(() => ({ dias: [], total_entregas: 0, total_bonus: 0, valor_unitario: 0 })),
       ]);
       setProdutividade(prod);
+      setBonusD0(bD0);
       setEficiencia(ef);
       setReclamacoes(rec);
       setDashboard(dash);
@@ -351,11 +354,7 @@ export default function DriverDashboard() {
             <div style={{ ...s.kpiValue, color: '#3de8a0' }}>{dashboard?.total_ctes || 0}</div>
             <div style={s.kpiDetail}>na quinzena</div>
           </div>
-          <div style={{ ...s.kpiCard, borderBottomColor: '#f0c040' }}>
-            <div style={s.kpiLabel}>Dias Trabalhados</div>
-            <div style={{ ...s.kpiValue, color: '#f0c040' }}>{produtividade.length}</div>
-            <div style={s.kpiDetail}>com registros</div>
-          </div>
+
           <div style={{ ...s.kpiCard, borderBottomColor: '#ff9f40' }}>
             <div style={s.kpiLabel}>Insucessos</div>
             <div style={{ ...s.kpiValue, color: '#ff9f40' }}>{totalInsucessos}</div>
@@ -425,6 +424,34 @@ export default function DriverDashboard() {
 
           {/* PRODUTIVIDADE */}
           {activeTab === 'produtividade' && (
+            <>
+            {bonusD0.valor_unitario > 0 && (
+              <div style={s.section}>
+                <div style={{ ...s.sectionTitle, color: '#3de8a0' }}>🏆 BÔNUS D0</div>
+                <div style={s.sectionSub}>Valor acumulado por data (entrega no mesmo dia da emissão)</div>
+                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '0.9rem', color: '#3de8a0', marginBottom: 12, letterSpacing: '2px' }}>
+                  Total: R$ {bonusD0.total_bonus.toFixed(2)} · {bonusD0.total_entregas} entregas · R$ {bonusD0.valor_unitario.toFixed(2)}/un
+                </div>
+                <div style={s.barChart}>
+                  {(() => {
+                    const maxVal = Math.max(...bonusD0.dias.map(d => Number(d.valor_total)), 1);
+                    return bonusD0.dias.map(d => {
+                      const pct = (Number(d.valor_total) / maxVal * 100).toFixed(1);
+                      return (
+                        <div key={d.data} style={s.barRow}>
+                          <div style={s.barLabel}>{formatDate(d.data)}</div>
+                          <div style={s.barTrack}>
+                            <div style={{ ...s.barFill, background: '#3de8a0', width: `${pct}%` }}></div>
+                          </div>
+                          <div style={s.barVal}>{d.entregas_d0}</div>
+                        </div>
+                      );
+                    });
+                  })()}
+                  {bonusD0.dias.length === 0 && <div style={s.empty}>Nenhum registro D0 na quinzena</div>}
+                </div>
+              </div>
+            )}
             <div style={s.section}>
               <div style={s.sectionTitle}>📦 PRODUTIVIDADE</div>
               <div style={s.sectionSub}>Suas entregas por data</div>
@@ -444,7 +471,7 @@ export default function DriverDashboard() {
                 {produtividade.length === 0 && <div style={s.empty}>Nenhum registro na quinzena</div>}
               </div>
             </div>
-          )}
+          </>)}
 
           {/* EFICIÊNCIA */}
           {activeTab === 'eficiencia' && (
