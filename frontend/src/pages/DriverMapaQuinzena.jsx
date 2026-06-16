@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -108,19 +108,19 @@ export default function DriverMapaQuinzena() {
 
   return (
     <div style={s.container}>
-      {/* ÔöÇÔöÇ TOPBAR C/ HAMBURGUER ÔöÇÔöÇ */}
+      {/* ── TOPBAR C/ HAMBURGUER ── */}
       <div style={s.topbar}>
         <div style={s.brand}>DRIVER PIX</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button style={s.menuBtn} onClick={() => setMenuOpen(o => !o)} aria-label="Menu">
-            {menuOpen ? 'Ô£ò' : 'Ôÿ░'}
+            {menuOpen ? '✕' : '☰'}
           </button>
         </div>
       </div>
 
       <div style={s.header}>
         <div>
-          <h2 style={s.title}>­ƒù║´©Å Mapa de Entregas</h2>
+          <h2 style={s.title}>🗺️ Mapa de Entregas</h2>
         </div>
         <div style={s.qzNav}>
           <button onClick={handlePrev} disabled={qzIdx >= quinzenas.length - 1} style={{ ...s.qzBtn, opacity: qzIdx >= quinzenas.length - 1 ? 0.3 : 1 }}>&#8249;</button>
@@ -139,10 +139,10 @@ export default function DriverMapaQuinzena() {
         <div ref={mapRef} style={s.map} />
         <div style={s.legend}>
           <div style={s.legendTitle}>Intensidade</div>
-          <div style={s.legendItem}><span style={{ ...s.legendDot, background: 'rgba(59, 130, 246, 0.6)' }} /><span>0ÔÇô25%</span></div>
-          <div style={s.legendItem}><span style={{ ...s.legendDot, background: 'rgba(234, 179, 8, 0.6)' }} /><span>25ÔÇô50%</span></div>
-          <div style={s.legendItem}><span style={{ ...s.legendDot, background: 'rgba(249, 115, 22, 0.75)' }} /><span>50ÔÇô75%</span></div>
-          <div style={s.legendItem}><span style={{ ...s.legendDot, background: 'rgba(239, 68, 68, 0.9)' }} /><span>75ÔÇô100%</span></div>
+          <div style={s.legendItem}><span style={{ ...s.legendDot, background: 'rgba(59, 130, 246, 0.6)' }} /><span>0-25%</span></div>
+          <div style={s.legendItem}><span style={{ ...s.legendDot, background: 'rgba(234, 179, 8, 0.6)' }} /><span>25-50%</span></div>
+          <div style={s.legendItem}><span style={{ ...s.legendDot, background: 'rgba(249, 115, 22, 0.75)' }} /><span>50-75%</span></div>
+          <div style={s.legendItem}><span style={{ ...s.legendDot, background: 'rgba(239, 68, 68, 0.9)' }} /><span>75-100%</span></div>
           <div style={{ ...s.legendItem, marginTop: 6, fontSize: '0.65rem', color: '#6b7280' }}>Quanto mais entregas,<br />mais intenso</div>
         </div>
       </div>
@@ -167,7 +167,7 @@ export default function DriverMapaQuinzena() {
         </div>
       )}
 
-      {/* ÔöÇÔöÇ DRAWER ÔöÇÔöÇ */}
+      {/* ── DRAWER ── */}
       {menuOpen && <div style={s.overlay} onClick={() => setMenuOpen(false)} />}
       {menuOpen && (
         <div style={s.drawer}>
@@ -175,11 +175,11 @@ export default function DriverMapaQuinzena() {
             <div style={s.drawerName}>DRIVER PIX</div>
           </div>
           <div style={s.drawerDivider} />
-          <button style={s.drawerItem} onClick={() => { setMenuOpen(false); navigate('/driver/regras-pagamento'); }}>­ƒôï Regras de Pagamento</button>
-          <button style={{ ...s.drawerItem, color: '#f0c040' }} onClick={() => { setMenuOpen(false); navigate('/driver/mapa'); }}>­ƒù║´©Å Mapa de Entregas</button>
-          <button style={s.drawerItem} onClick={() => { setMenuOpen(false); navigate('/driver/meus-dados'); }}>­ƒæñ Meus Dados</button>
+          <button style={s.drawerItem} onClick={() => { setMenuOpen(false); navigate('/driver/regras-pagamento'); }}>📋 Regras de Pagamento</button>
+          <button style={{ ...s.drawerItem, color: '#f0c040' }} onClick={() => { setMenuOpen(false); navigate('/driver/mapa'); }}>🗺️ Mapa de Entregas</button>
+          <button style={s.drawerItem} onClick={() => { setMenuOpen(false); navigate('/driver/meus-dados'); }}>👤 Meus Dados</button>
           <div style={s.drawerDivider} />
-          <button style={{ ...s.drawerItem, color: '#ff5a5a' }} onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = '/login'; }}>ÔÅ╗ Sair</button>
+          <button style={{ ...s.drawerItem, color: '#ff5a5a' }} onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = '/login'; }}>⏻ Sair</button>
         </div>
       )}
     </div>
@@ -323,7 +323,7 @@ const s = {
     letterSpacing: '1px',
     color: '#3de8a0',
   },
-  // ÔöÇÔöÇ Topbar ÔöÇÔöÇ
+  // ── Topbar ──
   topbar: {
     background: '#161920',
     borderBottom: '1px solid #2a2f3e',
@@ -355,7 +355,7 @@ const s = {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // ÔöÇÔöÇ Drawer ÔöÇÔöÇ
+  // ── Drawer ──
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 200 },
   drawer: { position: 'fixed', top: 0, right: 0, width: 260, height: '100%', background: '#161920', borderLeft: '1px solid #2a2f3e', zIndex: 201, display: 'flex', flexDirection: 'column', padding: '20px 0' },
   drawerHeader: { padding: '0 20px 20px' },
@@ -363,4 +363,3 @@ const s = {
   drawerDivider: { height: 1, background: '#2a2f3e', margin: '8px 0' },
   drawerItem: { background: 'transparent', border: 'none', color: '#e8eaf0', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.8rem', letterSpacing: '1px', padding: '14px 20px', cursor: 'pointer', textAlign: 'left', width: '100%' },
 };
-
