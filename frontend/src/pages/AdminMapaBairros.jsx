@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { getBairrosRotasMapa, getEstatisticasMapa, geocodificarBairros } from '../services/api';
@@ -120,7 +120,7 @@ export default function AdminMapaBairros() {
           <h2 style={s.title}>Mapa de Bairros</h2>
           <p style={s.sub}>
             {stats.com_coordenadas} de {stats.total} bairros com coordenadas &middot;{' '}
-            {bairrosUnicos.length} bairros ├║nicos
+            {bairrosUnicos.length} bairros únicos
           </p>
         </div>
         <div style={s.headerRight}>
@@ -192,4 +192,3 @@ const s = {
   legendItem: { display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.72rem', fontFamily: "'IBM Plex Mono', monospace", color: '#b0b4c0', marginBottom: 4 },
   legendDot: { width: 12, height: 12, borderRadius: '50%', display: 'inline-block' },
 };
-
