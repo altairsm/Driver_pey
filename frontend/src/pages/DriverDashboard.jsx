@@ -24,7 +24,7 @@ function isInsucesso(evento) {
 function formatDate(d) {
   if (!d) return '—';
   const match = String(d).match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (match) return `${match[3]}/${match[2]}/${match[1]}`;
+  if (match) return `${match[3]}/${match[2]}/${match[1].slice(2)}`;
   return String(d);
 }
 

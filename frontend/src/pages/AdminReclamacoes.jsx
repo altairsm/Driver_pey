@@ -5,7 +5,7 @@ import { uploadReclamacoes, getAdminReclamacoes, updateReclamacaoCte, updateRecl
 function formatQuinzena(inicio, fim) {
   const i = String(inicio).slice(0, 10).split('-');
   const f = String(fim).slice(0, 10).split('-');
-  return `${i[2]}/${i[1]} a ${f[2]}/${f[1]}/${f[0]}`;
+  return `${i[2]}/${i[1]}/${i[0].slice(2)} a ${f[2]}/${f[1]}/${f[0].slice(2)}`;
 }
 
 export default function AdminReclamacoes() {
@@ -171,7 +171,7 @@ export default function AdminReclamacoes() {
   const formatDate = (d) => {
     if (!d) return '—';
     const m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})/);
-    return m ? `${m[3]}/${m[2]}/${m[1]}` : String(d);
+    return m ? `${m[3]}/${m[2]}/${m[1].slice(2)}` : String(d);
   };
 
   const s = {
