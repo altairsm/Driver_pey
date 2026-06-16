@@ -6,7 +6,7 @@ import {
   getQuinzenasDisponiveis, getProdutividade, getEficiencia, getReclamacoes,
   solicitarPagamento, getUltimaImportacao,
   getDriverDados, atualizarDriverDados, confirmarRegras,
-  getDriverMapaQuinzena
+  getDriverMapaQuinzena, getBonusD0
 } from '../services/driverService.js';
 
 const router = Router();
@@ -176,6 +176,18 @@ router.post('/fcm-token', async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('Erro ao salvar FCM token:', err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+router.get('/bonus-d0', async (req, res) => {
+  try {
+    const { inicio, fim } = req.query;
+    if (!inicio || !fim) return res.status(400).json({ error: 'inicio e fim são obrigatórios' });
+    const data = await getBonusD0(req.user.matricula, inicio, fim);
+    res.json(data);
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Erro interno' });
   }
 });

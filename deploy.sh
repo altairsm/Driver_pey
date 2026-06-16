@@ -42,7 +42,7 @@ fi
 # 5. Verificar saúde
 echo -e "${YELLOW}[4/5] Verificando saúde...${NC}"
 sleep 3
-HEALTH=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/api/health 2>/dev/null || echo "000")
+HEALTH=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/health 2>/dev/null || echo "000")
 if [ "$HEALTH" = "200" ]; then
   echo -e "${GREEN}[OK] Backend saudável (HTTP $HEALTH)${NC}"
 else

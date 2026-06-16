@@ -675,7 +675,8 @@ export async function runMigrations() {
     }
     await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS cnpj_mei VARCHAR(18)');
     await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS pix_tipo VARCHAR(3) DEFAULT \'CPF\'');
-    console.log('  matriculos_jad columns expanded (leu_regras, cnpj_mei, pix_tipo)');
+    await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS bonus_d0 NUMERIC(10,2) DEFAULT 0.00');
+    console.log('  matriculos_jad columns expanded (leu_regras, cnpj_mei, pix_tipo, bonus_d0)');
 
     // ── Step 8: Seeds ──
     console.log('Migrations: checking seed data...');

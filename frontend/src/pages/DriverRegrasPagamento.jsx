@@ -8,6 +8,7 @@ export default function DriverRegrasPagamento() {
   const [loading, setLoading] = useState(true);
   const [confirmando, setConfirmando] = useState(false);
   const [config, setConfig] = useState(null);
+  const [driverBonusD0, setDriverBonusD0] = useState(0);
 
   useEffect(() => {
     const check = async () => {
@@ -16,8 +17,12 @@ export default function DriverRegrasPagamento() {
         if (user.leu_regras) {
           setConfirmado(true);
         }
-        const cfg = await getConfig();
+        const [cfg, dados] = await Promise.all([
+          getConfig(),
+          getDriverDados().catch(() => ({ bonus_d0: 0 })),
+        ]);
         setConfig(cfg);
+        setDriverBonusD0(Number(dados?.bonus_d0 || 0));
       } catch {}
       setLoading(false);
     };
@@ -216,6 +221,26 @@ export default function DriverRegrasPagamento() {
             <br /><br />
             Após solicitar, a solicitação fica <strong style={{ color: '#ff9f40' }}>pendente </strong>
              para análise. O administrador poderá aprovar ou recusar.
+          </div>
+        </div>
+
+        <div style={s.card}>
+          <div style={s.cardHeader('#3de8a0')}>
+            <div style={s.cardNum}>10</div>
+            <div style={s.cardTitle}>🏆 Regra D0 — Entrega no Mesmo Dia</div>
+          </div>
+          <div style={s.cardBody}>
+            Se a entrega for realizada no <strong style={{ color: '#e8eaf0' }}>mesmo dia da emissão da lista</strong>
+            {' '}e{' '}
+            <strong style={{ color: '#e8eaf0' }}>nenhum CTE da lista</strong> tiver reclamação registrada,
+            você recebe o <strong style={{ color: '#3de8a0' }}>bônus D0</strong> por cada entrega qualificada.
+            <br /><br />
+            <span style={s.highlight('#3de8a0')}>
+              💎 Seu bônus atual: R$ {driverBonusD0.toFixed(2)} por entrega D0
+            </span>
+            <br /><br />
+            O bônus é acumulado por data e exibido no gráfico "Bônus D0" dentro da aba Produção do seu painel.
+            O valor total é somado automaticamente ao cálculo de pagamento da quinzena.
           </div>
         </div>
 
