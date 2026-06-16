@@ -1,8 +1,14 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { getDriverMapaQuinzena, getQuinzenas } from '../services/api';
+
+function formatDate(d) {
+  if (!d) return '—';
+  const m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}/${m[2]}/${m[1].slice(2)}` : String(d);
+}
 
 function getHeatColor(proporcao) {
   if (proporcao < 0.25) return { fill: 'rgba(59, 130, 246, 0.5)', border: 'rgba(59, 130, 246, 0.9)' };
@@ -125,7 +131,7 @@ export default function DriverMapaQuinzena() {
         <div style={s.qzNav}>
           <button onClick={handlePrev} disabled={qzIdx >= quinzenas.length - 1} style={{ ...s.qzBtn, opacity: qzIdx >= quinzenas.length - 1 ? 0.3 : 1 }}>&#8249;</button>
           <span style={s.qzLabel}>
-            {qzAtual ? `${qzAtual.inicio.slice(0, 10)} a ${qzAtual.fim.slice(0, 10)}` : '...'}
+            {qzAtual ? `${formatDate(qzAtual.inicio)} a ${formatDate(qzAtual.fim)}` : '...'}
             {quinzenas.length > 1 && <span style={s.qzPos}> ({qzIdx + 1}/{quinzenas.length})</span>}
           </span>
           <button onClick={handleNext} disabled={qzIdx <= 0} style={{ ...s.qzBtn, opacity: qzIdx <= 0 ? 0.3 : 1 }}>&#8250;</button>
@@ -356,8 +362,8 @@ const s = {
     justifyContent: 'center',
   },
   // ── Drawer ──
-  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 200 },
-  drawer: { position: 'fixed', top: 0, right: 0, width: 260, height: '100%', background: '#161920', borderLeft: '1px solid #2a2f3e', zIndex: 201, display: 'flex', flexDirection: 'column', padding: '20px 0' },
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 9998 },
+  drawer: { position: 'fixed', top: 0, right: 0, width: 260, height: '100%', background: '#161920', borderLeft: '1px solid #2a2f3e', zIndex: 9999, display: 'flex', flexDirection: 'column', padding: '20px 0' },
   drawerHeader: { padding: '0 20px 20px' },
   drawerName: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.1rem', letterSpacing: '2px', color: '#e8eaf0' },
   drawerDivider: { height: 1, background: '#2a2f3e', margin: '8px 0' },

@@ -5,7 +5,7 @@ import Topbar from '../components/Topbar';
 function formatQuinzena(inicio, fim) {
   const i = String(inicio).slice(0, 10).split('-');
   const f = String(fim).slice(0, 10).split('-');
-  return `${i[2]}/${i[1]} a ${f[2]}/${f[1]}/${f[0]}`;
+  return `${i[2]}/${i[1]}/${i[0].slice(2)} a ${f[2]}/${f[1]}/${f[0].slice(2)}`;
 }
 
 function calcPagamento(endDate, diasUteis) {
