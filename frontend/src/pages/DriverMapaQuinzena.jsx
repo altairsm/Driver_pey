@@ -149,8 +149,7 @@ export default function DriverMapaQuinzena() {
           <div style={s.legendItem}><span style={{ ...s.legendDot, background: 'rgba(234, 179, 8, 0.6)' }} /><span>25-50%</span></div>
           <div style={s.legendItem}><span style={{ ...s.legendDot, background: 'rgba(249, 115, 22, 0.75)' }} /><span>50-75%</span></div>
           <div style={s.legendItem}><span style={{ ...s.legendDot, background: 'rgba(239, 68, 68, 0.9)' }} /><span>75-100%</span></div>
-          <div style={{ ...s.legendItem, marginTop: 6, fontSize: '0.65rem', color: '#6b7280' }}>Quanto mais entregas,<br />mais intenso</div>
-        </div>
+          </div>
       </div>
 
       {dados.length > 0 && (
