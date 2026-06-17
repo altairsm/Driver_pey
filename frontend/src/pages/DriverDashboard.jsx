@@ -425,7 +425,7 @@ export default function DriverDashboard() {
           {/* PRODUTIVIDADE */}
           {activeTab === 'produtividade' && (
             <>
-            {bonusD0.valor_unitario_medio > 0 && (
+            {bonusD0.dias.length > 0 && (
               <div style={s.section}>
                 <div style={{ ...s.sectionTitle, color: '#3de8a0' }}>🏆 BÔNUS D0</div>
                 <div style={s.sectionSub}>Valor acumulado por data (entrega no mesmo dia da emissão)</div>
@@ -448,7 +448,6 @@ export default function DriverDashboard() {
                       );
                     });
                   })()}
-                  {bonusD0.dias.length === 0 && <div style={s.empty}>Nenhum registro D0 na quinzena</div>}
                 </div>
               </div>
             )}
