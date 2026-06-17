@@ -37,7 +37,7 @@ function ProtectedRoute({ children, adminOnly }) {
 function App() {
   useEffect(() => {
     // Inicializar permissões de notificação
-    initNotifications();
+    initNotifications().catch(err => console.error('Erro ao inicializar notificações:', err));
 
     // Verificar reclamações ao abrir o app
     checkNewComplaints();
