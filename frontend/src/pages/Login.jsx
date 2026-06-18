@@ -27,7 +27,7 @@ export default function Login() {
           const result = await checkVersao(json.commit);
           if (!result.atualizado) {
             setVersaoOutdated(true);
-            setVersaoUrl(result.url_download || '');
+            setVersaoUrl(result.url_download || 'https://driverpix.intuitiva.log.br/DriverPix.apk');
             setVersaoCommit(result.commit_esperado || '');
           }
         }
