@@ -3,7 +3,8 @@ import { checkVersao, setVersaoAtiva } from '../services/api';
 import Topbar from '../components/Topbar';
 
 export default function AdminVersao() {
-  const [form, setForm] = useState({ commit_hash: '', url_download: '' });
+  const URL_PADRAO = 'https://driverpix.intuitiva.log.br/DriverPix.apk';
+const [form, setForm] = useState({ commit_hash: '', url_download: URL_PADRAO });
   const [versaoAtiva, setVersaoAtiva_] = useState(null);
   const [msg, setMsg] = useState('');
   const [salvando, setSalvando] = useState(false);
@@ -25,14 +26,15 @@ export default function AdminVersao() {
 
   const handleSalvar = async (e) => {
     e.preventDefault();
-    if (!form.commit_hash || !form.url_download) {
-      setMsg('Preencha commit e URL');
+    if (!form.commit_hash) {
+      setMsg('Preencha o commit hash');
       return;
     }
+    const payload = { commit_hash: form.commit_hash, url_download: form.url_download || URL_PADRAO };
     setSalvando(true);
     setMsg('');
     try {
-      await setVersaoAtiva(form);
+      await setVersaoAtiva(payload);
       setMsg('Versão salva com sucesso!');
       await carregar();
       setForm({ commit_hash: '', url_download: '' });

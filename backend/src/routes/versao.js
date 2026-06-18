@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { getVersaoAtiva, setVersaoAtiva } from '../services/versaoService.js';
 
+const URL_PADRAO = 'https://driverpix.intuitiva.log.br/DriverPix.apk';
 const router = Router();
 
 router.get('/check-versao', async (req, res) => {
@@ -17,7 +18,7 @@ router.get('/check-versao', async (req, res) => {
 
     return res.json({
       atualizado: false,
-      url_download: ativa.url_download,
+      url_download: ativa.url_download || URL_PADRAO,
       commit_esperado: ativa.commit_hash,
     });
   } catch (err) {
@@ -29,10 +30,11 @@ router.get('/check-versao', async (req, res) => {
 router.post('/versao', async (req, res) => {
   try {
     const { commit_hash, url_download } = req.body;
-    if (!commit_hash || !url_download) {
-      return res.status(400).json({ error: 'commit_hash e url_download são obrigatórios' });
+    if (!commit_hash) {
+      return res.status(400).json({ error: 'commit_hash é obrigatório' });
     }
-    const result = await setVersaoAtiva(commit_hash, url_download);
+    const url = url_download || URL_PADRAO;
+    const result = await setVersaoAtiva(commit_hash, url);
     res.json(result);
   } catch (err) {
     console.error('Erro ao salvar versão:', err);
