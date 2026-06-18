@@ -656,6 +656,15 @@ export async function runMigrations() {
     )`);
     console.log('  -> taxas_adiantamento');
 
+    await pool.query(`CREATE TABLE IF NOT EXISTS versao_apk (
+      id SERIAL PRIMARY KEY,
+      commit_hash VARCHAR(40) NOT NULL,
+      url_download VARCHAR(500) NOT NULL,
+      criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      ativo BOOLEAN DEFAULT true
+    )`);
+    console.log('  -> versao_apk');
+
     const { rows: taxaCount } = await pool.query('SELECT COUNT(*)::int AS cnt FROM taxas_adiantamento');
     if (taxaCount[0].cnt === 0) {
       const inserts = [];
