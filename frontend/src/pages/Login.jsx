@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login, adminLogin } from '../services/api';
+import { login, adminLogin, checkVersao } from '../services/api';
 import { sendFcmTokenWithRetry } from '../services/notificationService';
 
 export default function Login() {
@@ -12,9 +12,33 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [versaoLoading, setVersaoLoading] = useState(true);
+  const [versaoOutdated, setVersaoOutdated] = useState(false);
+  const [versaoUrl, setVersaoUrl] = useState('');
+  const [versaoCommit, setVersaoCommit] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
+    async function checkVersion() {
+      try {
+        const resp = await fetch('/version.json?_=' + Date.now());
+        const json = await resp.json();
+        if (json.commit && json.commit !== 'DEV') {
+          const result = await checkVersao(json.commit);
+          if (!result.atualizado) {
+            setVersaoOutdated(true);
+            setVersaoUrl(result.url_download || '');
+            setVersaoCommit(result.commit_esperado || '');
+          }
+        }
+      } catch {
+        // falha silenciosa
+      } finally {
+        setVersaoLoading(false);
+      }
+    }
+    checkVersion();
+
     // Carregar dados salvos
     const savedCpf = localStorage.getItem('savedCpf');
     const savedMatricula = localStorage.getItem('savedMatricula');
@@ -190,6 +214,27 @@ export default function Login() {
           </button>
         </div>
       </div>
+
+      {!versaoLoading && versaoOutdated && (
+        <div style={s.overlay}>
+          <div style={s.modal}>
+            <div style={s.modalIcon}>📲</div>
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.4rem', color: '#f0c040', letterSpacing: '2px', marginBottom: 8 }}>APK DESATUALIZADO</div>
+            <div style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: 16, lineHeight: 1.5 }}>
+              Sua versão do aplicativo está desatualizada.<br />
+              Faça o download da versão mais recente para continuar.
+            </div>
+            {versaoCommit && <div style={{ color: '#4a5568', fontSize: '0.65rem', fontFamily: "'IBM Plex Mono', monospace", marginBottom: 16 }}>Esperado: {versaoCommit}</div>}
+            {versaoUrl ? (
+              <a href={versaoUrl} target="_blank" rel="noopener noreferrer" style={s.btnDownload}>
+                BAIXAR NOVA VERSÃO
+              </a>
+            ) : (
+              <div style={{ color: '#ff5a5a', fontSize: '0.8rem' }}>URL de download não disponível. Contate o administrador.</div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -314,5 +359,25 @@ const s = {
     fontSize: '0.85rem',
     cursor: 'pointer',
     userSelect: 'none',
+  },
+  overlay: {
+    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+    background: 'rgba(0,0,0,0.85)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    zIndex: 9999, padding: 24,
+  },
+  modal: {
+    background: '#161920', border: '1px solid #2a2f3e', borderRadius: 8,
+    padding: '40px 32px', maxWidth: 380, width: '100%',
+    textAlign: 'center',
+  },
+  modalIcon: { fontSize: '3rem', marginBottom: 12 },
+  btnDownload: {
+    display: 'inline-block',
+    background: '#f0c040', color: '#0d0f14',
+    padding: '14px 28px', borderRadius: 4,
+    textDecoration: 'none', fontWeight: 600,
+    fontSize: '0.85rem', letterSpacing: '1px',
+    marginTop: 8,
   },
 };

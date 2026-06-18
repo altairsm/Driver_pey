@@ -495,4 +495,14 @@ export async function geocodificarCeps(limite = 50) {
   return data;
 }
 
+export async function checkVersao(versao) {
+  const { data } = await api.get('/driver/check-versao', { params: { versao } });
+  return data;
+}
+
+export async function setVersaoAtiva(dados) {
+  const { data } = await api.post('/admin/versao', dados);
+  return data;
+}
+
 export default api;

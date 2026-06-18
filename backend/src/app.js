@@ -17,6 +17,7 @@ import solicitacoesRoutes from './routes/solicitacoes.js';
 import analyticsRoutes from './routes/analytics.js';
 import configuracoesRoutes from './routes/configuracoes.js';
 import taxasAdiantamentoRoutes from './routes/taxasAdiantamento.js';
+import versaoRoutes from './routes/versao.js';
 import { authenticateToken, requireAdmin } from './middleware/auth.js';
 
 const app = express();
@@ -63,6 +64,8 @@ app.use('/admin', solicitacoesRoutes);
 app.use('/admin', analyticsRoutes);
 app.use('/configuracoes', authenticateToken, configuracoesRoutes);
 app.use('/taxas-adiantamento', authenticateToken, taxasAdiantamentoRoutes);
+app.use('/driver', versaoRoutes);
+app.use('/admin', versaoRoutes);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
