@@ -48,6 +48,7 @@ export default function AdminSolicitacoesPagamento() {
   const badgeCor = (s) => {
     if (s === 'aprovado') return '#3de8a0';
     if (s === 'recusado') return '#ff5a5a';
+    if (s === 'pre_aprovado') return '#00bcd4';
     return '#ff9f40';
   };
 
@@ -66,6 +67,10 @@ export default function AdminSolicitacoesPagamento() {
             style={{ ...s.filterBtn, background: filtro === 'pendente' ? '#ff9f40' : '#1e2230', color: filtro === 'pendente' ? '#0d0f14' : '#6b7280' }}
             onClick={() => carregar('pendente')}
           >Pendentes</span>
+          <span
+            style={{ ...s.filterBtn, background: filtro === 'pre_aprovado' ? '#00bcd4' : '#1e2230', color: filtro === 'pre_aprovado' ? '#0d0f14' : '#6b7280' }}
+            onClick={() => carregar('pre_aprovado')}
+          >Pré-aprovadas</span>
           <span
             style={{ ...s.filterBtn, background: filtro === 'aprovado' ? '#3de8a0' : '#1e2230', color: filtro === 'aprovado' ? '#0d0f14' : '#6b7280' }}
             onClick={() => carregar('aprovado')}
@@ -116,7 +121,7 @@ export default function AdminSolicitacoesPagamento() {
                     </td>
                     <td style={s.td}>{formatDt(solic.criado_em)}</td>
                     <td style={s.td}>
-                      {solic.status === 'pendente' ? (
+                      {solic.status === 'pendente' || solic.status === 'pre_aprovado' ? (
                         <div style={{ display: 'flex', gap: 6 }}>
                           <button style={s.btnAprovar} onClick={() => handleAprovar(solic.id)}>
                             Aprovar

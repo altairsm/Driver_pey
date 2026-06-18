@@ -287,6 +287,21 @@ function calcDiasAteFechamento(dataBaixa) {
   return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 }
 
+async function enviarWebhookAdiantamento(payload) {
+  try {
+    const res = await fetch('https://webhook.sactudo.com.br/webhook/Driver_Pix', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tipo: 'adiantamento', ...payload }),
+    });
+    if (!res.ok) {
+      console.error(`Webhook adiantamento responded with ${res.status}: ${await res.text().catch(() => '')}`);
+    }
+  } catch (err) {
+    console.error('Webhook adiantamento error:', err.message);
+  }
+}
+
 export async function solicitarPagamento(matricula, listaNumero, valorSolicitado) {
   const config = await getConfig();
 
@@ -395,11 +410,32 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
   `, [Math.min(dias, 14)]);
   const taxaAplicada = Number(taxaRow[0]?.taxa) || 0;
 
+  const { rows: motorista } = await pool.query(`
+    SELECT nome_completo, auto_aprovado FROM matriculos_jad WHERE "OperadorMatricula" = $1
+  `, [matricula]);
+  const temAutoAprovado = motorista.length > 0 && motorista[0].auto_aprovado === true;
+
   try {
+    const status = temAutoAprovado ? 'pre_aprovado' : 'pendente';
     await pool.query(`
       INSERT INTO solicitacoes_pagamento (matricula, lista_numero, valor_solicitado, taxa_aplicada, status)
-      VALUES ($1, $2, $3, $4, 'pendente')
-    `, [matricula, listaNumero, valorSolicitado, taxaAplicada]);
+      VALUES ($1, $2, $3, $4, $5)
+    `, [matricula, listaNumero, valorSolicitado, taxaAplicada, status]);
+
+    if (temAutoAprovado) {
+      const valorLiquido = valorSolicitado * (1 - taxaAplicada / 100);
+      enviarWebhookAdiantamento({
+        matricula,
+        nome: motorista[0].nome_completo || '',
+        lista_numero: listaNumero,
+        valor_solicitado: Number(valorSolicitado).toFixed(2),
+        taxa_aplicada: Number(taxaAplicada).toFixed(2),
+        valor_liquido: Number(valorLiquido).toFixed(2),
+        pre_aprovado: true,
+        aprovado_por: 'auto',
+      });
+    }
+
     return { success: true, motivo: 'Solicitação registrada com sucesso' };
   } catch (err) {
     if (err.code === '23505') {

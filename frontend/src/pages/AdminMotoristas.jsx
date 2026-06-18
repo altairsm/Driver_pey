@@ -8,7 +8,7 @@ export default function AdminMotoristas() {
   const [error, setError] = useState('');
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState(null);
-  const [form, setForm] = useState({ matricula: '', nome_completo: '', cpf: '', telefone: '' });
+  const [form, setForm] = useState({ matricula: '', nome_completo: '', cpf: '', telefone: '', auto_aprovado: false });
   const [salvando, setSalvando] = useState(false);
 
   const carregar = async () => {
@@ -22,7 +22,7 @@ export default function AdminMotoristas() {
 
   const abrirNovo = () => {
     setEditando(null);
-    setForm({ matricula: '', nome_completo: '', cpf: '', telefone: '' });
+    setForm({ matricula: '', nome_completo: '', cpf: '', telefone: '', auto_aprovado: false });
     setError('');
     setModalAberto(true);
   };
@@ -34,6 +34,7 @@ export default function AdminMotoristas() {
       nome_completo: m.nome_completo || '',
       cpf: m.cpf || '',
       telefone: m.telefone || '',
+      auto_aprovado: m.auto_aprovado === true,
     });
     setError('');
     setModalAberto(true);
@@ -41,7 +42,10 @@ export default function AdminMotoristas() {
 
   const fecharModal = () => { setModalAberto(false); setEditando(null); };
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setForm({ ...form, [name]: type === 'checkbox' ? checked : value });
+  };
 
   const handleSalvar = async (e) => {
     e.preventDefault();
@@ -179,6 +183,16 @@ export default function AdminMotoristas() {
                   <label style={s.label}>Telefone</label>
                   <input style={s.input} name="telefone" value={form.telefone}
                     onChange={(e) => setForm({...form, telefone: e.target.value.replace(/\D/g, '')})} />
+                </div>
+                <div style={s.field}>
+                  <label style={{ ...s.label, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                    <input type="checkbox" name="auto_aprovado" checked={form.auto_aprovado}
+                      onChange={handleChange} style={{ width: 18, height: 18, accentColor: '#3de8a0' }} />
+                    Adiantamento automático (pré-aprovado)
+                  </label>
+                  <div style={{ fontSize: '0.65rem', color: '#6b7280', marginTop: 2 }}>
+                    Se ativo, solicitações de adiantamento serão pré-aprovadas automaticamente
+                  </div>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>

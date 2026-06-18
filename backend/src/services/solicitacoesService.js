@@ -23,14 +23,30 @@ export async function listarSolicitacoes(status = null) {
   return rows;
 }
 
+async function enviarWebhookAdiantamento(payload) {
+  try {
+    const res = await fetch('https://webhook.sactudo.com.br/webhook/Driver_Pix', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tipo: 'adiantamento', ...payload }),
+    });
+    if (!res.ok) {
+      console.error(`Webhook adiantamento responded with ${res.status}: ${await res.text().catch(() => '')}`);
+    }
+  } catch (err) {
+    console.error('Webhook adiantamento error:', err.message);
+  }
+}
+
 export async function aprovarSolicitacao(id) {
   const { rows: sol } = await pool.query(`
-    SELECT sp.matricula, sp.lista_numero, sp.status
+    SELECT sp.matricula, sp.lista_numero, sp.status, sp.valor_solicitado, sp.taxa_aplicada
     FROM solicitacoes_pagamento sp
     WHERE sp.id = $1
   `, [id]);
   if (sol.length === 0) return { success: false, motivo: 'Solicitação não encontrada' };
-  if (sol[0].status !== 'pendente') return { success: false, motivo: 'Solicitação já foi processada' };
+  if (sol[0].status === 'aprovado') return { success: false, motivo: 'Solicitação já foi aprovada' };
+  if (sol[0].status === 'recusado') return { success: false, motivo: 'Solicitação já foi recusada' };
 
   const client = await pool.connect();
   try {
@@ -46,6 +62,22 @@ export async function aprovarSolicitacao(id) {
       WHERE "Número" = $1
     `, [sol[0].lista_numero]);
     await client.query('COMMIT');
+
+    const { rows: motorista } = await pool.query(`
+      SELECT nome_completo FROM matriculos_jad WHERE "OperadorMatricula" = $1
+    `, [sol[0].matricula]);
+    const valorLiquido = Number(sol[0].valor_solicitado) * (1 - (Number(sol[0].taxa_aplicada) || 0) / 100);
+    enviarWebhookAdiantamento({
+      matricula: sol[0].matricula,
+      nome: motorista[0]?.nome_completo || '',
+      lista_numero: sol[0].lista_numero,
+      valor_solicitado: Number(sol[0].valor_solicitado).toFixed(2),
+      taxa_aplicada: Number(sol[0].taxa_aplicada).toFixed(2),
+      valor_liquido: Number(valorLiquido).toFixed(2),
+      pre_aprovado: false,
+      aprovado_por: 'admin',
+    });
+
     return { success: true, motivo: 'Solicitação aprovada e lista marcada como paga' };
   } catch (err) {
     await client.query('ROLLBACK');
