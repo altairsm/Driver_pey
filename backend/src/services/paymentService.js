@@ -208,7 +208,8 @@ export async function listarMotoristas() {
       nome_completo,
       cpf,
       telefone,
-      pgto
+      pgto,
+      auto_aprovado
     FROM matriculos_jad
     ORDER BY nome_completo
   `);
@@ -238,21 +239,21 @@ export async function getQuinzenasAdmin() {
 }
 
 export async function criarMotorista(dados) {
-  const { matricula, nome_completo, cpf, telefone, pgto } = dados;
+  const { matricula, nome_completo, cpf, telefone, pgto, auto_aprovado } = dados;
   await pool.query(`
-    INSERT INTO matriculos_jad ("OperadorMatricula", nome_completo, cpf, telefone, pgto)
-    VALUES ($1, $2, $3, $4, $5)
-  `, [matricula, nome_completo, cpf, telefone || null, pgto || null]);
-  return { matricula, nome_completo, cpf, telefone, pgto };
+    INSERT INTO matriculos_jad ("OperadorMatricula", nome_completo, cpf, telefone, pgto, auto_aprovado)
+    VALUES ($1, $2, $3, $4, $5, $6)
+  `, [matricula, nome_completo, cpf, telefone || null, pgto || null, auto_aprovado === true]);
+  return { matricula, nome_completo, cpf, telefone, pgto, auto_aprovado };
 }
 
 export async function atualizarMotorista(matricula, dados) {
-  const { nome_completo, cpf, telefone, pgto } = dados;
+  const { nome_completo, cpf, telefone, pgto, auto_aprovado } = dados;
   const result = await pool.query(`
     UPDATE matriculos_jad
-    SET nome_completo = $1, cpf = $2, telefone = $3, pgto = $4
-    WHERE "OperadorMatricula" = $5
-  `, [nome_completo, cpf, telefone || null, pgto || null, matricula]);
+    SET nome_completo = $1, cpf = $2, telefone = $3, pgto = $4, auto_aprovado = $5
+    WHERE "OperadorMatricula" = $6
+  `, [nome_completo, cpf, telefone || null, pgto || null, auto_aprovado === true, matricula]);
   return result.rowCount > 0;
 }
 
