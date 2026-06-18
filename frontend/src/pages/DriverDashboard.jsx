@@ -587,7 +587,7 @@ export default function DriverDashboard() {
             <div style={s.section}>
               <div style={{ ...s.sectionTitle, justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
                 <span>🚚 LISTAS DA QUINZENA</span>
-                <a href="/driver/regras-pagamento" target="_blank" rel="noopener noreferrer" style={s.regrasLink}>📋 Regras</a>
+                <span onClick={() => navigate('/driver/regras-pagamento')} style={{ ...s.regrasLink, cursor: 'pointer' }}>📋 Regras</span>
               </div>
               <div style={s.sectionSub}>Valor calculado por faixa de peso e bairro</div>
               {countdown.ativo ? (
@@ -640,7 +640,7 @@ export default function DriverDashboard() {
                     const elegivel = !t.pago && pctEficiencia >= eficienciaMinima && dataBaixaOk && !t.tem_reclamacao_aberta && totalValorLista > 0 && totalValorLista <= maximoAdiantamento && !emSuspensao && !temSolicitacao && !reclamacoesDesatualizadas && t.status === 'Finalizado';
                     const motivos = [];
                     if (pctEficiencia < eficienciaMinima) motivos.push(`Eficiência abaixo de ${eficienciaMinima}%`);
-                    if (!dataBaixaOk) motivos.push('Data Baixa deve ser anterior a hoje');
+                    if (!dataBaixaOk) motivos.push('Aguarde 23h após a última baixa da lista');
                     if (t.tem_reclamacao_aberta) motivos.push('Lista possui reclamação');
                     if (totalValorLista <= 0) motivos.push('Valor da lista é zero');
                     if (totalValorLista > maximoAdiantamento) motivos.push(`Valor excede R$ ${maximoAdiantamento.toFixed(2)}`);
