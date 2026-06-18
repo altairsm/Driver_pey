@@ -19,8 +19,9 @@ if (-not $?) { throw "build failed" }
 
 # 3. Gera APK release assinado
 Write-Host "`n[3/4] Build APK (Gradle assembleRelease)..." -ForegroundColor Green
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 Set-Location $ANDROID
-.\gradlew assembleRelease
+.\gradlew.bat assembleRelease
 if (-not $?) { throw "gradle failed" }
 
 # 4. Copia APK para public e dist
