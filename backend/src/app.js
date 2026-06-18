@@ -17,7 +17,7 @@ import solicitacoesRoutes from './routes/solicitacoes.js';
 import analyticsRoutes from './routes/analytics.js';
 import configuracoesRoutes from './routes/configuracoes.js';
 import taxasAdiantamentoRoutes from './routes/taxasAdiantamento.js';
-import versaoRoutes from './routes/versao.js';
+import versaoRoutes, { publicRouter as versaoPublicRouter } from './routes/versao.js';
 import { authenticateToken, requireAdmin } from './middleware/auth.js';
 
 const app = express();
@@ -53,6 +53,7 @@ app.get('/version', (req, res) => {
 
 app.use('/auth', authRoutes);
 app.use('/driver', driverRoutes);
+app.use('/', versaoPublicRouter);
 app.use('/admin', authenticateToken, requireAdmin);
 app.use('/admin', adminRoutes);
 app.use('/upload', uploadRoutes);

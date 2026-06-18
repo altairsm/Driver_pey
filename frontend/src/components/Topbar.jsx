@@ -50,8 +50,9 @@ const GRUPOS = [
     icon: '⚙️',
     ativoPrefix: '/admin/motoristas',
     items: [
-      { label: 'Motoristas', path: '/admin/motoristas' },
-      { label: 'Configurações', path: '/admin/configuracoes' },
+        { label: 'Motoristas', path: '/admin/motoristas' },
+        { label: 'Versão APK', path: '/admin/versao' },
+        { label: 'Configurações', path: '/admin/configuracoes' },
     ],
   },
 ];

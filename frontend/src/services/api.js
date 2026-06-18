@@ -505,4 +505,14 @@ export async function setVersaoAtiva(dados) {
   return data;
 }
 
+export async function uploadApk(file, onProgress) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const { data } = await api.post('/admin/upload-apk', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress: onProgress,
+  });
+  return data;
+}
+
 export default api;

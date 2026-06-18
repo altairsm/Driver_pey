@@ -1,13 +1,18 @@
 import { useState, useEffect } from 'react';
-import { checkVersao, setVersaoAtiva } from '../services/api';
+import { checkVersao, setVersaoAtiva, uploadApk } from '../services/api';
 import Topbar from '../components/Topbar';
 
 export default function AdminVersao() {
   const URL_PADRAO = 'https://driverpix.intuitiva.log.br/DriverPix.apk';
-const [form, setForm] = useState({ commit_hash: '', url_download: URL_PADRAO });
+  const [form, setForm] = useState({ commit_hash: '', url_download: URL_PADRAO });
   const [versaoAtiva, setVersaoAtiva_] = useState(null);
   const [msg, setMsg] = useState('');
   const [salvando, setSalvando] = useState(false);
+
+  const [arquivo, setArquivo] = useState(null);
+  const [enviando, setEnviando] = useState(false);
+  const [progresso, setProgresso] = useState(0);
+  const [uploadMsg, setUploadMsg] = useState('');
 
   const carregar = async () => {
     try {
@@ -45,19 +50,51 @@ const [form, setForm] = useState({ commit_hash: '', url_download: URL_PADRAO });
     }
   };
 
+  const handleUpload = async () => {
+    if (!arquivo) {
+      setUploadMsg('Selecione um arquivo .apk');
+      return;
+    }
+    setEnviando(true);
+    setProgresso(0);
+    setUploadMsg('');
+    try {
+      const result = await uploadApk(arquivo, (progressEvent) => {
+        const pct = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        setProgresso(pct);
+      });
+      setUploadMsg(result.mensagem || 'APK enviado com sucesso!');
+      setForm({
+        commit_hash: result.commit_hash || '',
+        url_download: result.url_download || URL_PADRAO,
+      });
+      await carregar();
+      setArquivo(null);
+      setProgresso(0);
+    } catch (err) {
+      setUploadMsg(err.response?.data?.error || 'Erro ao enviar APK');
+    } finally {
+      setEnviando(false);
+    }
+  };
+
   const s = {
     container: { minHeight: '100vh', background: '#0d0f14', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', sans-serif" },
     content: { maxWidth: 700, margin: '0 auto', padding: '32px 24px' },
     title: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.8rem', letterSpacing: '2px', color: '#f0c040', marginBottom: 24 },
-    card: { background: '#161920', border: '1px solid #2a2f3e', borderRadius: 8, padding: 24 },
+    card: { background: '#161920', border: '1px solid #2a2f3e', borderRadius: 8, padding: 24, marginBottom: 24 },
     field: { marginBottom: 16 },
     label: { fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 4, display: 'block' },
     input: { width: '100%', background: '#1e2230', border: '1px solid #2a2f3e', color: '#e8eaf0', padding: '8px 12px', borderRadius: 4, fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.85rem', boxSizing: 'border-box' },
     btn: { background: '#f0c040', color: '#0d0f14', border: 'none', padding: '10px 24px', borderRadius: 4, cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' },
+    btnDisabled: { background: '#2a2f3e', color: '#6b7280', border: 'none', padding: '10px 24px', borderRadius: 4, cursor: 'not-allowed', fontWeight: 600, fontSize: '0.85rem' },
     msg: { padding: '10px 14px', borderRadius: 4, marginBottom: 16, fontSize: '0.85rem' },
     infoCard: { background: '#1e2230', border: '1px solid #2a2f3e', borderLeft: '3px solid #f0c040', padding: 16, borderRadius: 4, marginBottom: 24 },
     infoLabel: { fontSize: '0.7rem', color: '#6b7280', fontFamily: "'IBM Plex Mono', monospace", letterSpacing: '1px' },
     infoVal: { fontSize: '0.9rem', color: '#e8eaf0', fontFamily: "'IBM Plex Mono', monospace", marginTop: 2 },
+    progressBar: { height: 6, background: '#1e2230', borderRadius: 3, marginTop: 8, overflow: 'hidden' },
+    progressFill: { height: '100%', background: '#f0c040', borderRadius: 3, transition: 'width 0.3s ease' },
+    fileRow: { display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' },
   };
 
   return (
@@ -79,6 +116,37 @@ const [form, setForm] = useState({ commit_hash: '', url_download: URL_PADRAO });
             <div style={s.infoLabel}>Nenhuma versão ativa cadastrada</div>
           </div>
         )}
+
+        <div style={s.card}>
+          <label style={{ ...s.label, fontSize: '0.85rem', textTransform: 'none', color: '#e8eaf0', marginBottom: 16 }}>
+            Enviar novo APK
+          </label>
+
+          {uploadMsg && (
+            <div style={{ ...s.msg, background: uploadMsg.includes('sucesso') ? '#1a3a2a' : '#2a1a1a', color: uploadMsg.includes('sucesso') ? '#3de8a0' : '#ff5a5a', border: `1px solid ${uploadMsg.includes('sucesso') ? '#3de8a0' : '#ff5a5a'}` }}>
+              {uploadMsg}
+            </div>
+          )}
+
+          <div style={s.fileRow}>
+            <input
+              type="file"
+              accept=".apk"
+              onChange={(e) => setArquivo(e.target.files[0])}
+              style={{ color: '#e8eaf0', fontSize: '0.85rem', flex: 1, minWidth: 160 }}
+              disabled={enviando}
+            />
+            <button style={enviando ? s.btnDisabled : s.btn} onClick={handleUpload} disabled={enviando}>
+              {enviando ? `Enviando... ${progresso}%` : 'Enviar APK'}
+            </button>
+          </div>
+
+          {enviando && (
+            <div style={s.progressBar}>
+              <div style={{ ...s.progressFill, width: `${progresso}%` }} />
+            </div>
+          )}
+        </div>
 
         <div style={s.card}>
           {msg && (
