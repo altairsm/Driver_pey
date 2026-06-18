@@ -430,7 +430,7 @@ export default function DriverDashboard() {
                 <div style={{ ...s.sectionTitle, color: '#3de8a0' }}>🏆 BÔNUS D0</div>
                 <div style={s.sectionSub}>Valor acumulado por data (entrega no mesmo dia da emissão)</div>
                 <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '0.9rem', color: '#3de8a0', marginBottom: 12, letterSpacing: '2px' }}>
-                  Total: R$ {bonusD0.total_bonus.toFixed(2)} · {bonusD0.total_entregas} entregas · Média R$ {bonusD0.valor_unitario_medio.toFixed(2)}/un
+                  Total: R$ {bonusD0.total_bonus.toFixed(2)} · {bonusD0.total_entregas} entregas
                 </div>
                 <div style={s.barChart}>
                   {(() => {
