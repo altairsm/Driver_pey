@@ -384,7 +384,7 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
   }
 
   if (!dataBaixa || dataBaixa.toDateString() === new Date().toDateString()) {
-    return { success: false, motivo: 'Data Baixa deve ser anterior ao dia de hoje' };
+    return { success: false, motivo: 'Aguarde 24h após a última baixa da lista' };
   }
 
   const { rows: reclamacoes } = await pool.query(`
