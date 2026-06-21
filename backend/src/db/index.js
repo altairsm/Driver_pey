@@ -6,7 +6,7 @@ export const pool = new pg.Pool({
   port: parseInt(process.env.DB_PORT || '5432'),
   database: process.env.DB_NAME || 'driverfds',
   user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASS || 'postgres',
+  password: process.env.DB_PASSWORD || process.env.DB_PASS || 'postgres',
   max: 10,
   idleTimeoutMillis: 30000,
 });

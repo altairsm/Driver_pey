@@ -8,8 +8,8 @@ services:
       DB_HOST: postgres_postgres
       DB_PORT: 5432
       DB_NAME: driverfds
-      DB_USER: postgres
-      DB_PASS: PUhgB0AZWAfhfm9qFe0sDcLzQG09hTGLkSC3eOa66e333b7b
+      DB_USER: escala_admin
+      DB_PASSWORD: f18f8dd7ad0683fb97c91eb4852ff645
       JWT_SECRET: 0e560c48d422acdbf0b106df4dc154c5
       PORT: 3001
       GOOGLE_MAPS_API_KEY: AIzaSyArrv1bWt3ye29tPLyDkj38qc6P70jCctM
