@@ -53,7 +53,7 @@ export default function AdminUpload() {
     <div style={styles.container}>
       <Topbar user={{ nome: 'Admin' }} />
       <div style={styles.content}>
-        <h2 style={styles.title}>Importar Relatório JadLog</h2>
+        <h2 style={styles.title}>Importar Relatório</h2>
 
         <div style={styles.card}>
           <div style={styles.cardBody}>
@@ -73,7 +73,7 @@ export default function AdminUpload() {
                     <div style={{ fontSize: '2rem', marginBottom: 8 }}>📁</div>
                     <span>Clique para selecionar o arquivo XLSX</span>
                     <span style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 4 }}>
-                      Relatório de entregas exportado da JadLog
+                      Relatório de entregas
                     </span>
                   </>
                 )}
