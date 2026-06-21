@@ -81,19 +81,11 @@ export default function AdminPagamentos() {
     }
   };
 
-  const handleConfirmar = async (matricula) => {
+  const handleConfirmar = async (cpf) => {
     if (!qzAtual) return;
-    setConfirmando(matricula);
+    setConfirmando(cpf);
     try {
-      const motorista = resumo?.motoristas?.find(m => Number(m.matricula) === Number(matricula));
-      const pagamento = {
-        nome: motorista?.nome_completo || '',
-        total_entregas: Number(motorista?.total_ctes) || 0,
-        total_multa: Number(motorista?.total_multa) || 0,
-        total_adiantado: Number(motorista?.total_adiantado) || 0,
-        total_pagar: Number(motorista?.total_pagar) || 0,
-      };
-      await confirmarPagamento(matricula, qzAtual.inicio.slice(0, 10), qzAtual.fim.slice(0, 10), pagamento);
+      await confirmarPagamento(cpf, qzAtual.inicio.slice(0, 10), qzAtual.fim.slice(0, 10), {});
       const data = await getResumo(qzAtual.inicio.slice(0, 10), qzAtual.fim.slice(0, 10));
       setResumo(data);
     } catch (err) {
@@ -103,8 +95,7 @@ export default function AdminPagamentos() {
     }
   };
 
-  const formatBRL = (v) =>
-    `R$ ${(Number(v) || 0).toFixed(2).replace('.', ',')}`;
+  const formatBRL = (v) => `R$ ${(Number(v) || 0).toFixed(2).replace('.', ',')}`;
 
   return (
     <div style={styles.container}>
@@ -113,15 +104,9 @@ export default function AdminPagamentos() {
         <h2 style={styles.title}>Pagamentos a Motoristas</h2>
 
         <div style={styles.filterRow}>
-          <button onClick={handlePrev} disabled={qzIdx >= quinzenas.length - 1} style={styles.navBtn}>
-            &lt; Anterior
-          </button>
-          <div style={styles.quinzenaLabel}>
-            {qzAtual ? formatQuinzena(qzAtual.inicio, qzAtual.fim) : '—'}
-          </div>
-          <button onClick={handleNext} disabled={qzIdx <= 0} style={styles.navBtn}>
-            Próximo &gt;
-          </button>
+          <button onClick={handlePrev} disabled={qzIdx >= quinzenas.length - 1} style={styles.navBtn}>&lt; Anterior</button>
+          <div style={styles.quinzenaLabel}>{qzAtual ? formatQuinzena(qzAtual.inicio, qzAtual.fim) : '—'}</div>
+          <button onClick={handleNext} disabled={qzIdx <= 0} style={styles.navBtn}>Próximo &gt;</button>
           {qzAtual && (
             <div style={styles.pagDateLabel}>
               Pagamento: {calcPagamento(qzAtual.fim.slice(0, 10), config?.dias_uteis_pagamento || 4).toLocaleDateString('pt-BR')}
@@ -139,114 +124,47 @@ export default function AdminPagamentos() {
                 <span style={styles.rValue}>{resumo.total_motoristas}</span>
               </div>
               <div style={styles.rCard}>
-                <span style={styles.rLabel}>Total CT-es</span>
-                <span style={styles.rValue}>{resumo.total_ctes}</span>
-              </div>
-              <div style={styles.rCard}>
-                <span style={styles.rLabel}>Total a Pagar</span>
-                <span style={{ ...styles.rValue, color: '#3de8a0' }}>
-                  {formatBRL(resumo.total_pagar)}
-                </span>
+                <span style={styles.rLabel}>Total CTRCs</span>
+                <span style={styles.rValue}>{resumo.total_ctrcs}</span>
               </div>
               <div style={styles.rCard}>
                 <span style={styles.rLabel}>Receita Total</span>
-                <span style={{ ...styles.rValue, color: '#f0c040' }}>
-                  {formatBRL(resumo.total_receita)}
-                </span>
+                <span style={{ ...styles.rValue, color: '#f0c040' }}>{formatBRL(resumo.total_receita)}</span>
               </div>
               <div style={styles.rCard}>
-                <span style={styles.rLabel}>Margem Bruta</span>
-                <span
-                  style={{
-                    ...styles.rValue,
-                    color: resumo.total_margem >= 0 ? '#3de8a0' : '#ff5a5a',
-                  }}
-                >
-                  {formatBRL(resumo.total_margem)}
-                </span>
+                <span style={styles.rLabel}>Total a Pagar</span>
+                <span style={{ ...styles.rValue, color: '#3de8a0' }}>{formatBRL(resumo.total_pagar)}</span>
               </div>
-              {resumo.total_multa > 0 && (
-                <div style={styles.rCard}>
-                  <span style={styles.rLabel}>Total Multas</span>
-                  <span style={{ ...styles.rValue, color: '#ff9f40' }}>
-                    {formatBRL(resumo.total_multa)}
-                  </span>
-                </div>
-              )}
             </div>
 
             <div style={styles.tableWrap}>
               <table style={styles.table}>
                 <thead>
                   <tr>
-                    <th style={styles.th}>Matrícula</th>
-                    <th style={styles.th}>Nome</th>
                     <th style={styles.th}>CPF</th>
-                    <th style={styles.th}>CT-es</th>
-                    <th style={styles.th}>Faturamento</th>
-                    <th style={styles.th}>Valor Motorista</th>
-                    <th style={styles.th}>Multa</th>
-                    <th style={styles.th}>Margem</th>
+                    <th style={styles.th}>Nome</th>
+                    <th style={styles.th}>CTRCs</th>
+                    <th style={styles.th}>Romaneios</th>
+                    <th style={styles.th}>Receita</th>
+                    <th style={styles.th}>Adiantado</th>
+                    <th style={styles.th}>Total a Pagar</th>
                     <th style={styles.th}>Ação</th>
                   </tr>
                 </thead>
                 <tbody>
                   {resumo.motoristas.map((m, i) => (
                     <tr key={i}>
-                      <td style={styles.td}>{m.matricula}</td>
-                      <td style={styles.td}>{m.nome_completo}</td>
                       <td style={styles.td}>{m.cpf}</td>
-                      <td style={styles.td}>{m.total_ctes}</td>
+                      <td style={styles.td}>{m.nome}</td>
+                      <td style={styles.td}>{m.total_ctrcs}</td>
+                      <td style={styles.td}>{m.total_romaneios}</td>
                       <td style={styles.td}>{formatBRL(m.receita_total)}</td>
-                      <td style={{ ...styles.td, color: '#3de8a0', fontWeight: 600 }}>
-                        {formatBRL(m.total_quinzena)}
-                      </td>
-                      <td style={{ ...styles.td, color: '#ff9f40' }}>
-                        {Number(m.total_multa) > 0 ? (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            {formatBRL(m.total_multa)}
-                            <span style={{
-                              display: 'inline-block',
-                              padding: '1px 6px',
-                              fontSize: '0.58rem',
-                              letterSpacing: '1px',
-                              borderRadius: 2,
-                              background: 'rgba(255,159,64,.15)',
-                              color: '#ff9f40',
-                            }}>
-                              {m.qtd_reclamacoes} reclamações
-                            </span>
-                          </span>
-                        ) : (
-                          formatBRL(0)
-                        )}
-                      </td>
-                      <td
-                        style={{
-                          ...styles.td,
-                          color: Number(m.margem_bruta) >= 0 ? '#e8eaf0' : '#ff5a5a',
-                        }}
-                      >
-                        {formatBRL(m.margem_bruta)}
-                      </td>
+                      <td style={{ ...styles.td, color: '#ff9f40' }}>{formatBRL(m.total_adiantado)}</td>
+                      <td style={{ ...styles.td, color: '#3de8a0', fontWeight: 600 }}>{formatBRL(m.total_pagar)}</td>
                       <td style={styles.td}>
-                        {m.pgto === false || m.pgto === 'false' || m.pgto === 'FALSE' ? (
-                          <span style={{ color: '#ff5a5a', fontWeight: 600, fontSize: '0.78rem' }}>
-                            Bloqueado
-                          </span>
-                        ) : m.pago ? (
-                          <span style={{ color: '#3de8a0', fontWeight: 600, fontSize: '0.78rem' }}>
-                            Pago
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => handleConfirmar(m.matricula)}
-                            disabled={confirmando === m.matricula}
-                            style={styles.pendenteBtn}
-                          >
-                            {confirmando === m.matricula ? '...' : 'Pendente'}
-                          </button>
-                        )}
+                        <button onClick={() => handleConfirmar(m.cpf)} disabled={confirmando === m.cpf} style={styles.pendenteBtn}>
+                          {confirmando === m.cpf ? '...' : 'Confirmar'}
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -255,9 +173,7 @@ export default function AdminPagamentos() {
             </div>
 
             {resumo.motoristas.length === 0 && (
-              <div style={styles.empty}>
-                Nenhum motorista encontrado no período selecionado
-              </div>
+              <div style={styles.empty}>Nenhum motorista encontrado no período selecionado</div>
             )}
           </>
         )}
@@ -267,139 +183,23 @@ export default function AdminPagamentos() {
 }
 
 const styles = {
-  container: {
-    minHeight: '100vh',
-    background: '#0d0f14',
-    color: '#e8eaf0',
-    fontFamily: "'IBM Plex Sans', sans-serif",
-  },
-  content: {
-    maxWidth: 1200,
-    margin: '0 auto',
-    padding: '32px 24px',
-  },
-  title: {
-    fontFamily: "'Bebas Neue', sans-serif",
-    fontSize: '1.8rem',
-    letterSpacing: '2px',
-    color: '#f0c040',
-    marginBottom: 24,
-  },
-  filterRow: {
-    display: 'flex',
-    gap: 12,
-    alignItems: 'center',
-    marginBottom: 24,
-    flexWrap: 'wrap',
-  },
-  navBtn: {
-    background: '#1e2230',
-    border: '1px solid #2a2f3e',
-    color: '#e8eaf0',
-    padding: '8px 16px',
-    borderRadius: 4,
-    cursor: 'pointer',
-    fontSize: '0.82rem',
-    fontFamily: "'IBM Plex Mono', monospace",
-  },
-  quinzenaLabel: {
-    fontSize: '1.1rem',
-    fontWeight: 600,
-    color: '#f0c040',
-    fontFamily: "'Bebas Neue', sans-serif",
-    letterSpacing: '2px',
-    minWidth: 180,
-    textAlign: 'center',
-  },
-  pagDateLabel: {
-    fontSize: '0.78rem',
-    color: '#3de8a0',
-    fontFamily: "'IBM Plex Mono', monospace",
-  },
-  error: {
-    background: '#2a1a1a',
-    border: '1px solid #ff5a5a',
-    color: '#ff5a5a',
-    padding: '10px 16px',
-    borderRadius: 4,
-    marginBottom: 20,
-  },
-  resumoCards: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-    gap: 12,
-    marginBottom: 24,
-  },
-  rCard: {
-    background: '#161920',
-    border: '1px solid #2a2f3e',
-    borderRadius: 8,
-    padding: '16px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 4,
-  },
-  rLabel: {
-    fontSize: '0.7rem',
-    color: '#6b7280',
-    textTransform: 'uppercase',
-    letterSpacing: '1px',
-  },
-  rValue: {
-    fontSize: '1.4rem',
-    fontWeight: 600,
-    fontFamily: "'IBM Plex Mono', monospace",
-    color: '#e8eaf0',
-  },
-  tableWrap: {
-    background: '#161920',
-    border: '1px solid #2a2f3e',
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-  },
-  th: {
-    padding: '10px 14px',
-    textAlign: 'left',
-    fontSize: '0.7rem',
-    color: '#6b7280',
-    textTransform: 'uppercase',
-    letterSpacing: '1px',
-    borderBottom: '1px solid #2a2f3e',
-    background: '#1e2230',
-  },
-  td: {
-    padding: '10px 14px',
-    fontSize: '0.82rem',
-    borderBottom: '1px solid #2a2f3e',
-    color: '#e8eaf0',
-    fontFamily: "'IBM Plex Mono', monospace",
-  },
-  confirmBtn: {
-    background: '#1a3a2a',
-    border: '1px solid #3de8a0',
-    color: '#3de8a0',
-    padding: '4px 14px',
-    borderRadius: 4,
-    cursor: 'pointer',
-    fontSize: '0.75rem',
-  },
-  pendenteBtn: {
-    background: '#3a2a1a',
-    border: '1px solid #f0c040',
-    color: '#f0c040',
-    padding: '4px 14px',
-    borderRadius: 4,
-    cursor: 'pointer',
-    fontSize: '0.75rem',
-  },
-  empty: {
-    textAlign: 'center',
-    color: '#6b7280',
-    padding: 40,
-    fontSize: '1rem',
-  },
+  container: { minHeight: '100vh', background: '#0d0f14', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', sans-serif" },
+  content: { maxWidth: 1200, margin: '0 auto', padding: '32px 24px' },
+  title: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.8rem', letterSpacing: '2px', color: '#f0c040', marginBottom: 24 },
+  filterRow: { display: 'flex', gap: 12, alignItems: 'center', marginBottom: 24, flexWrap: 'wrap' },
+  navBtn: { background: '#1e2230', border: '1px solid #2a2f3e', color: '#e8eaf0', padding: '8px 16px', borderRadius: 4, cursor: 'pointer', fontSize: '0.82rem', fontFamily: "'IBM Plex Mono', monospace" },
+  quinzenaLabel: { fontSize: '1.1rem', fontWeight: 600, color: '#f0c040', fontFamily: "'Bebas Neue', sans-serif", letterSpacing: '2px', minWidth: 180, textAlign: 'center' },
+  pagDateLabel: { fontSize: '0.78rem', color: '#3de8a0', fontFamily: "'IBM Plex Mono', monospace" },
+  error: { background: '#2a1a1a', border: '1px solid #ff5a5a', color: '#ff5a5a', padding: '10px 16px', borderRadius: 4, marginBottom: 20 },
+  resumoCards: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 24 },
+  rCard: { background: '#161920', border: '1px solid #2a2f3e', borderRadius: 8, padding: '16px', display: 'flex', flexDirection: 'column', gap: 4 },
+  rLabel: { fontSize: '0.7rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '1px' },
+  rValue: { fontSize: '1.4rem', fontWeight: 600, fontFamily: "'IBM Plex Mono', monospace", color: '#e8eaf0' },
+  tableWrap: { background: '#161920', border: '1px solid #2a2f3e', borderRadius: 8, overflow: 'hidden' },
+  table: { width: '100%', borderCollapse: 'collapse' },
+  th: { padding: '10px 14px', textAlign: 'left', fontSize: '0.7rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid #2a2f3e', background: '#1e2230' },
+  td: { padding: '10px 14px', fontSize: '0.82rem', borderBottom: '1px solid #2a2f3e', color: '#e8eaf0', fontFamily: "'IBM Plex Mono', monospace" },
+  confirmBtn: { background: '#1a3a2a', border: '1px solid #3de8a0', color: '#3de8a0', padding: '4px 14px', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem' },
+  pendenteBtn: { background: '#3a2a1a', border: '1px solid #f0c040', color: '#f0c040', padding: '4px 14px', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem' },
+  empty: { textAlign: 'center', color: '#6b7280', padding: 40, fontSize: '1rem' },
 };

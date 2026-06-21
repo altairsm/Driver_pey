@@ -2,7 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { parseXLSX, importarEntregas } from '../services/xlsxService.js';
+import { parseCSV, importarSsw036, importarSsw031 } from '../services/csvService.js';
 
 const uploadDir = path.resolve('uploads');
 if (!fs.existsSync(uploadDir)) {
@@ -21,36 +21,57 @@ const upload = multer({
   storage,
   fileFilter: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
-    if (ext === '.xlsx' || ext === '.xls') {
+    if (ext === '.csv') {
       cb(null, true);
     } else {
-      cb(new Error('Apenas arquivos .xlsx ou .xls são permitidos'));
+      cb(new Error('Apenas arquivos .csv são permitidos'));
     }
   },
-  limits: { fileSize: 20 * 1024 * 1024 },
+  limits: { fileSize: 50 * 1024 * 1024 },
 });
 
 const router = Router();
 
-router.post('/', upload.single('file'), async (req, res) => {
+router.post('/ssw-036', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'Nenhum arquivo enviado' });
     }
 
-    const rows = parseXLSX(req.file.path);
-    const result = await importarEntregas(rows);
+    const rows = parseCSV(req.file.path, 2);
+    const result = await importarSsw036(rows);
 
     fs.unlink(req.file.path, () => {});
 
     res.json({
       success: true,
       total_lidos: rows.length,
-      importados: result.imported,
-      ignorados: result.skipped,
+      ...result,
     });
   } catch (err) {
-    console.error('Erro ao processar XLSX:', err);
+    console.error('Erro ao processar CSV 036:', err);
+    res.status(500).json({ error: `Erro ao processar arquivo: ${err.message}` });
+  }
+});
+
+router.post('/ssw-031', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Nenhum arquivo enviado' });
+    }
+
+    const rows = parseCSV(req.file.path);
+    const result = await importarSsw031(rows);
+
+    fs.unlink(req.file.path, () => {});
+
+    res.json({
+      success: true,
+      total_lidos: rows.length,
+      ...result,
+    });
+  } catch (err) {
+    console.error('Erro ao processar CSV 031:', err);
     res.status(500).json({ error: `Erro ao processar arquivo: ${err.message}` });
   }
 });
@@ -61,8 +82,7 @@ router.post('/preview', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'Nenhum arquivo enviado' });
     }
 
-    const rows = parseXLSX(req.file.path);
-
+    const rows = parseCSV(req.file.path);
     fs.unlink(req.file.path, () => {});
 
     const amostra = rows.slice(0, 50);

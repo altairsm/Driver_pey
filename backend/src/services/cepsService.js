@@ -24,7 +24,7 @@ export async function listarBairrosRotas() {
 }
 
 export async function atualizarBairroRota(id, dados) {
-  const { nome_tabela, rota, bonus_d0 } = dados;
+  const { nome_tabela, rota } = dados;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -38,10 +38,6 @@ export async function atualizarBairroRota(id, dados) {
     if (rota !== undefined) {
       sets.push(`rota = $${idx++}`);
       params.push(rota);
-    }
-    if (bonus_d0 !== undefined) {
-      sets.push(`bonus_d0 = $${idx++}`);
-      params.push(bonus_d0);
     }
     if (sets.length === 0) return false;
     params.push(id);
@@ -61,12 +57,10 @@ export async function atualizarBairroRota(id, dados) {
         upSets.push(`rota = $${upIdx++}`);
         upParams.push(rota);
       }
-      if (upSets.length > 0) {
-        upParams.push(bairro);
-        await client.query(`
-          UPDATE ceps_especificos SET ${upSets.join(', ')} WHERE bairro ILIKE $${upIdx}
-        `, upParams);
-      }
+      upParams.push(bairro);
+      await client.query(`
+        UPDATE ceps_especificos SET ${upSets.join(', ')} WHERE bairro ILIKE $${upIdx}
+      `, upParams);
     }
     await client.query('COMMIT');
     return result.rowCount > 0;
@@ -92,15 +86,15 @@ export async function listarBairrosSemBairrosRotas() {
   return result.rows;
 }
 
-export async function criarBairroRota(bairro, nome_tabela, rota, bonus_d0) {
+export async function criarBairroRota(bairro, nome_tabela, rota) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     await client.query(`
-      INSERT INTO bairros_rotas (bairro, rota, nome_tabela, bonus_d0)
-      VALUES ($1, $2, $3, $4)
-      ON CONFLICT (bairro, rota) DO UPDATE SET nome_tabela = EXCLUDED.nome_tabela, bonus_d0 = EXCLUDED.bonus_d0
-    `, [bairro, rota || '', nome_tabela || null, bonus_d0 ?? 0]);
+      INSERT INTO bairros_rotas (bairro, rota, nome_tabela)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (bairro, rota) DO UPDATE SET nome_tabela = EXCLUDED.nome_tabela
+    `, [bairro, rota || '', nome_tabela || null]);
     const upSets = [];
     const upParams = [];
     let upIdx = 1;
@@ -111,10 +105,6 @@ export async function criarBairroRota(bairro, nome_tabela, rota, bonus_d0) {
     if (rota !== undefined) {
       upSets.push(`rota = $${upIdx++}`);
       upParams.push(rota);
-    }
-    if (bonus_d0 !== undefined) {
-      upSets.push(`bonus_d0 = $${upIdx++}`);
-      upParams.push(bonus_d0);
     }
     if (upSets.length > 0) {
       upParams.push(bairro);
@@ -235,8 +225,8 @@ export async function importarCepsDaPlanilha(rows) {
 
       if (nome_tabela) {
         await client.query(`
-          INSERT INTO bairros_rotas (bairro, rota, nome_tabela, bonus_d0)
-          VALUES ($1, $2, $3, 0.00)
+          INSERT INTO bairros_rotas (bairro, rota, nome_tabela)
+          VALUES ($1, $2, $3)
           ON CONFLICT (bairro, rota) DO UPDATE SET
             nome_tabela = EXCLUDED.nome_tabela
         `, [bairro, rota || '', nome_tabela]);
@@ -327,8 +317,8 @@ export async function autoDescobrirCeps() {
       await adicionarCep(cep, bairro, rota, nome_tabela);
 
       await pool.query(`
-        INSERT INTO bairros_rotas (bairro, rota, nome_tabela, bonus_d0)
-        VALUES ($1, $2, $3, 0.00)
+        INSERT INTO bairros_rotas (bairro, rota, nome_tabela)
+        VALUES ($1, $2, $3)
         ON CONFLICT (bairro, rota) DO UPDATE SET nome_tabela = EXCLUDED.nome_tabela
       `, [bairro, rota || '', nome_tabela]).catch(() => {});
 

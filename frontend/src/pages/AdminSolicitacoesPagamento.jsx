@@ -48,7 +48,6 @@ export default function AdminSolicitacoesPagamento() {
   const badgeCor = (s) => {
     if (s === 'aprovado') return '#3de8a0';
     if (s === 'recusado') return '#ff5a5a';
-    if (s === 'pre_aprovado') return '#00bcd4';
     return '#ff9f40';
   };
 
@@ -59,26 +58,14 @@ export default function AdminSolicitacoesPagamento() {
         <h2 style={s.title}>Solicitações de Pagamento Antecipado</h2>
 
         <div style={s.filterRow}>
-          <span
-            style={{ ...s.filterBtn, background: !filtro ? '#f0c040' : '#1e2230', color: !filtro ? '#0d0f14' : '#6b7280' }}
-            onClick={() => carregar('')}
-          >Todas</span>
-          <span
-            style={{ ...s.filterBtn, background: filtro === 'pendente' ? '#ff9f40' : '#1e2230', color: filtro === 'pendente' ? '#0d0f14' : '#6b7280' }}
-            onClick={() => carregar('pendente')}
-          >Pendentes</span>
-          <span
-            style={{ ...s.filterBtn, background: filtro === 'pre_aprovado' ? '#00bcd4' : '#1e2230', color: filtro === 'pre_aprovado' ? '#0d0f14' : '#6b7280' }}
-            onClick={() => carregar('pre_aprovado')}
-          >Pré-aprovadas</span>
-          <span
-            style={{ ...s.filterBtn, background: filtro === 'aprovado' ? '#3de8a0' : '#1e2230', color: filtro === 'aprovado' ? '#0d0f14' : '#6b7280' }}
-            onClick={() => carregar('aprovado')}
-          >Aprovadas</span>
-          <span
-            style={{ ...s.filterBtn, background: filtro === 'recusado' ? '#ff5a5a' : '#1e2230', color: filtro === 'recusado' ? '#0d0f14' : '#6b7280' }}
-            onClick={() => carregar('recusado')}
-          >Recusadas</span>
+          <span style={{ ...s.filterBtn, background: !filtro ? '#f0c040' : '#1e2230', color: !filtro ? '#0d0f14' : '#6b7280' }}
+            onClick={() => carregar('')}>Todas</span>
+          <span style={{ ...s.filterBtn, background: filtro === 'pendente' ? '#ff9f40' : '#1e2230', color: filtro === 'pendente' ? '#0d0f14' : '#6b7280' }}
+            onClick={() => carregar('pendente')}>Pendentes</span>
+          <span style={{ ...s.filterBtn, background: filtro === 'aprovado' ? '#3de8a0' : '#1e2230', color: filtro === 'aprovado' ? '#0d0f14' : '#6b7280' }}
+            onClick={() => carregar('aprovado')}>Aprovadas</span>
+          <span style={{ ...s.filterBtn, background: filtro === 'recusado' ? '#ff5a5a' : '#1e2230', color: filtro === 'recusado' ? '#0d0f14' : '#6b7280' }}
+            onClick={() => carregar('recusado')}>Recusadas</span>
         </div>
 
         {error && <div style={s.error}>{error}</div>}
@@ -93,9 +80,9 @@ export default function AdminSolicitacoesPagamento() {
               <thead>
                 <tr>
                   <th style={s.th}>ID</th>
-                  <th style={s.th}>Matrícula</th>
+                  <th style={s.th}>CPF</th>
                   <th style={s.th}>Motorista</th>
-                  <th style={s.th}>Lista</th>
+                  <th style={s.th}>Romaneio</th>
                   <th style={s.th}>Valor</th>
                   <th style={s.th}>Taxa</th>
                   <th style={s.th}>Líquido</th>
@@ -108,9 +95,9 @@ export default function AdminSolicitacoesPagamento() {
                 {solicitacoes.map((solic) => (
                   <tr key={solic.id}>
                     <td style={s.td}>{solic.id}</td>
-                    <td style={s.td}>{solic.matricula}</td>
-                    <td style={s.td}>{solic.nome_completo}</td>
-                    <td style={s.td}>#{solic.lista_numero}</td>
+                    <td style={s.td}>{solic.motorista_cpf}</td>
+                    <td style={s.td}>{solic.nome}</td>
+                    <td style={s.td}>{solic.id_romaneio}</td>
                     <td style={s.td}>{formatMoney(solic.valor_solicitado)}</td>
                     <td style={s.td}>{solic.taxa_aplicada ? `${solic.taxa_aplicada}%` : '—'}</td>
                     <td style={{ ...s.td, color: '#3de8a0' }}>{formatMoney(solic.valor_solicitado * (1 - (Number(solic.taxa_aplicada) || 0) / 100))}</td>
@@ -121,14 +108,10 @@ export default function AdminSolicitacoesPagamento() {
                     </td>
                     <td style={s.td}>{formatDt(solic.criado_em)}</td>
                     <td style={s.td}>
-                      {solic.status === 'pendente' || solic.status === 'pre_aprovado' ? (
+                      {solic.status === 'pendente' ? (
                         <div style={{ display: 'flex', gap: 6 }}>
-                          <button style={s.btnAprovar} onClick={() => handleAprovar(solic.id)}>
-                            Aprovar
-                          </button>
-                          <button style={s.btnRecusar} onClick={() => handleRecusar(solic.id)}>
-                            Recusar
-                          </button>
+                          <button style={s.btnAprovar} onClick={() => handleAprovar(solic.id)}>Aprovar</button>
+                          <button style={s.btnRecusar} onClick={() => handleRecusar(solic.id)}>Recusar</button>
                         </div>
                       ) : (
                         <span style={{ color: '#6b7280', fontSize: '0.75rem' }}>

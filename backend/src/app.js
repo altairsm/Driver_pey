@@ -9,15 +9,9 @@ import authRoutes from './routes/auth.js';
 import driverRoutes from './routes/driver.js';
 import adminRoutes from './routes/admin.js';
 import uploadRoutes from './routes/upload.js';
-import listasRoutes from './routes/listas.js';
-import tabelasRoutes from './routes/tabelas.js';
-import cepsRoutes from './routes/ceps.js';
-import reclamacoesRoutes from './routes/reclamacoes.js';
-import solicitacoesRoutes from './routes/solicitacoes.js';
-import analyticsRoutes from './routes/analytics.js';
 import configuracoesRoutes from './routes/configuracoes.js';
 import taxasAdiantamentoRoutes from './routes/taxasAdiantamento.js';
-import versaoRoutes, { publicRouter as versaoPublicRouter } from './routes/versao.js';
+import solicitacoesRoutes from './routes/solicitacoes.js';
 import { authenticateToken, requireAdmin } from './middleware/auth.js';
 
 const app = express();
@@ -53,20 +47,12 @@ app.get('/version', (req, res) => {
 
 app.use('/auth', authRoutes);
 app.use('/driver', driverRoutes);
-app.use('/', versaoPublicRouter);
 app.use('/admin', authenticateToken, requireAdmin);
 app.use('/admin', adminRoutes);
-app.use('/upload', uploadRoutes);
-app.use('/admin', listasRoutes);
-app.use('/admin', tabelasRoutes);
-app.use('/admin', cepsRoutes);
-app.use('/admin', reclamacoesRoutes);
-app.use('/admin', solicitacoesRoutes);
-app.use('/admin', analyticsRoutes);
+app.use('/upload', authenticateToken, requireAdmin, uploadRoutes);
 app.use('/configuracoes', authenticateToken, configuracoesRoutes);
 app.use('/taxas-adiantamento', authenticateToken, taxasAdiantamentoRoutes);
-app.use('/driver', versaoRoutes);
-app.use('/admin', versaoRoutes);
+app.use('/admin', authenticateToken, requireAdmin, solicitacoesRoutes);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
@@ -82,7 +68,7 @@ async function start() {
     console.error('Migration failed, starting anyway:', err);
   }
   app.listen(PORT, () => {
-    console.log(`Driver_Pey API running on http://localhost:${PORT}`);
+    console.log(`SSW API running on http://localhost:${PORT}`);
   });
 }
 

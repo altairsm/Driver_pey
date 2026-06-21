@@ -8,7 +8,7 @@ export default function AdminMotoristas() {
   const [error, setError] = useState('');
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState(null);
-  const [form, setForm] = useState({ matricula: '', nome_completo: '', cpf: '', telefone: '', auto_aprovado: false });
+  const [form, setForm] = useState({ cpf: '', nome: '', telefone: '', pix_tipo: 'CPF', cnpj_mei: '', bonus_d0: 0 });
   const [salvando, setSalvando] = useState(false);
 
   const carregar = async () => {
@@ -22,7 +22,7 @@ export default function AdminMotoristas() {
 
   const abrirNovo = () => {
     setEditando(null);
-    setForm({ matricula: '', nome_completo: '', cpf: '', telefone: '', auto_aprovado: false });
+    setForm({ cpf: '', nome: '', telefone: '', pix_tipo: 'CPF', cnpj_mei: '', bonus_d0: 0 });
     setError('');
     setModalAberto(true);
   };
@@ -30,11 +30,12 @@ export default function AdminMotoristas() {
   const abrirEditar = (m) => {
     setEditando(m);
     setForm({
-      matricula: m.matricula || m.OperadorMatricula || '',
-      nome_completo: m.nome_completo || '',
       cpf: m.cpf || '',
+      nome: m.nome || '',
       telefone: m.telefone || '',
-      auto_aprovado: m.auto_aprovado === true,
+      pix_tipo: m.pix_tipo || 'CPF',
+      cnpj_mei: m.cnpj_mei || '',
+      bonus_d0: m.bonus_d0 || 0,
     });
     setError('');
     setModalAberto(true);
@@ -42,22 +43,19 @@ export default function AdminMotoristas() {
 
   const fecharModal = () => { setModalAberto(false); setEditando(null); };
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setForm({ ...form, [name]: type === 'checkbox' ? checked : value });
-  };
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSalvar = async (e) => {
     e.preventDefault();
-    if (!form.matricula || !form.nome_completo || !form.cpf) {
-      setError('Matrícula, Nome e CPF são obrigatórios');
+    if (!form.cpf || !form.nome) {
+      setError('CPF e Nome são obrigatórios');
       return;
     }
     setSalvando(true);
     setError('');
     try {
       if (editando) {
-        await updateMotorista(editando.matricula || editando.OperadorMatricula, form);
+        await updateMotorista(editando.cpf, form);
       } else {
         await createMotorista(form);
       }
@@ -71,43 +69,14 @@ export default function AdminMotoristas() {
   };
 
   const handleExcluir = async (m) => {
-    const nome = m.nome_completo;
-    if (!confirm(`Excluir motorista ${nome}?`)) return;
-    if (!confirm(`Confirma exclusão de ${nome}? CT-es e listas vinculadas serão desassociados.`)) return;
+    if (!confirm(`Excluir motorista ${m.nome}?`)) return;
+    if (!confirm(`Confirma exclusão de ${m.nome}? Romaneios vinculados serão removidos.`)) return;
     try {
-      await deleteMotorista(m.matricula || m.OperadorMatricula);
+      await deleteMotorista(m.cpf);
       await carregar();
     } catch (err) {
       alert(err.response?.data?.error || 'Erro ao excluir');
     }
-  };
-
-  const s = {
-    container: { minHeight: '100vh', background: '#0d0f14', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', sans-serif" },
-    content: { maxWidth: 1100, margin: '0 auto', padding: '32px 24px' },
-    title: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.8rem', letterSpacing: '2px', color: '#f0c040', marginBottom: 24 },
-    card: { background: '#161920', border: '1px solid #2a2f3e', borderRadius: 8, overflow: 'hidden' },
-    cardHeader: { padding: '12px 20px', background: '#1e2230', borderBottom: '1px solid #2a2f3e', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-    cardTitle: { margin: 0, fontSize: '0.95rem', color: '#e8eaf0' },
-    cardBody: { padding: 20 },
-    table: { width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' },
-    th: { padding: '8px 10px', textAlign: 'left', color: '#6b7280', borderBottom: '1px solid #2a2f3e', background: '#1e2230', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '1px' },
-    td: { padding: '6px 10px', borderBottom: '1px solid #2a2f3e', color: '#e8eaf0', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem' },
-    btn: (bg, c) => ({ background: bg, color: c, border: 'none', padding: '8px 20px', borderRadius: 4, cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }),
-    btnSm: (bg, c) => ({ background: bg, color: c, border: 'none', padding: '4px 10px', borderRadius: 4, cursor: 'pointer', fontSize: '0.72rem', fontWeight: 600, marginRight: 4 }),
-    overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
-    modal: { background: '#161920', border: '1px solid #2a2f3e', borderRadius: 8, width: '100%', maxWidth: 480 },
-    mh: { padding: '16px 20px', borderBottom: '1px solid #2a2f3e', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-    mt: { fontSize: '1rem', color: '#e8eaf0', margin: 0 },
-    mb: { padding: 20 },
-    x: { background: 'transparent', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1.2rem', lineHeight: 1 },
-    field: { marginBottom: 16 },
-    label: { fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 4, display: 'block' },
-    input: { width: '100%', background: '#1e2230', border: '1px solid #2a2f3e', color: '#e8eaf0', padding: '8px 12px', borderRadius: 4, fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.85rem', boxSizing: 'border-box' },
-    select: { width: '100%', background: '#1e2230', border: '1px solid #2a2f3e', color: '#e8eaf0', padding: '8px 12px', borderRadius: 4, fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.85rem', boxSizing: 'border-box' },
-    errorMsg: { color: '#ff5a5a', fontSize: '0.85rem', marginBottom: 12 },
-    loadingText: { textAlign: 'center', color: '#f0c040', padding: 40, fontSize: '0.85rem' },
-    emptyText: { textAlign: 'center', color: '#6b7280', padding: 40, fontSize: '0.9rem' },
   };
 
   return (
@@ -126,19 +95,21 @@ export default function AdminMotoristas() {
             : <div style={{ overflowX: 'auto' }}>
                 <table style={s.table}>
                   <thead><tr>
-                    <th style={s.th}>Matrícula</th>
-                    <th style={s.th}>Nome</th>
                     <th style={s.th}>CPF</th>
+                    <th style={s.th}>Nome</th>
                     <th style={s.th}>Telefone</th>
+                    <th style={s.th}>PIX</th>
+                    <th style={s.th}>Bônus D0</th>
                     <th style={s.th}>Ações</th>
                   </tr></thead>
                   <tbody>
                     {motoristas.map(m => (
-                      <tr key={m.matricula || m.OperadorMatricula}>
-                        <td style={s.td}>{m.matricula || m.OperadorMatricula}</td>
-                        <td style={s.td}>{m.nome_completo}</td>
+                      <tr key={m.cpf}>
                         <td style={s.td}>{m.cpf}</td>
+                        <td style={s.td}>{m.nome}</td>
                         <td style={s.td}>{m.telefone || '—'}</td>
+                        <td style={s.td}>{m.pix_tipo || 'CPF'}</td>
+                        <td style={{ ...s.td, color: '#3de8a0' }}>R$ {Number(m.bonus_d0 || 0).toFixed(2)}</td>
                         <td style={{ ...s.td, whiteSpace: 'nowrap' }}>
                           <button style={s.btnSm('#ffc107', '#0d0f14')} onClick={() => abrirEditar(m)}>Editar</button>
                           <button style={s.btnSm('#dc3545', '#fff')} onClick={() => handleExcluir(m)}>Excluir</button>
@@ -164,20 +135,15 @@ export default function AdminMotoristas() {
               <div style={s.mb}>
                 {error && <div style={s.errorMsg}>{error}</div>}
                 <div style={s.field}>
-                  <label style={s.label}>Matrícula</label>
-                  <input style={s.input} name="matricula" type="number" value={form.matricula}
-                    onChange={handleChange} disabled={!!editando} required />
-                </div>
-                <div style={s.field}>
-                  <label style={s.label}>Nome Completo</label>
-                  <input style={s.input} name="nome_completo" value={form.nome_completo}
-                    onChange={handleChange} required />
-                </div>
-                <div style={s.field}>
                   <label style={s.label}>CPF</label>
                   <input style={s.input} name="cpf" value={form.cpf}
                     onChange={(e) => setForm({...form, cpf: e.target.value.replace(/\D/g, '').substring(0, 11)})}
-                    maxLength={11} required />
+                    maxLength={11} disabled={!!editando} required />
+                </div>
+                <div style={s.field}>
+                  <label style={s.label}>Nome Completo</label>
+                  <input style={s.input} name="nome" value={form.nome}
+                    onChange={handleChange} required />
                 </div>
                 <div style={s.field}>
                   <label style={s.label}>Telefone</label>
@@ -185,16 +151,25 @@ export default function AdminMotoristas() {
                     onChange={(e) => setForm({...form, telefone: e.target.value.replace(/\D/g, '')})} />
                 </div>
                 <div style={s.field}>
-                  <label style={{ ...s.label, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                    <input type="checkbox" name="auto_aprovado" checked={form.auto_aprovado}
-                      onChange={handleChange} style={{ width: 18, height: 18, accentColor: '#3de8a0' }} />
-                    Adiantamento automático (pré-aprovado)
-                  </label>
-                  <div style={{ fontSize: '0.65rem', color: '#6b7280', marginTop: 2 }}>
-                    Se ativo, solicitações de adiantamento serão pré-aprovadas automaticamente
-                  </div>
+                  <label style={s.label}>Tipo PIX</label>
+                  <select style={s.select} name="pix_tipo" value={form.pix_tipo} onChange={handleChange}>
+                    <option value="CPF">CPF</option>
+                    <option value="CNPJ">CNPJ</option>
+                    <option value="EMAIL">E-mail</option>
+                    <option value="TELEFONE">Telefone</option>
+                    <option value="ALEATORIA">Chave Aleatória</option>
+                  </select>
                 </div>
-
+                <div style={s.field}>
+                  <label style={s.label}>CNPJ MEI</label>
+                  <input style={s.input} name="cnpj_mei" value={form.cnpj_mei}
+                    onChange={handleChange} />
+                </div>
+                <div style={s.field}>
+                  <label style={s.label}>Bônus D0 (R$ por entrega no mesmo dia)</label>
+                  <input style={s.input} name="bonus_d0" type="number" step="0.01" min="0" value={form.bonus_d0}
+                    onChange={(e) => setForm({...form, bonus_d0: e.target.value})} />
+                </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
                   <button type="button" style={s.btnSm('#6c757d', '#fff')} onClick={fecharModal}>Cancelar</button>
                   <button type="submit" style={s.btnSm('#198754', '#fff')} disabled={salvando}>
@@ -209,3 +184,31 @@ export default function AdminMotoristas() {
     </div>
   );
 }
+
+const s = {
+  container: { minHeight: '100vh', background: '#0d0f14', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', sans-serif" },
+  content: { maxWidth: 1100, margin: '0 auto', padding: '32px 24px' },
+  title: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.8rem', letterSpacing: '2px', color: '#f0c040', marginBottom: 24 },
+  card: { background: '#161920', border: '1px solid #2a2f3e', borderRadius: 8, overflow: 'hidden' },
+  cardHeader: { padding: '12px 20px', background: '#1e2230', borderBottom: '1px solid #2a2f3e', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  cardTitle: { margin: 0, fontSize: '0.95rem', color: '#e8eaf0' },
+  cardBody: { padding: 20 },
+  table: { width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' },
+  th: { padding: '8px 10px', textAlign: 'left', color: '#6b7280', borderBottom: '1px solid #2a2f3e', background: '#1e2230', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '1px' },
+  td: { padding: '6px 10px', borderBottom: '1px solid #2a2f3e', color: '#e8eaf0', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem' },
+  btn: (bg, c) => ({ background: bg, color: c, border: 'none', padding: '8px 20px', borderRadius: 4, cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }),
+  btnSm: (bg, c) => ({ background: bg, color: c, border: 'none', padding: '4px 10px', borderRadius: 4, cursor: 'pointer', fontSize: '0.72rem', fontWeight: 600, marginRight: 4 }),
+  overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
+  modal: { background: '#161920', border: '1px solid #2a2f3e', borderRadius: 8, width: '100%', maxWidth: 480 },
+  mh: { padding: '16px 20px', borderBottom: '1px solid #2a2f3e', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  mt: { fontSize: '1rem', color: '#e8eaf0', margin: 0 },
+  mb: { padding: 20 },
+  x: { background: 'transparent', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1.2rem', lineHeight: 1 },
+  field: { marginBottom: 16 },
+  label: { fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 4, display: 'block' },
+  input: { width: '100%', background: '#1e2230', border: '1px solid #2a2f3e', color: '#e8eaf0', padding: '8px 12px', borderRadius: 4, fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.85rem', boxSizing: 'border-box' },
+  select: { width: '100%', background: '#1e2230', border: '1px solid #2a2f3e', color: '#e8eaf0', padding: '8px 12px', borderRadius: 4, fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.85rem', boxSizing: 'border-box' },
+  errorMsg: { color: '#ff5a5a', fontSize: '0.85rem', marginBottom: 12 },
+  loadingText: { textAlign: 'center', color: '#f0c040', padding: 40, fontSize: '0.85rem' },
+  emptyText: { textAlign: 'center', color: '#6b7280', padding: 40, fontSize: '0.9rem' },
+};

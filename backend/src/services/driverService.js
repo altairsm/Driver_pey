@@ -1,546 +1,297 @@
 import { pool } from '../db/index.js';
 import { getConfig } from './configuracaoService.js';
 
-export async function getDriverData(matricula) {
+export async function getDriverData(cpf) {
   const result = await pool.query(`
-    SELECT "OperadorMatricula"::bigint AS matricula, nome_completo, cpf, telefone,
-           leu_regras, cnpj_mei, pix_tipo
-    FROM matriculos_jad
-    WHERE "OperadorMatricula"::bigint = $1
-  `, [matricula]);
+    SELECT cpf, nome, telefone, leu_regras, cnpj_mei, pix_tipo, bonus_d0
+    FROM motoristas
+    WHERE cpf = $1
+  `, [cpf]);
   return result.rows[0] || null;
 }
 
-export async function getDriverDashboard(matricula, inicio = null, fim = null) {
+export async function getDriverDashboard(cpf, inicio, fim) {
   const query = `
-    WITH entregas_raw AS (
-      SELECT
-        re."NCTE" AS ncte,
-        re."Lista" AS lista,
-        re."Peso"::numeric AS peso_cte,
-        COALESCE(fb.valor_peso, 0) AS valor_peso
-      FROM relatorioentrega_export re
-      LEFT JOIN ceps_especificos ce
-        ON ce.cep = NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '')
-      LEFT JOIN faixas_peso_entrega_bairro fb
-        ON re."Peso"::numeric BETWEEN fb.peso_de AND fb.peso_ate
-        AND fb.nome_tabela = ce.nome_tabela
-      JOIN lista_entregas le ON le."Número"::text = re."Lista"
-      WHERE re."OperadorMatricula"::bigint = $1
-        AND LOWER(re."Evento") = 'entrega'
-        AND le.status = 'Finalizado'
-        AND ($2::date IS NULL OR le."Data Baixa" >= $2)
-        AND ($3::date IS NULL OR le."Data Baixa" <= $3)
-    ),
-    entregas_dedup AS (
-      SELECT DISTINCT ON (ncte, lista) *
-      FROM entregas_raw
-      ORDER BY ncte, lista,
-        CASE WHEN valor_peso > 0 THEN 0 ELSE 1 END,
-        valor_peso ASC
-    ),
-    resumo AS (
-      SELECT
-        COUNT(*) AS total_ctes,
-        COUNT(DISTINCT lista) AS total_listas,
-        SUM(peso_cte) AS peso_total,
-        SUM(valor_peso) AS receita_total
-      FROM entregas_dedup
-    )
-    SELECT * FROM resumo;
+    SELECT
+      COUNT(*) AS total_ctrcs,
+      COUNT(DISTINCT c.id_romaneio) AS total_romaneios,
+      COALESCE(SUM(pc.valor_entrega), 0)::numeric(10,2) AS receita_total
+    FROM ssw_ctrcs c
+    JOIN ssw_romaneios r ON r.id_romaneio = c.id_romaneio
+    LEFT JOIN tabela_preco_cidade pc
+      ON LOWER(pc.cidade) = LOWER(SPLIT_PART(c.cidade_entrega, '/', 1))
+      OR LOWER(pc.cidade) = LOWER(c.cidade_entrega)
+    WHERE r.motorista_cpf = $1
+      AND c.ocorrencia_data BETWEEN $2::date AND $3::date
+      AND LOWER(c.ocorrencia) LIKE '%entregue%'
   `;
 
-  const result = await pool.query(query, [matricula, inicio, fim]);
-  return result.rows[0] || { total_ctes: 0, total_listas: 0, peso_total: 0, receita_total: 0 };
+  const result = await pool.query(query, [cpf, inicio, fim]);
+  return result.rows[0] || { total_ctrcs: 0, total_romaneios: 0, receita_total: 0 };
 }
 
-export async function getDriverTrips(matricula, inicio = null, fim = null) {
+export async function getDriverRomaneios(cpf, inicio, fim) {
   const result = await pool.query(`
     SELECT
-      re."Lista" AS numero_lista,
-      MAX(le."Data Emissão") AS data_emissao,
-      MAX(le."Data Baixa") AS data_baixa,
-      MAX(le."Qtd") AS qtd,
-      COALESCE(MAX(le.status), 'Em aberto') AS status,
-      BOOL_OR(le.pago) AS pago,
-      BOOL_OR(le.ok_motorista) AS ok_motorista,
-      BOOL_OR(le.revisao_motorista) AS revisao_motorista,
-      MAX(le.obs) AS obs,
-      COUNT(*) AS ctes_vinculados,
-      EXISTS (
-        SELECT 1 FROM acareacaojad a
-        JOIN relatorioentrega_export re2 ON re2."NCTE" = a."NCTE"
-        WHERE re2."Lista" = re."Lista"
-          AND re2."OperadorMatricula"::bigint = $1
-      ) AS tem_reclamacao_aberta,
+      r.id_romaneio,
+      r.data_emissao,
+      r.situacao,
+      COUNT(c.ctrc) AS ctrcs_vinculados,
+      COALESCE(SUM(pc.valor_entrega), 0)::numeric(10,2) AS valor_total,
       (SELECT sp.status FROM solicitacoes_pagamento sp
-       WHERE sp.matricula = $1 AND sp.lista_numero = CAST(REPLACE(re."Lista", '"', '') AS BIGINT)
+       WHERE sp.motorista_cpf = r.motorista_cpf AND sp.id_romaneio = r.id_romaneio
        LIMIT 1) AS solicitacao_status
-    FROM relatorioentrega_export re
-    LEFT JOIN lista_entregas le ON le."Número"::text = re."Lista"
-    WHERE re."OperadorMatricula"::bigint = $1
-      AND LOWER(re."Evento") = 'entrega'
-      AND ($2::date IS NULL OR le."Data Baixa" >= $2)
-      AND ($3::date IS NULL OR le."Data Baixa" <= $3)
-    GROUP BY re."Lista"
-    ORDER BY MAX(le."Data Emissão") DESC NULLS LAST
-  `, [matricula, inicio, fim]);
+    FROM ssw_romaneios r
+    LEFT JOIN ssw_ctrcs c ON c.id_romaneio = r.id_romaneio
+      AND LOWER(c.ocorrencia) LIKE '%entregue%'
+    LEFT JOIN tabela_preco_cidade pc
+      ON LOWER(pc.cidade) = LOWER(SPLIT_PART(c.cidade_entrega, '/', 1))
+      OR LOWER(pc.cidade) = LOWER(c.cidade_entrega)
+    WHERE r.motorista_cpf = $1
+      AND c.ocorrencia_data BETWEEN $2::date AND $3::date
+    GROUP BY r.id_romaneio, r.data_emissao, r.situacao, r.motorista_cpf
+    ORDER BY r.data_emissao DESC NULLS LAST
+  `, [cpf, inicio, fim]);
 
   return result.rows;
 }
 
-export async function getDriverTripsFaixas(matricula, inicio = null, fim = null) {
+export async function getDriverRomaneioDetalhes(cpf, idRomaneio) {
   const result = await pool.query(`
-    WITH faixas_raw AS (
-      SELECT
-        re."NCTE" AS ncte,
-        re."Lista" AS lista,
-        re."Peso"::numeric AS peso_cte,
-        COALESCE(ce.bairro, 'Sem bairro') AS bairro,
-        COALESCE(fb.faixas, 'Sem faixa') AS faixa_desc,
-        COALESCE(fb.valor_peso, 0) AS valor_peso,
-        fb.peso_de
-      FROM relatorioentrega_export re
-      LEFT JOIN ceps_especificos ce
-        ON ce.cep = NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '')
-      LEFT JOIN faixas_peso_entrega_bairro fb
-        ON re."Peso"::numeric BETWEEN fb.peso_de AND fb.peso_ate
-        AND fb.nome_tabela = ce.nome_tabela
-      JOIN lista_entregas le ON le."Número"::text = re."Lista"
-      WHERE re."OperadorMatricula"::bigint = $1
-        AND LOWER(re."Evento") = 'entrega'
-        AND le.status = 'Finalizado'
-        AND ($2::date IS NULL OR le."Data Baixa" >= $2)
-        AND ($3::date IS NULL OR le."Data Baixa" <= $3)
-    ),
-    faixas_dedup AS (
-      SELECT DISTINCT ON (ncte, lista) *
-      FROM faixas_raw
-      ORDER BY ncte, lista,
-        CASE WHEN valor_peso > 0 THEN 0 ELSE 1 END,
-        valor_peso ASC
-    )
     SELECT
-      lista,
-      bairro,
-      faixa_desc,
-      COUNT(*) AS entregas,
-      SUM(valor_peso) AS total_valor
-    FROM faixas_dedup
-    GROUP BY lista, bairro, faixa_desc, peso_de
-    ORDER BY lista DESC, bairro, peso_de
-  `, [matricula, inicio, fim]);
+      c.cidade_entrega,
+      c.bairro,
+      COUNT(*)::int AS quantidade,
+      COALESCE(SUM(pc.valor_entrega), 0)::numeric(10,2) AS valor_total
+    FROM ssw_ctrcs c
+    LEFT JOIN tabela_preco_cidade pc
+      ON LOWER(pc.cidade) = LOWER(SPLIT_PART(c.cidade_entrega, '/', 1))
+      OR LOWER(pc.cidade) = LOWER(c.cidade_entrega)
+    WHERE c.id_romaneio = $1
+      AND EXISTS (SELECT 1 FROM ssw_romaneios WHERE id_romaneio = c.id_romaneio AND motorista_cpf = $2)
+    GROUP BY c.cidade_entrega, c.bairro
+    ORDER BY c.cidade_entrega, c.bairro
+  `, [idRomaneio, cpf]);
+
   return result.rows;
 }
 
-export async function getQuinzenasDisponiveis(matricula) {
+export async function getQuinzenasDisponiveis(cpf) {
   const result = await pool.query(`
     SELECT DISTINCT
       CASE
-        WHEN EXTRACT(DAY FROM re."Data"::date) <= 15 THEN
-          date_trunc('month', re."Data"::date)::date
+        WHEN EXTRACT(DAY FROM c.ocorrencia_data) <= 15 THEN
+          date_trunc('month', c.ocorrencia_data)::date
         ELSE
-          (date_trunc('month', re."Data"::date) + INTERVAL '15 days')::date
+          (date_trunc('month', c.ocorrencia_data) + INTERVAL '15 days')::date
       END AS inicio,
       CASE
-        WHEN EXTRACT(DAY FROM re."Data"::date) <= 15 THEN
-          (date_trunc('month', re."Data"::date) + INTERVAL '14 days')::date
+        WHEN EXTRACT(DAY FROM c.ocorrencia_data) <= 15 THEN
+          (date_trunc('month', c.ocorrencia_data) + INTERVAL '14 days')::date
         ELSE
-          (date_trunc('month', re."Data"::date) + INTERVAL '1 month' - INTERVAL '1 day')::date
+          (date_trunc('month', c.ocorrencia_data) + INTERVAL '1 month' - INTERVAL '1 day')::date
       END AS fim
-    FROM relatorioentrega_export re
-    WHERE re."OperadorMatricula"::bigint = $1
-      AND re."Data" IS NOT NULL
+    FROM ssw_ctrcs c
+    JOIN ssw_romaneios r ON r.id_romaneio = c.id_romaneio
+    WHERE r.motorista_cpf = $1
+      AND c.ocorrencia_data IS NOT NULL
     ORDER BY inicio DESC
-  `, [matricula]);
+  `, [cpf]);
   return result.rows;
 }
 
-export async function getProdutividade(matricula, inicio, fim) {
+export async function getProdutividade(cpf, inicio, fim) {
   const result = await pool.query(`
-    WITH entregas_raw AS (
-      SELECT
-        re."NCTE" AS ncte,
-        re."Lista" AS lista,
-        re."Data"::date AS data,
-        COALESCE(re."QPacotes"::int, 0) AS pacotes,
-        re."Peso"::numeric AS peso,
-        COALESCE(fb.valor_peso, 0) AS valor_peso
-      FROM relatorioentrega_export re
-      LEFT JOIN ceps_especificos ce
-        ON ce.cep = NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '')
-      LEFT JOIN faixas_peso_entrega_bairro fb
-        ON re."Peso"::numeric BETWEEN fb.peso_de AND fb.peso_ate
-        AND fb.nome_tabela = ce.nome_tabela
-      JOIN lista_entregas le ON le."Número"::text = re."Lista"
-      WHERE re."OperadorMatricula"::bigint = $1
-        AND LOWER(re."Evento") = 'entrega'
-        AND le.status = 'Finalizado'
-        AND re."Data"::date >= $2::date
-        AND re."Data"::date <= $3::date
-    ),
-    entregas_dedup AS (
-      SELECT DISTINCT ON (ncte, lista) *
-      FROM entregas_raw
-      ORDER BY ncte, lista,
-        CASE WHEN valor_peso > 0 THEN 0 ELSE 1 END,
-        valor_peso ASC
-    )
     SELECT
-      data,
-      COUNT(*) AS ctes,
-      SUM(pacotes) AS pacotes,
-      SUM(peso) AS peso_total,
-      SUM(valor_peso) AS valor_total
-    FROM entregas_dedup
-    GROUP BY data
-    ORDER BY data
-  `, [matricula, inicio, fim]);
+      c.ocorrencia_data AS data,
+      COUNT(*) AS ctrcs,
+      SUM(c.qtde_vol) AS volumes,
+      SUM(c.peso_calculo) AS peso_total,
+      COALESCE(SUM(pc.valor_entrega), 0)::numeric(10,2) AS valor_total
+    FROM ssw_ctrcs c
+    JOIN ssw_romaneios r ON r.id_romaneio = c.id_romaneio
+    LEFT JOIN tabela_preco_cidade pc
+      ON LOWER(pc.cidade) = LOWER(SPLIT_PART(c.cidade_entrega, '/', 1))
+      OR LOWER(pc.cidade) = LOWER(c.cidade_entrega)
+    WHERE r.motorista_cpf = $1
+      AND c.ocorrencia_data >= $2::date
+      AND c.ocorrencia_data <= $3::date
+      AND LOWER(c.ocorrencia) LIKE '%entregue%'
+    GROUP BY c.ocorrencia_data
+    ORDER BY c.ocorrencia_data
+  `, [cpf, inicio, fim]);
   return result.rows;
 }
 
-export async function getEficiencia(matricula, inicio, fim) {
+export async function getEficiencia(cpf, inicio, fim) {
   const result = await pool.query(`
     SELECT
-      LOWER(re."Evento") AS evento,
+      CASE
+        WHEN LOWER(c.ocorrencia) LIKE '%entregue%' THEN 'entrega'
+        ELSE 'insucesso'
+      END AS evento,
       COUNT(*) AS quantidade
-    FROM relatorioentrega_export re
-    WHERE re."OperadorMatricula"::bigint = $1
-      AND re."Data"::date >= $2::date
-      AND re."Data"::date <= $3::date
-    GROUP BY LOWER(re."Evento")
+    FROM ssw_ctrcs c
+    JOIN ssw_romaneios r ON r.id_romaneio = c.id_romaneio
+    WHERE r.motorista_cpf = $1
+      AND c.ocorrencia_data >= $2::date
+      AND c.ocorrencia_data <= $3::date
+    GROUP BY CASE
+      WHEN LOWER(c.ocorrencia) LIKE '%entregue%' THEN 'entrega'
+      ELSE 'insucesso'
+    END
     ORDER BY quantidade DESC
-  `, [matricula, inicio, fim]);
+  `, [cpf, inicio, fim]);
   return result.rows;
 }
 
-export async function getReclamacoes(matricula, inicio, fim) {
-  const result = await pool.query(`
-    SELECT
-      a.id,
-      a."NCTE" AS ncte,
-      a.motivo,
-      a.data_criacao,
-      re."Lista" AS lista,
-      re."Data"::date AS data_entrega,
-      re."Cep" AS cep
-    FROM acareacaojad a
-    JOIN relatorioentrega_export re ON re."NCTE" = a."NCTE"
-    WHERE re."OperadorMatricula"::bigint = $1
-      AND LOWER(re."Evento") = 'entrega'
-      AND a.data_criacao >= $2::date
-      AND a.data_criacao <= $3::date
-    ORDER BY a.data_criacao DESC
-  `, [matricula, inicio, fim]);
-  return result.rows;
-}
-
-export async function getUltimaImportacao() {
-  const { rows } = await pool.query(`SELECT MAX(importado_em) AS ultima_importacao FROM acareacaojad`);
-  return rows[0]?.ultima_importacao || null;
-}
-
-function calcQuinzenaFim(data) {
-  const d = new Date(data);
-  const dia = d.getUTCDate();
-  if (dia <= 15) {
-    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 14));
-  }
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
-}
-
-function addDiasUteis(data, n) {
-  const d = new Date(data);
-  let uteis = 0;
-  while (uteis < n) {
-    d.setUTCDate(d.getUTCDate() + 1);
-    const dow = d.getUTCDay();
-    if (dow !== 0 && dow !== 6) uteis++;
-  }
-  return d;
-}
-
-function emPeriodoSuspensao(dataBaixa, diasUteis) {
-  const quinzenaFim = calcQuinzenaFim(dataBaixa);
-  const pagamentoDate = addDiasUteis(quinzenaFim, diasUteis);
-  const hoje = new Date();
-  hoje.setUTCHours(0, 0, 0, 0);
-  const qf = new Date(quinzenaFim);
-  qf.setUTCHours(0, 0, 0, 0);
-  const pd = new Date(pagamentoDate);
-  pd.setUTCHours(0, 0, 0, 0);
-  return hoje >= qf && hoje <= pd;
-}
-
-function calcDiasAteFechamento(dataBaixa) {
-  const d = new Date(dataBaixa);
-  const dia = d.getUTCDate();
-  let fechamento;
-  if (dia <= 15) {
-    fechamento = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 14));
-  } else {
-    fechamento = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
-  }
-  const hoje = new Date();
-  hoje.setUTCHours(0, 0, 0, 0);
-  const diffMs = fechamento.getTime() - hoje.getTime();
-  return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-}
-
-async function enviarWebhookAdiantamento(payload) {
-  try {
-    const res = await fetch('https://webhook.sactudo.com.br/webhook/Driver_Pix', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tipo: 'adiantamento', ...payload }),
-    });
-    if (!res.ok) {
-      console.error(`Webhook adiantamento responded with ${res.status}: ${await res.text().catch(() => '')}`);
-    }
-  } catch (err) {
-    console.error('Webhook adiantamento error:', err.message);
-  }
-}
-
-export async function solicitarPagamento(matricula, listaNumero, valorSolicitado) {
+export async function solicitarPagamento(cpf, idRomaneio, valorSolicitado) {
   const config = await getConfig();
 
-  const { rows: lista } = await pool.query(`
-    SELECT le."Número", le."Data Baixa", le.status, le.pago
-    FROM lista_entregas le
-    WHERE le."Número" = $1
-  `, [listaNumero]);
+  const { rows: romaneio } = await pool.query(`
+    SELECT r.id_romaneio, r.motorista_cpf
+    FROM ssw_romaneios r
+    WHERE r.id_romaneio = $1 AND r.motorista_cpf = $2
+  `, [idRomaneio, cpf]);
 
-  if (lista.length === 0) {
-    return { success: false, motivo: 'Lista não encontrada' };
-  }
-
-  const l = lista[0];
-
-  if (l.pago) {
-    return { success: false, motivo: 'Esta lista já foi paga' };
+  if (romaneio.length === 0) {
+    return { success: false, motivo: 'Romaneio não encontrado ou não pertence a este motorista' };
   }
 
   const { rows: solicitacaoExistente } = await pool.query(`
     SELECT status FROM solicitacoes_pagamento
-    WHERE matricula = $1 AND lista_numero = $2
-  `, [matricula, listaNumero]);
+    WHERE motorista_cpf = $1 AND id_romaneio = $2
+  `, [cpf, idRomaneio]);
 
   if (solicitacaoExistente.length > 0) {
     const st = solicitacaoExistente[0].status;
     if (st === 'aprovado') {
-      return { success: false, motivo: 'Esta lista já teve o adiantamento aprovado' };
+      return { success: false, motivo: 'Este romaneio já teve o adiantamento aprovado' };
     }
     if (st === 'pendente') {
-      return { success: false, motivo: 'Já existe uma solicitação pendente para esta lista' };
+      return { success: false, motivo: 'Já existe uma solicitação pendente para este romaneio' };
     }
-  }
-
-  const dataBaixa = l['Data Baixa'] ? new Date(l['Data Baixa']) : null;
-  if (dataBaixa && emPeriodoSuspensao(dataBaixa, config.dias_uteis_pagamento)) {
-    return { success: false, motivo: 'Período de pagamento da quinzena em processamento — adiantamentos suspensos' };
-  }
-
-  const { rows: ctes } = await pool.query(`
-    SELECT 1 FROM relatorioentrega_export re
-    WHERE re."Lista" = $1::text
-      AND re."OperadorMatricula"::bigint = $2
-      AND LOWER(re."Evento") = 'entrega'
-    LIMIT 1
-  `, [listaNumero, matricula]);
-
-  if (ctes.length === 0) {
-    return { success: false, motivo: 'Lista não pertence a este motorista' };
   }
 
   const { rows: eficienciaData } = await pool.query(`
     SELECT
-      COUNT(*) FILTER (WHERE LOWER(re."Evento") = 'entrega') AS entregas,
+      COUNT(*) FILTER (WHERE LOWER(c.ocorrencia) LIKE '%entregue%') AS entregas,
       COUNT(*) AS total
-    FROM relatorioentrega_export re
-    WHERE re."OperadorMatricula"::bigint = $1
-      AND re."Data"::date >= (CURRENT_DATE - INTERVAL '30 days')::date
-  `, [matricula]);
+    FROM ssw_ctrcs c
+    JOIN ssw_romaneios r ON r.id_romaneio = c.id_romaneio
+    WHERE r.motorista_cpf = $1
+      AND c.ocorrencia_data >= (CURRENT_DATE - INTERVAL '30 days')::date
+  `, [cpf]);
 
   const ef = eficienciaData[0];
   const pctEf = ef.total > 0 ? Math.round((Number(ef.entregas) / Number(ef.total)) * 100) : 0;
-
-  const { rows: ultimaImport } = await pool.query(`SELECT MAX(importado_em) AS ultima FROM acareacaojad`);
-  const ultima = ultimaImport[0]?.ultima;
-  if (!ultima) {
-    return { success: false, motivo: 'Nenhuma reclamação importada ainda' };
-  }
-  const horasDesdeImport = (Date.now() - new Date(ultima).getTime()) / (1000 * 60 * 60);
-  if (horasDesdeImport > 4) {
-    return { success: false, motivo: 'Reclamações desatualizadas — última importação há mais de 4 horas' };
-  }
 
   if (pctEf < Number(config.eficiencia_minima_adiantamento)) {
     return { success: false, motivo: `Eficiência abaixo de ${config.eficiencia_minima_adiantamento}% nos últimos 30 dias` };
   }
 
-  if (l.status !== 'Finalizado') {
-    return { success: false, motivo: 'Lista não está finalizada' };
-  }
-
-  if (!dataBaixa || dataBaixa.toDateString() === new Date().toDateString()) {
-    return { success: false, motivo: 'Aguarde 24h após a última baixa da lista' };
-  }
-
-  const { rows: reclamacoes } = await pool.query(`
-    SELECT 1 FROM acareacaojad a
-    JOIN relatorioentrega_export re ON re."NCTE" = a."NCTE"
-    WHERE re."Lista" = $1::text
-      AND re."OperadorMatricula"::bigint = $2
-    LIMIT 1
-  `, [listaNumero, matricula]);
-
-  if (reclamacoes.length > 0) {
-    return { success: false, motivo: 'Lista possui reclamações abertas' };
-  }
-
   const maximo = Number(config.valor_maximo_adiantamento) || 400;
   if (valorSolicitado <= 0 || valorSolicitado > maximo) {
-    return { success: false, motivo: `Valor da lista deve ser entre R$ 0,01 e R$ ${maximo.toFixed(2)}` };
+    return { success: false, motivo: `Valor deve ser entre R$ 0,01 e R$ ${maximo.toFixed(2)}` };
   }
 
-  const dias = l['Data Baixa'] ? calcDiasAteFechamento(l['Data Baixa']) : 14;
   const { rows: taxaRow } = await pool.query(`
     SELECT taxa FROM taxas_adiantamento WHERE dias_ate_fechamento = $1
-  `, [Math.min(dias, 14)]);
+  `, [14]);
   const taxaAplicada = Number(taxaRow[0]?.taxa) || 0;
 
-  const { rows: motorista } = await pool.query(`
-    SELECT nome_completo, auto_aprovado FROM matriculos_jad WHERE "OperadorMatricula" = $1
-  `, [matricula]);
-  const temAutoAprovado = motorista.length > 0 && motorista[0].auto_aprovado === true;
-
   try {
-    const status = temAutoAprovado ? 'pre_aprovado' : 'pendente';
     await pool.query(`
-      INSERT INTO solicitacoes_pagamento (matricula, lista_numero, valor_solicitado, taxa_aplicada, status)
-      VALUES ($1, $2, $3, $4, $5)
-    `, [matricula, listaNumero, valorSolicitado, taxaAplicada, status]);
-
-    if (temAutoAprovado) {
-      const valorLiquido = valorSolicitado * (1 - taxaAplicada / 100);
-      enviarWebhookAdiantamento({
-        matricula,
-        nome: motorista[0].nome_completo || '',
-        lista_numero: listaNumero,
-        valor_solicitado: Number(valorSolicitado).toFixed(2),
-        taxa_aplicada: Number(taxaAplicada).toFixed(2),
-        valor_liquido: Number(valorLiquido).toFixed(2),
-        pre_aprovado: true,
-        aprovado_por: 'auto',
-      });
-    }
-
+      INSERT INTO solicitacoes_pagamento (motorista_cpf, id_romaneio, valor_solicitado, taxa_aplicada, status)
+      VALUES ($1, $2, $3, $4, 'pendente')
+    `, [cpf, idRomaneio, valorSolicitado, taxaAplicada]);
     return { success: true, motivo: 'Solicitação registrada com sucesso' };
   } catch (err) {
     if (err.code === '23505') {
-      return { success: false, motivo: 'Solicitação já existe para esta lista' };
+      return { success: false, motivo: 'Solicitação já existe para este romaneio' };
     }
     throw err;
   }
 }
 
-export async function getDriverDados(matricula) {
-  return getDriverData(matricula);
+export async function getDriverDados(cpf) {
+  return getDriverData(cpf);
 }
 
-export async function atualizarDriverDados(matricula, dados) {
+export async function atualizarDriverDados(cpf, dados) {
   const { cnpj_mei, telefone, pix_tipo } = dados;
   await pool.query(`
-    UPDATE matriculos_jad
+    UPDATE motoristas
     SET cnpj_mei = $1, telefone = $2, pix_tipo = $3
-    WHERE "OperadorMatricula"::bigint = $4
-  `, [cnpj_mei || null, telefone || null, pix_tipo, matricula]);
+    WHERE cpf = $4
+  `, [cnpj_mei || null, telefone || null, pix_tipo, cpf]);
   return { success: true };
 }
 
-export async function confirmarRegras(matricula) {
+export async function confirmarRegras(cpf) {
   await pool.query(`
-    UPDATE matriculos_jad SET leu_regras = true WHERE "OperadorMatricula"::bigint = $1
-  `, [matricula]);
+    UPDATE motoristas SET leu_regras = true WHERE cpf = $1
+  `, [cpf]);
   return { success: true };
 }
 
-export async function getDriverMapaQuinzena(matricula, inicio, fim) {
-  const { rows } = await pool.query(`
-    WITH entregas AS (
-      SELECT "Cep", COUNT(*)::int AS total
-      FROM relatorioentrega_export
-      WHERE "OperadorMatricula"::bigint = $1
-        AND "Data" BETWEEN $2::date AND $3::date
-        AND LOWER("Evento") = 'entrega'
-      GROUP BY "Cep"
-    )
-    SELECT DISTINCT ON (e."Cep")
-      e."Cep" AS cep,
-      e.total AS total_entregas,
-      COALESCE(ce.bairro, cb.bairro) AS bairro,
-      ce.logradouro,
-      ce.bairro_viacep,
-      COALESCE(ce.lat, br.lat) AS lat,
-      COALESCE(ce.lng, br.lng) AS lng
-    FROM entregas e
-    LEFT JOIN ceps_especificos ce ON ce.cep = e."Cep"
-    LEFT JOIN ceps_bairros cb ON e."Cep" >= cb.cep_ini AND e."Cep" <= cb.cep_fim
-    LEFT JOIN bairros_rotas br ON br.bairro = COALESCE(ce.bairro, cb.bairro) AND br.lat IS NOT NULL
-    WHERE ce.lat IS NOT NULL OR br.lat IS NOT NULL
-    ORDER BY e."Cep", (CASE WHEN ce.lat IS NOT NULL THEN 0 ELSE 1 END)
-  `, [matricula, inicio, fim]);
-  return rows;
+export async function getAppUsage(cpf, inicio, fim) {
+  const result = await pool.query(`
+    SELECT
+      COALESCE(o.origem_ocorrencia, 'SEM ORIGEM') AS origem,
+      COUNT(*)::int AS quantidade
+    FROM ssw_ocorrencias o
+    JOIN ssw_ctrcs c ON c.ctrc = o.ctrc_normalizado
+    JOIN ssw_romaneios r ON r.id_romaneio = c.id_romaneio
+    WHERE r.motorista_cpf = $1
+      AND c.ocorrencia_data BETWEEN $2::date AND $3::date
+    GROUP BY o.origem_ocorrencia
+    ORDER BY origem
+  `, [cpf, inicio, fim]);
+
+  const rows = result.rows;
+  const total = rows.reduce((s, r) => s + r.quantidade, 0);
+  const app = rows.find(r => r.origem === 'APP')?.quantidade || 0;
+  const base = rows.find(r => r.origem === 'BASE')?.quantidade || 0;
+
+  return {
+    origens: rows,
+    total,
+    total_app: app,
+    total_base: base,
+    pct_app: total > 0 ? Number(((app / total) * 100).toFixed(1)) : 0,
+  };
 }
 
-export async function getBonusD0(matricula, inicio, fim) {
+export async function getBonusD0(cpf, inicio, fim) {
+  const { rows: [{ bonus_d0: valorUnitario = 0 } = {}] } = await pool.query(`
+    SELECT bonus_d0 FROM motoristas WHERE cpf = $1
+  `, [cpf]);
+
   const result = await pool.query(`
-    WITH ctes_d0 AS (
-      SELECT DISTINCT ON (re."NCTE", re."Lista")
-        re."NCTE" AS ncte,
-        re."Lista" AS lista,
-        re."Data"::date AS data,
-        COALESCE(br.bonus_d0, 0)::numeric AS bonus_d0
-      FROM relatorioentrega_export re
-      JOIN lista_entregas le ON le."Número"::text = re."Lista"
-      LEFT JOIN ceps_bairros cb
-        ON NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '') >= cb.cep_ini
-        AND NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '') <= cb.cep_fim
-      LEFT JOIN bairros_rotas br ON LOWER(br.bairro) = LOWER(cb.bairro)
-      WHERE re."OperadorMatricula"::bigint = $1
-        AND LOWER(re."Evento") = 'entrega'
-        AND re."Data"::date = le."Data Emissão"
-        AND le.status = 'Finalizado'
-        AND re."Data"::date >= $2::date
-        AND re."Data"::date <= $3::date
-    ),
-    listas_com_reclamacao AS (
-      SELECT DISTINCT re2."Lista"
-      FROM acareacaojad a
-      JOIN relatorioentrega_export re2 ON re2."NCTE" = a."NCTE"
-      WHERE re2."OperadorMatricula"::bigint = $1
-        AND re2."Lista" IN (SELECT lista FROM ctes_d0)
-    )
     SELECT
-      d.data,
+      c.ocorrencia_data AS data,
       COUNT(*)::int AS entregas_d0,
-      SUM(d.bonus_d0)::numeric(10,2) AS valor_total
-    FROM ctes_d0 d
-    WHERE d.lista NOT IN (SELECT lista FROM listas_com_reclamacao)
-    GROUP BY d.data
-    ORDER BY d.data
-  `, [matricula, inicio, fim]);
+      (COUNT(*) * $4::numeric)::numeric(10,2) AS valor_total
+    FROM ssw_ctrcs c
+    JOIN ssw_romaneios r ON r.id_romaneio = c.id_romaneio
+    WHERE r.motorista_cpf = $1
+      AND LOWER(c.ocorrencia) LIKE '%entregue%'
+      AND c.ocorrencia_data = c.data_emissao
+      AND c.ocorrencia_data >= $2::date
+      AND c.ocorrencia_data <= $3::date
+    GROUP BY c.ocorrencia_data
+    ORDER BY c.ocorrencia_data
+  `, [cpf, inicio, fim, valorUnitario]);
 
   const dias = result.rows;
   const totalEntregas = dias.reduce((s, d) => s + Number(d.entregas_d0), 0);
   const totalBonus = dias.reduce((s, d) => s + Number(d.valor_total), 0);
-  const valorUnitarioMedio = totalEntregas > 0 ? totalBonus / totalEntregas : 0;
 
   return {
     dias,
     total_entregas: totalEntregas,
     total_bonus: totalBonus,
-    valor_unitario_medio: Number(valorUnitarioMedio.toFixed(2)),
+    valor_unitario: Number(valorUnitario),
   };
 }

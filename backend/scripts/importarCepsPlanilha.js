@@ -48,8 +48,8 @@ async function importar() {
       importadosCeps++;
 
       await client.query(`
-        INSERT INTO bairros_rotas (bairro, rota, nome_tabela, bonus_d0)
-        VALUES ($1, $2, $3, 0.00)
+        INSERT INTO bairros_rotas (bairro, rota, nome_tabela)
+        VALUES ($1, $2, $3)
         ON CONFLICT (bairro, rota) DO UPDATE SET
           nome_tabela = EXCLUDED.nome_tabela
       `, [bairro, rota || '', nome_tabela]);

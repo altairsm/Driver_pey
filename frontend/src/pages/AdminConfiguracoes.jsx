@@ -32,7 +32,6 @@ export default function AdminConfiguracoes() {
       const updated = await updateConfig({
         dias_uteis_pagamento: Number(config.dias_uteis_pagamento),
         eficiencia_minima_adiantamento: Number(config.eficiencia_minima_adiantamento),
-        multa_reclamacao: Number(config.multa_reclamacao),
         valor_maximo_adiantamento: Number(config.valor_maximo_adiantamento),
       });
       setConfig(updated);
@@ -55,53 +54,20 @@ export default function AdminConfiguracoes() {
         <div style={s.card}>
           <div style={s.field}>
             <label style={s.label}>Dias úteis para pagamento após fechamento da quinzena</label>
-            <input
-              type="number"
-              min="1"
-              max="30"
-              value={config.dias_uteis_pagamento}
-              onChange={e => handleChange('dias_uteis_pagamento', e.target.value)}
-              style={s.input}
-            />
+            <input type="number" min="1" max="30" value={config.dias_uteis_pagamento}
+              onChange={e => handleChange('dias_uteis_pagamento', e.target.value)} style={s.input} />
           </div>
 
           <div style={s.field}>
             <label style={s.label}>Eficiência mínima (%) para solicitar adiantamento</label>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              step="0.01"
-              value={config.eficiencia_minima_adiantamento}
-              onChange={e => handleChange('eficiencia_minima_adiantamento', e.target.value)}
-              style={s.input}
-            />
-          </div>
-
-          <div style={{ ...s.field, borderTop: '1px solid #2a2f3e', paddingTop: 16 }}>
-            <label style={s.label}>Multa por reclamação pós-adiantamento (R$) — valor abatido na quinzena</label>
-            <input
-              type="number"
-              min="0"
-              max="9999"
-              step="0.01"
-              value={config.multa_reclamacao}
-              onChange={e => handleChange('multa_reclamacao', e.target.value)}
-              style={s.input}
-            />
+            <input type="number" min="0" max="100" step="0.01" value={config.eficiencia_minima_adiantamento}
+              onChange={e => handleChange('eficiencia_minima_adiantamento', e.target.value)} style={s.input} />
           </div>
 
           <div style={s.field}>
-            <label style={s.label}>Valor máximo para adiantamento (R$) — limite por lista</label>
-            <input
-              type="number"
-              min="0"
-              max="9999"
-              step="0.01"
-              value={config.valor_maximo_adiantamento}
-              onChange={e => handleChange('valor_maximo_adiantamento', e.target.value)}
-              style={s.input}
-            />
+            <label style={s.label}>Valor máximo para adiantamento (R$) — limite por romaneio</label>
+            <input type="number" min="0" max="9999" step="0.01" value={config.valor_maximo_adiantamento}
+              onChange={e => handleChange('valor_maximo_adiantamento', e.target.value)} style={s.input} />
           </div>
 
           <button onClick={handleSave} disabled={saving} style={s.btn}>
@@ -120,71 +86,13 @@ export default function AdminConfiguracoes() {
 }
 
 const s = {
-  container: {
-    minHeight: '100vh',
-    background: '#0d0f14',
-    color: '#e8eaf0',
-    fontFamily: "'IBM Plex Sans', sans-serif",
-  },
-  content: {
-    maxWidth: 640,
-    margin: '0 auto',
-    padding: '32px 24px',
-  },
-  title: {
-    fontFamily: "'Bebas Neue', sans-serif",
-    fontSize: '1.8rem',
-    letterSpacing: '2px',
-    color: '#f0c040',
-    marginBottom: 24,
-  },
-  card: {
-    background: '#161920',
-    border: '1px solid #2a2f3e',
-    borderRadius: 8,
-    padding: 24,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 20,
-  },
-  field: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 6,
-  },
-  label: {
-    fontSize: '0.82rem',
-    color: '#9ca3af',
-  },
-  input: {
-    background: '#1e2230',
-    border: '1px solid #2a2f3e',
-    borderRadius: 4,
-    color: '#e8eaf0',
-    padding: '10px 14px',
-    fontSize: '1rem',
-    fontFamily: "'IBM Plex Mono', monospace",
-    outline: 'none',
-    width: '100%',
-    boxSizing: 'border-box',
-  },
-  btn: {
-    background: '#1a3a2a',
-    border: '1px solid #3de8a0',
-    color: '#3de8a0',
-    padding: '12px 24px',
-    borderRadius: 4,
-    cursor: 'pointer',
-    fontSize: '0.9rem',
-    fontFamily: "'IBM Plex Mono', monospace",
-    alignSelf: 'flex-start',
-    marginTop: 8,
-  },
-  msg: {
-    fontSize: '0.85rem',
-    fontFamily: "'IBM Plex Mono', monospace",
-    padding: '8px 12px',
-    borderRadius: 4,
-    background: '#1a1a1a',
-  },
+  container: { minHeight: '100vh', background: '#0d0f14', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', sans-serif" },
+  content: { maxWidth: 640, margin: '0 auto', padding: '32px 24px' },
+  title: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.8rem', letterSpacing: '2px', color: '#f0c040', marginBottom: 24 },
+  card: { background: '#161920', border: '1px solid #2a2f3e', borderRadius: 8, padding: 24, display: 'flex', flexDirection: 'column', gap: 20 },
+  field: { display: 'flex', flexDirection: 'column', gap: 6 },
+  label: { fontSize: '0.82rem', color: '#9ca3af' },
+  input: { background: '#1e2230', border: '1px solid #2a2f3e', borderRadius: 4, color: '#e8eaf0', padding: '10px 14px', fontSize: '1rem', fontFamily: "'IBM Plex Mono', monospace", outline: 'none', width: '100%', boxSizing: 'border-box' },
+  btn: { background: '#1a3a2a', border: '1px solid #3de8a0', color: '#3de8a0', padding: '12px 24px', borderRadius: 4, cursor: 'pointer', fontSize: '0.9rem', fontFamily: "'IBM Plex Mono', monospace", alignSelf: 'flex-start', marginTop: 8 },
+  msg: { fontSize: '0.85rem', fontFamily: "'IBM Plex Mono', monospace", padding: '8px 12px', borderRadius: 4, background: '#1a1a1a' },
 };

@@ -7,26 +7,26 @@ const router = Router();
 
 router.post('/login', async (req, res) => {
   try {
-    const { cpf, matricula } = req.body;
-    if (!cpf || !matricula) {
-      return res.status(400).json({ error: 'CPF e matrícula são obrigatórios' });
+    const { cpf } = req.body;
+    if (!cpf) {
+      return res.status(400).json({ error: 'CPF é obrigatório' });
     }
 
+    const cpfClean = cpf.replace(/\D/g, '');
     const result = await pool.query(`
-      SELECT "OperadorMatricula"::bigint AS matricula, nome_completo, cpf, telefone, leu_regras
-      FROM matriculos_jad
-      WHERE "OperadorMatricula"::bigint = $1 AND cpf = $2
-    `, [matricula, cpf]);
+      SELECT cpf, nome, telefone, leu_regras
+      FROM motoristas
+      WHERE cpf = $1
+    `, [cpfClean]);
 
     if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'CPF ou matrícula inválidos' });
+      return res.status(401).json({ error: 'CPF não encontrado' });
     }
 
     const driver = result.rows[0];
     const token = generateToken({
-      matricula: driver.matricula,
-      nome: driver.nome_completo,
       cpf: driver.cpf,
+      nome: driver.nome,
     });
 
     res.json({ token, driver });

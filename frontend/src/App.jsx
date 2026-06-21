@@ -1,35 +1,21 @@
 import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { initNotifications, checkNewComplaints } from './services/notificationService'
+import { initNotifications } from './services/notificationService'
 import Login from './pages/Login'
 import DriverDashboard from './pages/DriverDashboard'
 import DriverRegrasPagamento from './pages/DriverRegrasPagamento'
-import DriverMapaQuinzena from './pages/DriverMapaQuinzena'
 import MeusDados from './pages/MeusDados'
 import AdminPagamentos from './pages/AdminPagamentos'
-import AdminUpload from './pages/AdminUpload'
-import AdminImportarListas from './pages/AdminImportarListas'
+import AdminSswUpload from './pages/AdminSswUpload'
 import AdminMotoristas from './pages/AdminMotoristas'
-import AdminTabelas from './pages/AdminTabelas'
-import AdminCeps from './pages/AdminCeps'
-import AdminCepsSemRange from './pages/AdminCepsSemRange'
-import AdminCtesSemFaixa from './pages/AdminCtesSemFaixa'
-import AdminCepsImportar from './pages/AdminCepsImportar'
-import AdminCepsSemBairro from './pages/AdminCepsSemBairro'
-import AdminBairrosSemTabela from './pages/AdminBairrosSemTabela'
-import AdminBairrosSemRota from './pages/AdminBairrosSemRota'
-import AdminReclamacoes from './pages/AdminReclamacoes'
 import AdminSolicitacoesPagamento from './pages/AdminSolicitacoesPagamento'
 import AdminConfiguracoes from './pages/AdminConfiguracoes'
-import AdminAnalyticsBairros from './pages/AdminAnalyticsBairros'
 import AdminTaxasAdiantamento from './pages/AdminTaxasAdiantamento'
-import AdminMapaBairros from './pages/AdminMapaBairros'
-import AdminVersao from './pages/AdminVersao'
+import AdminSswPrecos from './pages/AdminSswPrecos'
 
-function ProtectedRoute({ children, adminOnly }) {
+function ProtectedRoute({ children }) {
   const token = localStorage.getItem('token')
-  const isAdmin = window.location.pathname.startsWith('/admin')
-  if (!token && !adminOnly && !isAdmin) {
+  if (!token) {
     return <Navigate to="/login" replace />
   }
   return children
@@ -37,72 +23,22 @@ function ProtectedRoute({ children, adminOnly }) {
 
 function App() {
   useEffect(() => {
-    // Inicializar permissões de notificação
     initNotifications().catch(err => console.error('Erro ao inicializar notificações:', err));
-
-    // Verificar reclamações ao abrir o app
-    checkNewComplaints();
-
-    // Verificar a cada 15 minutos se o app estiver aberto
-    const interval = setInterval(checkNewComplaints, 15 * 60 * 1000);
-
-    return () => clearInterval(interval);
   }, []);
 
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      <Route
-        path="/driver"
-        element={
-          <ProtectedRoute>
-            <DriverDashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/driver/regras-pagamento"
-        element={
-          <ProtectedRoute>
-            <DriverRegrasPagamento />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/driver/mapa"
-        element={
-          <ProtectedRoute>
-            <DriverMapaQuinzena />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/driver/meus-dados"
-        element={
-          <ProtectedRoute>
-            <MeusDados />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/driver" element={<ProtectedRoute><DriverDashboard /></ProtectedRoute>} />
+      <Route path="/driver/regras-pagamento" element={<ProtectedRoute><DriverRegrasPagamento /></ProtectedRoute>} />
+      <Route path="/driver/meus-dados" element={<ProtectedRoute><MeusDados /></ProtectedRoute>} />
       <Route path="/admin/pagamentos" element={<AdminPagamentos />} />
-      <Route path="/admin/upload" element={<AdminUpload />} />
-      <Route path="/admin/listas" element={<AdminImportarListas />} />
+      <Route path="/admin/upload" element={<AdminSswUpload />} />
       <Route path="/admin/motoristas" element={<AdminMotoristas />} />
-      <Route path="/admin/tabelas" element={<AdminTabelas />} />
-      <Route path="/admin/ceps" element={<AdminCeps />} />
-      <Route path="/admin/ceps/sem-range" element={<AdminCepsSemRange />} />
-      <Route path="/admin/ceps/ctes-sem-faixa" element={<AdminCtesSemFaixa />} />
-      <Route path="/admin/ceps/importar" element={<AdminCepsImportar />} />
-      <Route path="/admin/ceps/sem-bairro" element={<AdminCepsSemBairro />} />
-      <Route path="/admin/ceps/sem-tabela" element={<AdminBairrosSemTabela />} />
-      <Route path="/admin/ceps/sem-rota" element={<AdminBairrosSemRota />} />
-      <Route path="/admin/reclamacoes" element={<AdminReclamacoes />} />
       <Route path="/admin/solicitacoes-pagamento" element={<AdminSolicitacoesPagamento />} />
       <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
       <Route path="/admin/taxas-adiantamento" element={<AdminTaxasAdiantamento />} />
-      <Route path="/admin/versao" element={<AdminVersao />} />
-      <Route path="/admin/analytics/bairros" element={<AdminAnalyticsBairros />} />
-      <Route path="/admin/mapa" element={<AdminMapaBairros />} />
+      <Route path="/admin/precos-cidades" element={<AdminSswPrecos />} />
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

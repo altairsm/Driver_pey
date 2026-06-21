@@ -1,116 +1,67 @@
-import { LocalNotifications } from '@capacitor/local-notifications';
-import { PushNotifications } from '@capacitor/push-notifications';
-import { getUltimaImportacaoReclamacoes, saveFcmToken } from './api';
 import { Capacitor } from '@capacitor/core';
+import { saveFcmToken } from './api';
 
 export async function initNotifications() {
   if (Capacitor.getPlatform() === 'web') return;
 
-  const localPerm = await LocalNotifications.checkPermissions();
-  if (localPerm.display !== 'granted') {
-    await LocalNotifications.requestPermissions();
-  }
+  try {
+    const { LocalNotifications } = await import('@capacitor/local-notifications');
+    const { PushNotifications } = await import('@capacitor/push-notifications');
 
-  let pushPerm = await PushNotifications.checkPermissions();
-  if (pushPerm.receive !== 'granted') {
-    pushPerm = await PushNotifications.requestPermissions();
-  }
-
-  if (pushPerm.receive === 'granted') {
-    await PushNotifications.register();
-  }
-
-  PushNotifications.addListener('registration', (token) => {
-    console.log('FCM Token recebido do Capacitor:', token.value);
-    localStorage.setItem('fcm_token', token.value);
-    localStorage.removeItem('fcm_failed');
-
-    const userToken = localStorage.getItem('token');
-    if (userToken) {
-      console.log('Enviando token para o servidor...');
-      saveFcmToken(token.value).catch(err => console.error('Falha ao salvar token no servidor:', err));
+    const localPerm = await LocalNotifications.checkPermissions();
+    if (localPerm.display !== 'granted') {
+      await LocalNotifications.requestPermissions();
     }
-  });
 
-  PushNotifications.addListener('registrationError', (err) => {
-    console.error('Erro no registro de Push:', err);
-    localStorage.setItem('fcm_failed', 'true');
-  });
+    let pushPerm = await PushNotifications.checkPermissions();
+    if (pushPerm.receive !== 'granted') {
+      pushPerm = await PushNotifications.requestPermissions();
+    }
 
-  PushNotifications.addListener('pushNotificationReceived', async (notification) => {
-    console.log('Push recebida em tempo real:', notification);
+    if (pushPerm.receive === 'granted') {
+      await PushNotifications.register();
+    }
 
-    // Se o app estiver aberto, forçamos a exibição visual via notificação local
-    await LocalNotifications.schedule({
-      notifications: [
-        {
-          title: notification.title || "📝 Nova Acareação ❌",
-          body: notification.body || "Entre em contato com a BASE e resolver a acareação",
+    PushNotifications.addListener('registration', (token) => {
+      localStorage.setItem('fcm_token', token.value);
+      localStorage.removeItem('fcm_failed');
+      const userToken = localStorage.getItem('token');
+      if (userToken) {
+        saveFcmToken(token.value).catch(() => {});
+      }
+    });
+
+    PushNotifications.addListener('registrationError', () => {
+      localStorage.setItem('fcm_failed', 'true');
+    });
+
+    PushNotifications.addListener('pushNotificationReceived', async (notification) => {
+      const { LocalNotifications: LN } = await import('@capacitor/local-notifications');
+      await LN.schedule({
+        notifications: [{
+          title: notification.title || 'Driver PIX',
+          body: notification.body || '',
           id: Date.now(),
           schedule: { at: new Date(Date.now() + 100) },
-          sound: 'dinheiro_caindo_na_conta.mp3', // Nome corrigido (usando underscore)
-          extra: notification.data
-        }
-      ]
+        }]
+      });
     });
-  });
+  } catch (err) {
+    console.error('Erro ao inicializar notificações:', err);
+  }
 }
 
 export async function sendFcmTokenWithRetry(maxRetries = 15, intervalMs = 1500) {
   for (let i = 0; i < maxRetries; i++) {
     const userToken = localStorage.getItem('token');
     const fcmToken = localStorage.getItem('fcm_token');
-
     if (userToken && fcmToken) {
       try {
         await saveFcmToken(fcmToken);
-        console.log('Token FCM enviado com sucesso');
         return true;
-      } catch (err) {
-        console.error('Erro ao enviar token FCM, retentando...', err);
-      }
+      } catch {}
     }
     await new Promise(r => setTimeout(r, intervalMs));
   }
-
-  if (localStorage.getItem('fcm_failed')) {
-    console.warn('FCM: registro falhou permanentemente');
-  } else {
-    console.warn('FCM: token não disponível após o tempo limite');
-  }
   return false;
-}
-
-export async function checkNewComplaints() {
-  try {
-    const token = localStorage.getItem('token');
-    if (!token || window.location.pathname === '/login') return;
-
-    const data = await getUltimaImportacaoReclamacoes();
-    if (!data || !data.ultima_importacao) return;
-
-    const serverDate = new Date(data.ultima_importacao).getTime();
-    const lastChecked = localStorage.getItem('last_complaints_check');
-
-    if (lastChecked) {
-      const lastDate = parseInt(lastChecked);
-      if (serverDate > lastDate) {
-        await LocalNotifications.schedule({
-          notifications: [
-            {
-              title: "📝 Nova Acareação ❌",
-              body: "Entre em contato com a BASE e resolver a acareação",
-              id: 1,
-              schedule: { at: new Date(Date.now() + 1000) },
-              sound: null,
-            }
-          ]
-        });
-      }
-    }
-
-    localStorage.setItem('last_complaints_check', serverDate.toString());
-  } catch (err) {
-    console.error('Erro ao verificar novas reclamações:', err);
-  }
 }

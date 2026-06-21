@@ -79,11 +79,11 @@ router.get('/bairros-rotas', async (req, res) => {
 router.put('/bairros-rotas/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { nome_tabela, rota, bonus_d0 } = req.body;
-    if (!nome_tabela && rota === undefined && bonus_d0 === undefined) {
-      return res.status(400).json({ error: 'Forneça nome_tabela, rota ou bonus_d0 para atualizar' });
+    const { nome_tabela, rota } = req.body;
+    if (!nome_tabela && rota === undefined) {
+      return res.status(400).json({ error: 'Forneça nome_tabela ou rota para atualizar' });
     }
-    const atualizado = await atualizarBairroRota(id, { nome_tabela, rota, bonus_d0 });
+    const atualizado = await atualizarBairroRota(id, { nome_tabela, rota });
     if (!atualizado) return res.status(404).json({ error: 'Registro não encontrado' });
     res.json({ success: true });
   } catch (err) {
@@ -187,8 +187,8 @@ router.put('/ceps/:id', async (req, res) => {
       `, [cep.replace(/\D/g, ''), bairro, rota || null, nome_tabela, id]);
 
       await client.query(`
-        INSERT INTO bairros_rotas (bairro, rota, nome_tabela, bonus_d0)
-        VALUES ($1, $2, $3, 0.00)
+        INSERT INTO bairros_rotas (bairro, rota, nome_tabela)
+        VALUES ($1, $2, $3)
         ON CONFLICT (bairro, rota) DO UPDATE SET nome_tabela = EXCLUDED.nome_tabela
       `, [bairro, rota || '', nome_tabela]);
 
@@ -360,11 +360,11 @@ router.get('/ceps/bairros-sem-rota', async (req, res) => {
 
 router.post('/ceps/bairros-sem-rota', async (req, res) => {
   try {
-    const { bairro, nome_tabela, rota, bonus_d0 } = req.body;
+    const { bairro, nome_tabela, rota } = req.body;
     if (!bairro) {
       return res.status(400).json({ error: 'bairro é obrigatório' });
     }
-    const criado = await criarBairroRota(bairro, nome_tabela || null, rota || null, bonus_d0);
+    const criado = await criarBairroRota(bairro, nome_tabela || null, rota || null);
     res.json({ success: true });
   } catch (err) {
     console.error('Erro ao criar bairro/rota:', err);
