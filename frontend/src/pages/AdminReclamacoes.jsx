@@ -38,7 +38,7 @@ export default function AdminReclamacoes() {
       const data = await getAdminReclamacoes(inicio, fim);
       setReclamacoes(data.reclamacoes || data);
       if (data.atualizadas && data.atualizadas > 0) {
-        setMsgAuto(`${data.atualizadas} matrícula(s) atualizada(s) automaticamente com base no relatório JadLog.`);
+        setMsgAuto(`${data.atualizadas} matrícula(s) atualizada(s) automaticamente com base no relatório importado.`);
         setTimeout(() => setMsgAuto(''), 6000);
       }
     } catch (e) {

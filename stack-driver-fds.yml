@@ -7,7 +7,7 @@ services:
     environment:
       DB_HOST: postgres_postgres
       DB_PORT: 5432
-      DB_NAME: jadlog
+      DB_NAME: driverfds
       DB_USER: postgres
       DB_PASS: PUhgB0AZWAfhfm9qFe0sDcLzQG09hTGLkSC3eOa66e333b7b
       JWT_SECRET: 0e560c48d422acdbf0b106df4dc154c5
