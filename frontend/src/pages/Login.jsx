@@ -18,6 +18,7 @@ export default function Login() {
   const [versaoUrl, setVersaoUrl] = useState('');
   const [versaoAtual, setVersaoAtual] = useState('');
   const [versaoEsperada, setVersaoEsperada] = useState('');
+  const [versaoDismissed, setVersaoDismissed] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -25,7 +26,20 @@ export default function Login() {
       try {
         if (COMMIT_HASH && COMMIT_HASH !== 'DEV') {
           setVersaoAtual(COMMIT_HASH);
+
+          const cached = sessionStorage.getItem('versao_check');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (!parsed.atualizado) {
+              setVersaoOutdated(true);
+              setVersaoUrl(parsed.url_download || 'https://driverpix.intuitiva.log.br/DriverPix.apk');
+              setVersaoEsperada(parsed.commit_esperado || '');
+            }
+            return;
+          }
+
           const result = await checkVersao(COMMIT_HASH);
+          sessionStorage.setItem('versao_check', JSON.stringify(result));
           if (!result.atualizado) {
             setVersaoOutdated(true);
             setVersaoUrl(result.url_download || 'https://driverpix.intuitiva.log.br/DriverPix.apk');
@@ -33,7 +47,7 @@ export default function Login() {
           }
         }
       } catch {
-        // falha silenciosa
+        sessionStorage.setItem('versao_check', JSON.stringify({ atualizado: true }));
       } finally {
         setVersaoLoading(false);
       }
@@ -216,25 +230,29 @@ export default function Login() {
         </div>
       </div>
 
-      {!versaoLoading && versaoOutdated && (
-        <div style={s.overlay}>
-          <div style={s.modal}>
-            <div style={s.modalIcon}>📲</div>
-            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.4rem', color: '#f0c040', letterSpacing: '2px', marginBottom: 8 }}>APK DESATUALIZADO</div>
-            <div style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: 16, lineHeight: 1.5 }}>
-              Sua versão do aplicativo está desatualizada.<br />
-              Faça o download da versão mais recente para continuar.
+      {!versaoLoading && versaoOutdated && !versaoDismissed && (
+        <div style={s.banner}>
+          <div style={s.bannerContent}>
+            <div style={s.bannerIcon}>📲</div>
+            <div>
+              <div style={s.bannerTitle}>APK DESATUALIZADO</div>
+              <div style={s.bannerText}>
+                Sua versão do aplicativo está desatualizada. Faça o download da versão mais recente.
+              </div>
+              {versaoAtual && <div style={s.bannerVersion}>Sua versão: {versaoAtual}</div>}
+              {versaoEsperada && <div style={s.bannerVersion}>Esperado: {versaoEsperada}</div>}
+              {versaoUrl ? (
+                <a href={versaoUrl} target="_blank" rel="noopener noreferrer" style={s.bannerBtn}>
+                  BAIXAR NOVA VERSÃO
+                </a>
+              ) : (
+                <div style={{ color: '#ff5a5a', fontSize: '0.75rem' }}>
+                  URL de download não disponível. Contate o administrador.
+                </div>
+              )}
             </div>
-            {versaoAtual && <div style={{ color: '#9ca3af', fontSize: '0.65rem', fontFamily: "'IBM Plex Mono', monospace", marginBottom: 4 }}>Sua versão: {versaoAtual}</div>}
-            {versaoEsperada && <div style={{ color: '#4a5568', fontSize: '0.65rem', fontFamily: "'IBM Plex Mono', monospace", marginBottom: 16 }}>Esperado: {versaoEsperada}</div>}
-            {versaoUrl ? (
-              <a href={versaoUrl} target="_blank" rel="noopener noreferrer" style={s.btnDownload}>
-                BAIXAR NOVA VERSÃO
-              </a>
-            ) : (
-              <div style={{ color: '#ff5a5a', fontSize: '0.8rem' }}>URL de download não disponível. Contate o administrador.</div>
-            )}
           </div>
+          <button style={s.bannerClose} onClick={() => setVersaoDismissed(true)} aria-label="Fechar">✕</button>
         </div>
       )}
     </div>
@@ -381,5 +399,64 @@ const s = {
     textDecoration: 'none', fontWeight: 600,
     fontSize: '0.85rem', letterSpacing: '1px',
     marginTop: 8,
+  },
+  banner: {
+    position: 'fixed', top: 0, left: 0, right: 0,
+    background: '#1e2230',
+    borderBottom: '2px solid #f0c040',
+    padding: '12px 40px 12px 16px',
+    zIndex: 9999,
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  bannerContent: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 12,
+    flex: 1,
+  },
+  bannerIcon: { fontSize: '1.5rem', flexShrink: 0 },
+  bannerTitle: {
+    fontFamily: "'Bebas Neue', sans-serif",
+    fontSize: '1rem',
+    color: '#f0c040',
+    letterSpacing: '2px',
+    marginBottom: 4,
+  },
+  bannerText: {
+    color: '#9ca3af',
+    fontSize: '0.75rem',
+    lineHeight: 1.4,
+    marginBottom: 6,
+  },
+  bannerVersion: {
+    color: '#6b7280',
+    fontSize: '0.6rem',
+    fontFamily: "'IBM Plex Mono', monospace",
+    marginBottom: 2,
+  },
+  bannerBtn: {
+    display: 'inline-block',
+    background: '#f0c040',
+    color: '#0d0f14',
+    padding: '6px 14px',
+    borderRadius: 4,
+    textDecoration: 'none',
+    fontWeight: 600,
+    fontSize: '0.7rem',
+    letterSpacing: '1px',
+    marginTop: 4,
+  },
+  bannerClose: {
+    background: 'transparent',
+    border: 'none',
+    color: '#6b7280',
+    cursor: 'pointer',
+    fontSize: '1rem',
+    padding: '2px',
+    lineHeight: 1,
+    flexShrink: 0,
+    marginLeft: 'auto',
   },
 };
