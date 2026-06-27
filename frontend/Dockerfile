@@ -8,6 +8,7 @@ COPY package*.json ./
 RUN npm install
 
 COPY . .
+ENV COMMIT_HASH=$COMMIT_HASH
 RUN npm run build
 RUN echo "{\"commit\":\"$COMMIT_HASH\",\"url_download\":\"\"}" > dist/version.json
 

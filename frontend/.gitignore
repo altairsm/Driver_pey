@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 public/DriverPix.apk
+src/version.js
 dist-ssr
 *.local
 

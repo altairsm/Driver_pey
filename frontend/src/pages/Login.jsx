@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login, adminLogin, checkVersao } from '../services/api';
 import { sendFcmTokenWithRetry } from '../services/notificationService';
+import { COMMIT_HASH } from '../version.js';
 
 export default function Login() {
   const [cpf, setCpf] = useState('');
@@ -22,11 +23,9 @@ export default function Login() {
   useEffect(() => {
     async function checkVersion() {
       try {
-        const resp = await fetch('/version.json?_=' + Date.now());
-        const json = await resp.json();
-        if (json.commit && json.commit !== 'DEV') {
-          setVersaoAtual(json.commit);
-          const result = await checkVersao(json.commit);
+        if (COMMIT_HASH && COMMIT_HASH !== 'DEV') {
+          setVersaoAtual(COMMIT_HASH);
+          const result = await checkVersao(COMMIT_HASH);
           if (!result.atualizado) {
             setVersaoOutdated(true);
             setVersaoUrl(result.url_download || 'https://driverpix.intuitiva.log.br/DriverPix.apk');
