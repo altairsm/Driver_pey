@@ -15,14 +15,6 @@ const seedFaixasPeso = `
   (0, 5, 5.00), (5.01, 10, 8.00), (10.01, 15, 12.00),
   (15.01, 20, 18.00), (20.01, 30, 25.00), (30.01, 50, 35.00), (50.01, 100, 50.00)`;
 
-const seedFreteMotorista = `
-  INSERT INTO tabela_frete_motorista (matricula, metrica, valor_frete) VALUES
-  (127704, 'Por Entrega', 3.00), (127704, 'Alpha', 1.50), (127704, 'Volumoso', 12.00),
-  (130354, 'Por Entrega', 3.00), (130354, 'Alpha', 1.00), (130354, 'Volumoso', 12.00),
-  (133209, 'Por Entrega', 2.80), (133209, 'Alpha', 1.20), (133209, 'Volumoso', 11.00),
-  (135439, 'Por Entrega', 3.00), (135439, 'Alpha', 1.50), (135439, 'Volumoso', 12.00),
-  (138721, 'Por Entrega', 3.50), (138721, 'Alpha', 1.80), (138721, 'Volumoso', 14.00)`;
-
 const seedCepsBairros = `
   INSERT INTO ceps_bairros (cidade, cep_ini, cep_fim, bairro, tabela_motorista) VALUES
   ('Salvador','40010000','40015999','Comercio','Tab_2'),
@@ -401,14 +393,6 @@ export async function runMigrations() {
     )`);
     console.log('  -> faixas_peso');
 
-    await pool.query(`CREATE TABLE IF NOT EXISTS tabela_frete_motorista (
-      id SERIAL PRIMARY KEY,
-      matricula BIGINT NOT NULL,
-      metrica VARCHAR(100) NOT NULL,
-      valor_frete NUMERIC(10,2) NOT NULL
-    )`);
-    console.log('  -> tabela_frete_motorista');
-
     await pool.query(`CREATE TABLE IF NOT EXISTS lista_entregas (
       "Número" BIGINT PRIMARY KEY,
       "Qtd" INTEGER DEFAULT 0,
@@ -693,7 +677,6 @@ export async function runMigrations() {
 
     try {
       await seedIfEmpty('faixas_peso', seedFaixasPeso);
-      await seedIfEmpty('tabela_frete_motorista', seedFreteMotorista);
       await seedIfEmpty('ceps_bairros', seedCepsBairros);
       await seedIfEmpty('faixas_peso_entrega_bairro', seedFaixasBairro);
 

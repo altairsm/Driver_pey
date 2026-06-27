@@ -37,33 +37,7 @@ INSERT INTO faixas_peso (peso_de, peso_ate, valor_peso) VALUES
 (50.01, 100, 50.00)
 ON CONFLICT DO NOTHING;
 
--- 3. TABELA DE FRETE DOS MOTORISTAS
-CREATE TABLE IF NOT EXISTS tabela_frete_motorista (
-    id SERIAL PRIMARY KEY,
-    matricula BIGINT NOT NULL,
-    metrica VARCHAR(100) NOT NULL,
-    valor_frete NUMERIC(10,2) NOT NULL
-);
-
-INSERT INTO tabela_frete_motorista (matricula, metrica, valor_frete) VALUES
-(127704, 'Por Entrega', 3.00),
-(127704, 'Alpha',       1.50),
-(127704, 'Volumoso',   12.00),
-(130354, 'Por Entrega', 3.00),
-(130354, 'Alpha',       1.00),
-(130354, 'Volumoso',   12.00),
-(133209, 'Por Entrega', 2.80),
-(133209, 'Alpha',       1.20),
-(133209, 'Volumoso',   11.00),
-(135439, 'Por Entrega', 3.00),
-(135439, 'Alpha',       1.50),
-(135439, 'Volumoso',   12.00),
-(138721, 'Por Entrega', 3.50),
-(138721, 'Alpha',       1.80),
-(138721, 'Volumoso',   14.00)
-ON CONFLICT DO NOTHING;
-
--- 4. LISTA DE ENTREGAS
+-- 3. LISTA DE ENTREGAS
 CREATE TABLE IF NOT EXISTS lista_entregas (
     "Número" BIGINT PRIMARY KEY,
     "Qtd" INTEGER DEFAULT 0,
