@@ -291,23 +291,18 @@ export default function AdminPagamentos() {
                                 <thead>
                                   <tr>
                                     <th style={styles.innerTh}>Nº Lista</th>
-                                    <th style={styles.innerTh}>Emissão</th>
                                     <th style={styles.innerTh}>Baixa</th>
                                     <th style={styles.innerTh}>CT-es</th>
-                                    <th style={styles.innerTh}>Peso</th>
-                                    <th style={styles.innerTh}>Valor</th>
                                     <th style={styles.innerTh}>Rota</th>
+                                    <th style={styles.innerTh}>Valor Total</th>
                                   </tr>
                                 </thead>
                                 <tbody>
                                   {listasData[m.matricula].map((l, j) => (
                                     <tr key={j}>
                                       <td style={styles.innerTd}>{l["Número"]}</td>
-                                      <td style={styles.innerTd}>{l["Data Emissão"]?.slice(0, 10)}</td>
                                       <td style={styles.innerTd}>{l["Data Baixa"]?.slice(0, 10)}</td>
                                       <td style={styles.innerTd}>{l.qtd_ctes}</td>
-                                      <td style={styles.innerTd}>{l["Peso"] || '-'}</td>
-                                      <td style={styles.innerTd}>{l["Valor"] ? formatBRL(l["Valor"]) : '-'}</td>
                                       <td style={styles.innerTd}>
                                         <span style={{
                                           ...styles.rotaTag,
@@ -316,6 +311,9 @@ export default function AdminPagamentos() {
                                         }}>
                                           {l["Rota"] || 'Normal'}
                                         </span>
+                                      </td>
+                                      <td style={{ ...styles.innerTd, color: '#3de8a0', fontWeight: 600 }}>
+                                        {formatBRL(l.valor_total)}
                                       </td>
                                     </tr>
                                   ))}

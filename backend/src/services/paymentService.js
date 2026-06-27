@@ -240,20 +240,36 @@ export async function getQuinzenasAdmin() {
 
 export async function getListasPendentes(matricula, inicio, fim) {
   const result = await pool.query(`
+    WITH entregas_dedup AS (
+      SELECT DISTINCT ON (re."NCTE", re."Lista")
+        re."NCTE",
+        re."Lista" AS lista,
+        COALESCE(fb.valor_peso, 0) AS valor_peso
+      FROM relatorioentrega_export re
+      LEFT JOIN ceps_especificos ce
+        ON ce.cep = NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '')
+      LEFT JOIN faixas_peso_entrega_bairro fb
+        ON re."Peso"::numeric BETWEEN fb.peso_de AND fb.peso_ate
+        AND fb.nome_tabela = ce.nome_tabela
+      JOIN lista_entregas le ON le."Número"::text = re."Lista"
+      WHERE re."OperadorMatricula"::bigint = $1
+        AND LOWER(re."Evento") = 'entrega'
+        AND le.status = 'Finalizado'
+        AND le."Data Baixa"::date BETWEEN $2 AND $3
+      ORDER BY re."NCTE", re."Lista",
+        CASE WHEN fb.valor_peso > 0 THEN 0 ELSE 1 END,
+        fb.valor_peso ASC
+    )
     SELECT
       le."Número",
-      le."Data Emissão",
       le."Data Baixa",
-      le.qtd_ctes,
-      le."Peso",
-      le."Valor",
-      le.status,
+      le."Rota",
       le.pago,
-      le."Rota"
-    FROM lista_entregas le
-    WHERE le.matricula_motorista = $1
-      AND le.status = 'Finalizado'
-      AND le."Data Baixa"::date BETWEEN $2 AND $3
+      COUNT(*)::int AS qtd_ctes,
+      COALESCE(SUM(ed.valor_peso), 0)::numeric(10,2) AS valor_total
+    FROM entregas_dedup ed
+    JOIN lista_entregas le ON le."Número"::text = ed.lista
+    GROUP BY le."Número", le."Data Baixa", le."Rota", le.pago
     ORDER BY le."Número"
   `, [matricula, inicio, fim]);
   return result.rows;
