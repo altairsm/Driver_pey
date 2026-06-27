@@ -122,21 +122,7 @@ SET qtd_ctes = (
     WHERE re."Lista" = le."Número"::text
 );
 
--- 6. TABELA CONSULTA (rastreamento de CT-es)
-CREATE TABLE IF NOT EXISTS consulta (
-    id SERIAL PRIMARY KEY,
-    "Código" VARCHAR(50),
-    "Status" VARCHAR(50),
-    "Cliente" VARCHAR(200),
-    "Unidade Atual" VARCHAR(100),
-    "Valor Declarado" VARCHAR(20),
-    "Dt Evento" VARCHAR(20),
-    dt_evento_corrigido DATE,
-    "Descrição" TEXT,
-    dt_previsao_corrigido DATE
-);
-
--- 7. AVERBAÇÃO / RECLAMAÇÕES
+-- 6. AVERBAÇÃO / RECLAMAÇÕES
 CREATE TABLE IF NOT EXISTS acareacaojad (
     id SERIAL PRIMARY KEY,
     ticket_id VARCHAR(50) UNIQUE,

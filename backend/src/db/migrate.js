@@ -439,20 +439,6 @@ export async function runMigrations() {
     )`);
     console.log('  -> relatorioentrega_export');
 
-    await pool.query(`CREATE TABLE IF NOT EXISTS consulta (
-      id SERIAL PRIMARY KEY,
-      "Código" VARCHAR(50),
-      "Status" VARCHAR(50),
-      "Cliente" VARCHAR(200),
-      "Unidade Atual" VARCHAR(100),
-      "Valor Declarado" VARCHAR(20),
-      "Dt Evento" VARCHAR(20),
-      dt_evento_corrigido DATE,
-      "Descrição" TEXT,
-      dt_previsao_corrigido DATE
-    )`);
-    console.log('  -> consulta');
-
     await pool.query(`CREATE TABLE IF NOT EXISTS acareacaojad (
       id SERIAL PRIMARY KEY,
       ticket_id VARCHAR(50) UNIQUE,
