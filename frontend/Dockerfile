@@ -8,8 +8,8 @@ COPY package*.json ./
 RUN npm install
 
 COPY . .
-RUN echo "{\"commit\":\"$COMMIT_HASH\",\"url_download\":\"\"}" > public/version.json
 RUN npm run build
+RUN echo "{\"commit\":\"$COMMIT_HASH\",\"url_download\":\"\"}" > dist/version.json
 
 FROM nginx:alpine
 
