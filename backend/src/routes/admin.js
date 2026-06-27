@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { calcularPagamentos, confirmarPagamento, listarMotoristas, criarMotorista, atualizarMotorista, deletarMotorista, getQuinzenasAdmin } from '../services/paymentService.js';
+import { calcularPagamentos, confirmarPagamento, listarMotoristas, criarMotorista, atualizarMotorista, deletarMotorista, getQuinzenasAdmin, getListasPendentes } from '../services/paymentService.js';
 
 const router = Router();
 
@@ -117,6 +117,21 @@ router.get('/resumo', async (req, res) => {
   } catch (err) {
     console.error('Erro ao gerar resumo:', err);
     res.status(500).json({ error: 'Erro ao gerar resumo' });
+  }
+});
+
+router.get('/listas-pendentes/:matricula', async (req, res) => {
+  try {
+    const { matricula } = req.params;
+    const { inicio, fim } = req.query;
+    if (!inicio || !fim) {
+      return res.status(400).json({ error: 'Parâmetros inicio e fim são obrigatórios' });
+    }
+    const listas = await getListasPendentes(matricula, inicio, fim);
+    res.json(listas);
+  } catch (err) {
+    console.error('Erro ao buscar listas pendentes:', err);
+    res.status(500).json({ error: 'Erro ao buscar listas pendentes' });
   }
 });
 

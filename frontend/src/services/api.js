@@ -425,6 +425,11 @@ export async function getAnalyticsBairros(inicio, fim, matricula) {
   return data;
 }
 
+export async function getListasPendentesMotorista(matricula, inicio, fim) {
+  const { data } = await api.get(`/admin/listas-pendentes/${matricula}`, { params: { inicio, fim } });
+  return data;
+}
+
 export async function getConfig() {
   const { data } = await api.get('/configuracoes');
   return data;

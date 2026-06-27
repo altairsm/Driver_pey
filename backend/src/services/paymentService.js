@@ -28,7 +28,7 @@ export async function calcularPagamentos(inicio, fim) {
       JOIN lista_entregas le ON le."Número"::text = re."Lista"
       WHERE LOWER(re."Evento") = 'entrega'
         AND le.status = 'Finalizado'
-        AND re."Data"::date BETWEEN qp.inicio AND qp.fim
+        AND le."Data Baixa"::date BETWEEN qp.inicio AND qp.fim
     ),
     entregas_base AS (
       SELECT DISTINCT ON (ncte, lista) *
@@ -109,7 +109,7 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
       AND LOWER(re."Evento") = 'entrega'
       AND le.status = 'Finalizado'
       AND (le.pago IS NULL OR le.pago = false)
-      AND re."Data"::date BETWEEN $2 AND $3
+      AND le."Data Baixa"::date BETWEEN $2 AND $3
   `, [matricula, inicio, fim]);
 
   const { rows: [gross] } = await pool.query(`
@@ -128,7 +128,7 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
         AND LOWER(re."Evento") = 'entrega'
         AND le.status = 'Finalizado'
         AND (le.pago IS NULL OR le.pago = false)
-        AND re."Data"::date BETWEEN $2 AND $3
+        AND le."Data Baixa"::date BETWEEN $2 AND $3
       ORDER BY re."NCTE", re."Lista",
         CASE WHEN fb.valor_peso > 0 THEN 0 ELSE 1 END,
         fb.valor_peso ASC
@@ -195,7 +195,7 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
       AND LOWER(re."Evento") = 'entrega'
       AND le.status = 'Finalizado'
       AND (le.pago IS NULL OR le.pago = false)
-      AND re."Data"::date BETWEEN $2 AND $3
+      AND le."Data Baixa"::date BETWEEN $2 AND $3
   `;
   await pool.query(query, [matricula, inicio, fim]);
 }
@@ -220,21 +220,43 @@ export async function getQuinzenasAdmin() {
   const result = await pool.query(`
     SELECT DISTINCT
       CASE
-        WHEN EXTRACT(DAY FROM re."Data"::date) <= 15 THEN
-          date_trunc('month', re."Data"::date)::date
+        WHEN EXTRACT(DAY FROM le."Data Baixa"::date) <= 15 THEN
+          date_trunc('month', le."Data Baixa"::date)::date
         ELSE
-          (date_trunc('month', re."Data"::date) + INTERVAL '15 days')::date
+          (date_trunc('month', le."Data Baixa"::date) + INTERVAL '15 days')::date
       END AS inicio,
       CASE
-        WHEN EXTRACT(DAY FROM re."Data"::date) <= 15 THEN
-          (date_trunc('month', re."Data"::date) + INTERVAL '14 days')::date
+        WHEN EXTRACT(DAY FROM le."Data Baixa"::date) <= 15 THEN
+          (date_trunc('month', le."Data Baixa"::date) + INTERVAL '14 days')::date
         ELSE
-          (date_trunc('month', re."Data"::date) + INTERVAL '1 month' - INTERVAL '1 day')::date
+          (date_trunc('month', le."Data Baixa"::date) + INTERVAL '1 month' - INTERVAL '1 day')::date
       END AS fim
-    FROM relatorioentrega_export re
-    WHERE re."Data" IS NOT NULL
+    FROM lista_entregas le
+    WHERE le."Data Baixa" IS NOT NULL
     ORDER BY inicio DESC
   `);
+  return result.rows;
+}
+
+export async function getListasPendentes(matricula, inicio, fim) {
+  const result = await pool.query(`
+    SELECT
+      le."Número",
+      le."Data Emissão",
+      le."Data Baixa",
+      le.qtd_ctes,
+      le."Peso",
+      le."Valor",
+      le.status,
+      le.pago,
+      le."Rota"
+    FROM lista_entregas le
+    WHERE le.matricula_motorista = $1
+      AND le.status = 'Finalizado'
+      AND (le.pago IS NULL OR le.pago = false)
+      AND le."Data Baixa"::date BETWEEN $2 AND $3
+    ORDER BY le."Número"
+  `, [matricula, inicio, fim]);
   return result.rows;
 }
 
