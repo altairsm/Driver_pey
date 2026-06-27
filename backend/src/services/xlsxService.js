@@ -68,6 +68,8 @@ export async function importarEntregas(rows) {
     imported++;
   }
 
+  await reassinarOrfaos();
+
   return { imported, skipped };
 }
 
@@ -80,4 +82,99 @@ function formatDate(value) {
   }
   const str = String(value).replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$3-$2-$1');
   return str;
+}
+
+export async function reassinarOrfaos() {
+  await pool.query(`
+    -- PASSO 1: PICKUP_AEREO orfaos -> cria lista negativa por motorista/lote
+    WITH novos_pickup AS (
+      SELECT re."OperadorMatricula",
+             MIN(re.id) AS id_ref,
+             COUNT(*) AS qtd,
+             MIN(re."Data") AS data_min,
+             MAX(re."Data") AS data_max
+      FROM relatorioentrega_export re
+      WHERE LOWER(re."Modalidade") = 'pickup_aereo'
+        AND (re."Lista" IS NULL OR re."Lista" = '')
+        AND LOWER(re."Evento") = 'entrega'
+      GROUP BY re."OperadorMatricula"
+    ),
+    novas_listas_pickup AS (
+      INSERT INTO lista_entregas ("Número", status, "Data Emissão", "Data Baixa",
+                                  matricula_motorista, qtd_ctes, "Rota")
+      SELECT (-1 * np.id_ref)::bigint, 'Finalizado',
+             np.data_min, np.data_max,
+             np."OperadorMatricula"::text, np.qtd, 'PICKUP_AEREO'
+      FROM novos_pickup np
+      ON CONFLICT ("Número") DO NOTHING
+      RETURNING "Número", matricula_motorista
+    )
+    UPDATE relatorioentrega_export re
+    SET "Lista" = nl."Número"::text
+    FROM novas_listas_pickup nl
+    WHERE re."OperadorMatricula"::text = nl.matricula_motorista
+      AND LOWER(re."Modalidade") = 'pickup_aereo'
+      AND (re."Lista" IS NULL OR re."Lista" = '')
+      AND LOWER(re."Evento") = 'entrega';
+
+    -- PASSO 2: Reassign orfaos restantes para lista da mesma quinzena
+    WITH orfaos AS (
+      SELECT id, "OperadorMatricula", "Data"
+      FROM relatorioentrega_export
+      WHERE LOWER("Evento") = 'entrega'
+        AND ("Lista" IS NULL OR "Lista" = ''
+             OR NOT EXISTS (SELECT 1 FROM lista_entregas WHERE "Número"::text = relatorioentrega_export."Lista"))
+    ),
+    reassinar AS (
+      UPDATE relatorioentrega_export re
+      SET "Lista" = (
+        SELECT le."Número"::text
+        FROM lista_entregas le
+        WHERE le.matricula_motorista = re."OperadorMatricula"::text
+          AND (
+            CASE WHEN EXTRACT(DAY FROM re."Data"::date) <= 15 THEN
+              le."Data Emissão" BETWEEN date_trunc('month', re."Data"::date)::date
+                                   AND date_trunc('month', re."Data"::date)::date + 14
+            ELSE
+              le."Data Emissão" BETWEEN date_trunc('month', re."Data"::date)::date + 15
+                                   AND (date_trunc('month', re."Data"::date) + INTERVAL '1 month' - INTERVAL '1 day')::date
+            END
+          )
+        ORDER BY le."Data Emissão"
+        LIMIT 1
+      )
+      WHERE re.id IN (SELECT id FROM orfaos)
+      RETURNING re.id, re."OperadorMatricula", re."Data", re."Lista"
+    ),
+    -- PASSO 3: Fallback — cria lista negativa pra quem ainda ficou orfao
+    ainda_orfaos AS (
+      SELECT id, "OperadorMatricula", "Data"
+      FROM relatorioentrega_export
+      WHERE id IN (SELECT id FROM orfaos)
+        AND ("Lista" IS NULL OR "Lista" = ''
+             OR NOT EXISTS (SELECT 1 FROM lista_entregas WHERE "Número"::text = relatorioentrega_export."Lista"))
+    ),
+    novas_listas_fallback AS (
+      INSERT INTO lista_entregas ("Número", status, "Data Emissão", "Data Baixa",
+                                  matricula_motorista, qtd_ctes)
+      SELECT (-1 * MIN(ao.id))::bigint, 'Finalizado',
+             MIN(re."Data"), MAX(re."Data"),
+             ao."OperadorMatricula"::text, COUNT(*)
+      FROM ainda_orfaos ao
+      JOIN relatorioentrega_export re ON re.id = ao.id
+      GROUP BY ao."OperadorMatricula"
+      ON CONFLICT ("Número") DO NOTHING
+      RETURNING "Número", matricula_motorista
+    )
+    UPDATE relatorioentrega_export re
+    SET "Lista" = nl."Número"::text
+    FROM novas_listas_fallback nl
+    WHERE re.id IN (SELECT id FROM ainda_orfaos)
+      AND re."OperadorMatricula"::text = nl.matricula_motorista;
+
+    -- Recalcular qtd_ctes nas listas que receberam CT-es
+    UPDATE lista_entregas le
+    SET qtd_ctes = (SELECT COUNT(*) FROM relatorioentrega_export re WHERE re."Lista" = le."Número"::text)
+    WHERE le."Número" < 0;
+  `);
 }

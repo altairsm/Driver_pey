@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { pool } from '../db/index.js';
+import { reassinarOrfaos } from '../services/xlsxService.js';
 
 const router = Router();
 
@@ -143,6 +144,8 @@ router.post('/listas/:numero/ctes', async (req, res) => {
       `UPDATE lista_entregas SET qtd_ctes = $1 WHERE "Número" = $2`,
       [qtdCtes, numero]
     );
+
+    await reassinarOrfaos();
 
     res.json({ success: true, importados: imported, ignorados: skipped, total_lista: qtdCtes });
   } catch (err) {
