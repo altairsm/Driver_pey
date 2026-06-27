@@ -485,6 +485,11 @@ export async function getBairrosRotasMapa() {
   return data;
 }
 
+export async function getCepsMapa() {
+  const { data } = await api.get('/admin/ceps/mapa');
+  return data;
+}
+
 export async function getEstatisticasMapa() {
   const { data } = await api.get('/admin/bairros-rotas/mapa/estatisticas');
   return data;

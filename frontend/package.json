@@ -19,6 +19,7 @@
     "@capacitor/push-notifications": "^8.1.1",
     "axios": "^1.17.0",
     "leaflet": "^1.9.4",
+    "leaflet.markercluster": "^1.5.3",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.17.0"

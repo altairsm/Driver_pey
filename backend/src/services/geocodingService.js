@@ -88,6 +88,16 @@ export async function listarBairrosRotasMapa() {
   return rows;
 }
 
+export async function listarCepsMapa() {
+  const { rows } = await pool.query(`
+    SELECT id, cep, bairro, rota, nome_tabela, lat, lng
+    FROM ceps_especificos
+    WHERE lat IS NOT NULL AND lng IS NOT NULL
+    ORDER BY bairro, cep
+  `);
+  return rows;
+}
+
 export async function getEstatisticasMapa() {
   const { rows: comCoord } = await pool.query(
     'SELECT COUNT(*)::int AS cnt FROM bairros_rotas WHERE lat IS NOT NULL AND lng IS NOT NULL'

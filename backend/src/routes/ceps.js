@@ -16,7 +16,7 @@ import {
   listarBairrosSemBairrosRotas, criarBairroRota,
 } from '../services/cepsService.js';
 import {
-  geocodificarBairros, listarBairrosRotasMapa, getEstatisticasMapa, geocodificarCeps,
+  geocodificarBairros, listarBairrosRotasMapa, listarCepsMapa, getEstatisticasMapa, geocodificarCeps,
 } from '../services/geocodingService.js';
 import { parseXLSX } from '../services/xlsxService.js';
 
@@ -101,6 +101,16 @@ router.get('/bairros-rotas/mapa', async (req, res) => {
   } catch (err) {
     console.error('Erro ao buscar dados do mapa:', err);
     res.status(500).json({ error: 'Erro ao buscar dados do mapa' });
+  }
+});
+
+router.get('/ceps/mapa', async (req, res) => {
+  try {
+    const dados = await listarCepsMapa();
+    res.json(dados);
+  } catch (err) {
+    console.error('Erro ao buscar CEPs do mapa:', err);
+    res.status(500).json({ error: 'Erro ao buscar CEPs do mapa' });
   }
 });
 
