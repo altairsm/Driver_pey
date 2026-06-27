@@ -28,9 +28,9 @@ export default function AdminPagamentos() {
   const [error, setError] = useState('');
   const [confirmando, setConfirmando] = useState(null);
   const [config, setConfig] = useState(null);
-  const [expandedMatricula, setExpandedMatricula] = useState(null);
-  const [listasPendentes, setListasPendentes] = useState([]);
-  const [expandedLoading, setExpandedLoading] = useState(false);
+  const [expandido, setExpandido] = useState({});
+  const [listasData, setListasData] = useState({});
+  const [listasLoading, setListasLoading] = useState({});
 
   const qzAtual = quinzenas[qzIdx] || null;
 
@@ -106,22 +106,19 @@ export default function AdminPagamentos() {
     }
   };
 
-  const toggleListas = async (matricula) => {
-    if (expandedMatricula === matricula) {
-      setExpandedMatricula(null);
-      setListasPendentes([]);
-      return;
-    }
-    setExpandedMatricula(matricula);
-    setListasPendentes([]);
-    setExpandedLoading(true);
-    try {
-      const data = await getListasPendentesMotorista(matricula, qzAtual.inicio.slice(0, 10), qzAtual.fim.slice(0, 10));
-      setListasPendentes(data);
-    } catch {
-      setListasPendentes([]);
-    } finally {
-      setExpandedLoading(false);
+  const toggleExpandido = async (matricula) => {
+    const novo = !expandido[matricula];
+    setExpandido(prev => ({ ...prev, [matricula]: novo }));
+    if (novo && !listasData[matricula]) {
+      setListasLoading(prev => ({ ...prev, [matricula]: true }));
+      try {
+        const data = await getListasPendentesMotorista(matricula, qzAtual.inicio.slice(0, 10), qzAtual.fim.slice(0, 10));
+        setListasData(prev => ({ ...prev, [matricula]: data }));
+      } catch {
+        setListasData(prev => ({ ...prev, [matricula]: [] }));
+      } finally {
+        setListasLoading(prev => ({ ...prev, [matricula]: false }));
+      }
     }
   };
 
@@ -209,12 +206,13 @@ export default function AdminPagamentos() {
                     <th style={styles.th}>Valor Motorista</th>
                     <th style={styles.th}>Multa</th>
                     <th style={styles.th}>Margem</th>
-                    <th style={{...styles.th, width: 100}}>Listas</th>
+                    <th style={styles.th}>Listas</th>
                     <th style={styles.th}>Ação</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {resumo.motoristas.map((m, i) => (
+                   {resumo.motoristas.map((m, i) => (
+                    <>
                     <tr key={i}>
                       <td style={styles.td}>{m.matricula}</td>
                       <td style={styles.td}>{m.nome_completo}</td>
@@ -253,13 +251,12 @@ export default function AdminPagamentos() {
                         {formatBRL(m.margem_bruta)}
                       </td>
                       <td style={styles.td}>
-                        <button
-                          onClick={() => toggleListas(m.matricula)}
-                          disabled={expandedLoading && expandedMatricula === m.matricula}
-                          style={expandedMatricula === m.matricula ? styles.verListasBtnAtivo : styles.verListasBtn}
+                        <div
+                          onClick={() => toggleExpandido(m.matricula)}
+                          style={{ cursor: 'pointer', userSelect: 'none', color: expandido[m.matricula] ? '#f0c040' : '#a0a8b8', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem', letterSpacing: '1px' }}
                         >
-                          {expandedLoading && expandedMatricula === m.matricula ? '...' : expandedMatricula === m.matricula ? 'Fechar' : 'Listas'}
-                        </button>
+                          {expandido[m.matricula] ? '▼' : '▶'} Listas
+                        </div>
                       </td>
                       <td style={styles.td}>
                         {m.pgto === false || m.pgto === 'false' || m.pgto === 'FALSE' ? (
@@ -281,55 +278,56 @@ export default function AdminPagamentos() {
                         )}
                       </td>
                     </tr>
-                  ))}
-                  {expandedMatricula && (
-                    <tr>
-                      <td colSpan={10} style={{ padding: 0, border: 'none' }}>
-                        <div style={styles.expandedWrap}>
-                          {expandedLoading ? (
-                            <div style={styles.expandedLoading}>Carregando...</div>
-                          ) : listasPendentes.length === 0 ? (
-                            <div style={styles.expandedEmpty}>Nenhuma lista pendente</div>
-                          ) : (
-                            <table style={styles.innerTable}>
-                              <thead>
-                                <tr>
-                                  <th style={styles.innerTh}>Nº Lista</th>
-                                  <th style={styles.innerTh}>Emissão</th>
-                                  <th style={styles.innerTh}>Baixa</th>
-                                  <th style={styles.innerTh}>CT-es</th>
-                                  <th style={styles.innerTh}>Peso</th>
-                                  <th style={styles.innerTh}>Valor</th>
-                                  <th style={styles.innerTh}>Rota</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {listasPendentes.map((l, j) => (
-                                  <tr key={j}>
-                                    <td style={styles.innerTd}>{l["Número"]}</td>
-                                    <td style={styles.innerTd}>{l["Data Emissão"]?.slice(0, 10)}</td>
-                                    <td style={styles.innerTd}>{l["Data Baixa"]?.slice(0, 10)}</td>
-                                    <td style={styles.innerTd}>{l.qtd_ctes}</td>
-                                    <td style={styles.innerTd}>{l["Peso"] || '-'}</td>
-                                    <td style={styles.innerTd}>{l["Valor"] ? formatBRL(l["Valor"]) : '-'}</td>
-                                    <td style={styles.innerTd}>
-                                      <span style={{
-                                        ...styles.rotaTag,
-                                        background: l["Rota"] === 'PICKUP_AEREO' ? 'rgba(240,192,64,.15)' : 'rgba(61,232,160,.15)',
-                                        color: l["Rota"] === 'PICKUP_AEREO' ? '#f0c040' : '#3de8a0',
-                                      }}>
-                                        {l["Rota"] || 'Normal'}
-                                      </span>
-                                    </td>
+                    {expandido[m.matricula] && (
+                      <tr key={`${i}-exp`}>
+                        <td colSpan={10} style={{ padding: 0, border: 'none' }}>
+                          <div style={styles.expandedWrap}>
+                            {listasLoading[m.matricula] ? (
+                              <div style={styles.expandedLoading}>Carregando...</div>
+                            ) : !listasData[m.matricula] || listasData[m.matricula].length === 0 ? (
+                              <div style={styles.expandedEmpty}>Nenhuma lista na quinzena</div>
+                            ) : (
+                              <table style={styles.innerTable}>
+                                <thead>
+                                  <tr>
+                                    <th style={styles.innerTh}>Nº Lista</th>
+                                    <th style={styles.innerTh}>Emissão</th>
+                                    <th style={styles.innerTh}>Baixa</th>
+                                    <th style={styles.innerTh}>CT-es</th>
+                                    <th style={styles.innerTh}>Peso</th>
+                                    <th style={styles.innerTh}>Valor</th>
+                                    <th style={styles.innerTh}>Rota</th>
                                   </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
+                                </thead>
+                                <tbody>
+                                  {listasData[m.matricula].map((l, j) => (
+                                    <tr key={j}>
+                                      <td style={styles.innerTd}>{l["Número"]}</td>
+                                      <td style={styles.innerTd}>{l["Data Emissão"]?.slice(0, 10)}</td>
+                                      <td style={styles.innerTd}>{l["Data Baixa"]?.slice(0, 10)}</td>
+                                      <td style={styles.innerTd}>{l.qtd_ctes}</td>
+                                      <td style={styles.innerTd}>{l["Peso"] || '-'}</td>
+                                      <td style={styles.innerTd}>{l["Valor"] ? formatBRL(l["Valor"]) : '-'}</td>
+                                      <td style={styles.innerTd}>
+                                        <span style={{
+                                          ...styles.rotaTag,
+                                          background: l["Rota"] === 'PICKUP_AEREO' ? 'rgba(240,192,64,.15)' : 'rgba(61,232,160,.15)',
+                                          color: l["Rota"] === 'PICKUP_AEREO' ? '#f0c040' : '#3de8a0',
+                                        }}>
+                                          {l["Rota"] || 'Normal'}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -481,26 +479,6 @@ const styles = {
     color: '#6b7280',
     padding: 40,
     fontSize: '1rem',
-  },
-  verListasBtn: {
-    background: '#1e2230',
-    border: '1px solid #3a3f50',
-    color: '#a0a8b8',
-    padding: '3px 10px',
-    borderRadius: 4,
-    cursor: 'pointer',
-    fontSize: '0.7rem',
-    fontFamily: "'IBM Plex Mono', monospace",
-  },
-  verListasBtnAtivo: {
-    background: '#2a2f3e',
-    border: '1px solid #f0c040',
-    color: '#f0c040',
-    padding: '3px 10px',
-    borderRadius: 4,
-    cursor: 'pointer',
-    fontSize: '0.7rem',
-    fontFamily: "'IBM Plex Mono', monospace",
   },
   expandedWrap: {
     background: '#0d0f14',

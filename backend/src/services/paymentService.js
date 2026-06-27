@@ -253,7 +253,6 @@ export async function getListasPendentes(matricula, inicio, fim) {
     FROM lista_entregas le
     WHERE le.matricula_motorista = $1
       AND le.status = 'Finalizado'
-      AND (le.pago IS NULL OR le.pago = false)
       AND le."Data Baixa"::date BETWEEN $2 AND $3
     ORDER BY le."Número"
   `, [matricula, inicio, fim]);
