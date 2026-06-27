@@ -1,11 +1,14 @@
 FROM node:20-alpine AS build
 
+ARG COMMIT_HASH=DEV
+
 WORKDIR /app
 
 COPY package*.json ./
 RUN npm install
 
 COPY . .
+RUN echo "{\"commit\":\"$COMMIT_HASH\",\"url_download\":\"\"}" > public/version.json
 RUN npm run build
 
 FROM nginx:alpine

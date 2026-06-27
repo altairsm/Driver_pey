@@ -44,6 +44,8 @@ services:
   frontend:
     build:
       context: ./frontend
+      args:
+        COMMIT_HASH: ${COMMIT_HASH:-unknown}
     container_name: driver-pey-frontend
     ports:
       - "8080:80"
