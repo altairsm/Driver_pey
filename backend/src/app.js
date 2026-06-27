@@ -52,8 +52,9 @@ app.get('/version', (req, res) => {
 });
 
 app.use('/auth', authRoutes);
-app.use('/driver', driverRoutes);
+app.use('/driver', versaoRoutes);
 app.use('/', versaoPublicRouter);
+app.use('/driver', driverRoutes);
 app.use('/admin', authenticateToken, requireAdmin);
 app.use('/admin', adminRoutes);
 app.use('/upload', uploadRoutes);
@@ -65,7 +66,6 @@ app.use('/admin', solicitacoesRoutes);
 app.use('/admin', analyticsRoutes);
 app.use('/configuracoes', authenticateToken, configuracoesRoutes);
 app.use('/taxas-adiantamento', authenticateToken, taxasAdiantamentoRoutes);
-app.use('/driver', versaoRoutes);
 app.use('/admin', versaoRoutes);
 
 app.use((err, req, res, next) => {
