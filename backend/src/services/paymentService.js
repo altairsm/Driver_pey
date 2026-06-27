@@ -44,7 +44,7 @@ export async function calcularPagamentos(inicio, fim) {
         COUNT(*)::int * (SELECT COALESCE(multa_reclamacao, 0) FROM configuracoes WHERE id = 1) AS total_multa
       FROM acareacaojad r
       JOIN relatorioentrega_export e ON e."NCTE" = r."NCTE" AND LOWER(e."Evento") = 'entrega'
-      JOIN solicitacoes_pagamento sp ON sp.lista_numero = e."Lista"::bigint
+      JOIN solicitacoes_pagamento sp ON sp.lista_numero = NULLIF(e."Lista", '')::bigint
         AND sp.matricula = e."OperadorMatricula"::bigint
         AND sp.status = 'aprovado'
         AND sp.aprovado_em < r.data_criacao::timestamp
@@ -139,7 +139,7 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
     SELECT COALESCE(COUNT(*)::int * (SELECT COALESCE(multa_reclamacao, 0) FROM configuracoes WHERE id = 1), 0)::numeric(10,2) AS total_multa
     FROM acareacaojad r
     JOIN relatorioentrega_export e ON e."NCTE" = r."NCTE" AND LOWER(e."Evento") = 'entrega'
-    JOIN solicitacoes_pagamento sp ON sp.lista_numero = e."Lista"::bigint
+    JOIN solicitacoes_pagamento sp ON sp.lista_numero = NULLIF(e."Lista", '')::bigint
       AND sp.matricula = e."OperadorMatricula"::bigint
       AND sp.status = 'aprovado'
       AND sp.aprovado_em < r.data_criacao::timestamp
