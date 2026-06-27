@@ -200,7 +200,6 @@ export default function AdminPagamentos() {
                   <tr>
                     <th style={styles.th}>Matrícula</th>
                     <th style={styles.th}>Nome</th>
-                    <th style={styles.th}>CPF</th>
                     <th style={styles.th}>CT-es</th>
                     <th style={styles.th}>Faturamento</th>
                     <th style={styles.th}>Valor Motorista</th>
