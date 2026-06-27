@@ -15,7 +15,8 @@ export default function Login() {
   const [versaoLoading, setVersaoLoading] = useState(true);
   const [versaoOutdated, setVersaoOutdated] = useState(false);
   const [versaoUrl, setVersaoUrl] = useState('');
-  const [versaoCommit, setVersaoCommit] = useState('');
+  const [versaoAtual, setVersaoAtual] = useState('');
+  const [versaoEsperada, setVersaoEsperada] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -24,11 +25,12 @@ export default function Login() {
         const resp = await fetch('/version.json?_=' + Date.now());
         const json = await resp.json();
         if (json.commit && json.commit !== 'DEV') {
+          setVersaoAtual(json.commit);
           const result = await checkVersao(json.commit);
           if (!result.atualizado) {
             setVersaoOutdated(true);
             setVersaoUrl(result.url_download || 'https://driverpix.intuitiva.log.br/DriverPix.apk');
-            setVersaoCommit(result.commit_esperado || '');
+            setVersaoEsperada(result.commit_esperado || '');
           }
         }
       } catch {
@@ -224,7 +226,8 @@ export default function Login() {
               Sua versão do aplicativo está desatualizada.<br />
               Faça o download da versão mais recente para continuar.
             </div>
-            {versaoCommit && <div style={{ color: '#4a5568', fontSize: '0.65rem', fontFamily: "'IBM Plex Mono', monospace", marginBottom: 16 }}>Esperado: {versaoCommit}</div>}
+            {versaoAtual && <div style={{ color: '#9ca3af', fontSize: '0.65rem', fontFamily: "'IBM Plex Mono', monospace", marginBottom: 4 }}>Sua versão: {versaoAtual}</div>}
+            {versaoEsperada && <div style={{ color: '#4a5568', fontSize: '0.65rem', fontFamily: "'IBM Plex Mono', monospace", marginBottom: 16 }}>Esperado: {versaoEsperada}</div>}
             {versaoUrl ? (
               <a href={versaoUrl} target="_blank" rel="noopener noreferrer" style={s.btnDownload}>
                 BAIXAR NOVA VERSÃO

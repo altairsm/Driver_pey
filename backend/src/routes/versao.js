@@ -35,6 +35,9 @@ const upload = multer({
 function getCommitHash() {
   try {
     const dir = path.resolve(__dirname, '..', '..');
+    try {
+      return fs.readFileSync(path.join(dir, '.commit'), 'utf8').trim();
+    } catch {}
     const head = fs.readFileSync(path.join(dir, '.git', 'HEAD'), 'utf8').trim();
     if (head.startsWith('ref: ')) {
       const refPath = head.slice(5);
