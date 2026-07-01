@@ -215,7 +215,6 @@ export default function AdminPagamentos() {
                     <tr key={i}>
                       <td style={styles.td}>{m.matricula}</td>
                       <td style={styles.td}>{m.nome_completo}</td>
-                      <td style={styles.td}>{m.cpf}</td>
                       <td style={styles.td}>{m.total_ctes}</td>
                       <td style={styles.td}>{formatBRL(m.receita_total)}</td>
                       <td style={{ ...styles.td, color: '#3de8a0', fontWeight: 600 }}>
