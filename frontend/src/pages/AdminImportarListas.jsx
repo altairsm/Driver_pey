@@ -8,11 +8,9 @@ import Topbar from '../components/Topbar';
 function parseDateToISO(dateStr) {
   if (!dateStr || dateStr.toLowerCase().includes('aberto')) return null;
   try {
-    const [data, hora] = dateStr.split(' ');
+    const [data] = dateStr.split(' ');
     const [dia, mes, ano] = data.split('/');
-    const [h, m, s = '00'] = (hora || '00:00:00').split(':');
-    const dt = new Date(ano, mes - 1, dia, h, m, s);
-    return isNaN(dt.getTime()) ? null : dt.toISOString().replace('Z', '-03:00');
+    return `${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
   } catch {
     return null;
   }
