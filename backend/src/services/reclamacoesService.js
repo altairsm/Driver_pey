@@ -179,13 +179,15 @@ export async function getQuinzenasReclamacoes() {
 export async function listarReclamacoes(inicio, fim) {
   const atualizadas = await atualizarMatriculasPendentes();
 
-  let whereClause = '';
+  const conditions = [`LOWER(a.assunto) IN ('acareação', 'comprovante de entrega')`];
   const params = [];
 
   if (inicio && fim) {
     params.push(inicio, fim);
-    whereClause = `WHERE a.data_criacao BETWEEN $1::date AND $2::date`;
+    conditions.push(`a.data_criacao BETWEEN $1::date AND $2::date`);
   }
+
+  const whereClause = 'WHERE ' + conditions.join(' AND ');
 
   const query = `
     SELECT
@@ -201,7 +203,7 @@ export async function listarReclamacoes(inicio, fim) {
     LEFT JOIN matriculos_jad m ON m."OperadorMatricula"::bigint = a."OperadorMatricula"
     ${whereClause}
     ORDER BY
-      CASE WHEN a."NCTE" IS NULL OR a."OperadorMatricula" IS NULL OR a."OperadorMatricula" = 0 THEN 0 ELSE 1 END,
+      CASE WHEN a.status_original = 'Resolvido' THEN 1 ELSE 0 END,
       a.data_criacao DESC,
       a.id DESC
   `;

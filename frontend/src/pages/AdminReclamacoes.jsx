@@ -202,7 +202,7 @@ export default function AdminReclamacoes() {
     <div style={s.container}>
       <Topbar user={{ nome: 'Admin' }} />
       <div style={s.content}>
-        <h2 style={s.title}>Reclamações (Solicitações Status)</h2>
+        <h2 style={s.title}>⚠️ Reclamações — Acareações geradas na quinzena</h2>
 
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 20, flexWrap: 'wrap' }}>
           <button onClick={handlePrev} disabled={qzIdx >= quinzenas.length - 1} style={s.navBtn}>
@@ -301,7 +301,13 @@ export default function AdminReclamacoes() {
                             )}
                           </td>
                           <td style={s.td}>{r.assunto}</td>
-                          <td style={s.td}>{r.status_original}</td>
+                          <td style={s.td}>
+                            {r.status_original === 'Resolvido' ? (
+                              <span style={s.badge('rgba(61,232,160,.15)', '#3de8a0')}>Resolvido</span>
+                            ) : (
+                              <span style={s.badge('rgba(255,159,64,.15)', '#ff9f40')}>{r.status_original}</span>
+                            )}
+                          </td>
                           <td style={s.td}>
                             {editMotoristaId === r.id ? (
                               <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
@@ -324,7 +330,7 @@ export default function AdminReclamacoes() {
                           </td>
                           <td style={s.td}>{formatDate(r.data_criacao)}</td>
                           <td style={s.td}>
-                            {(semCte || r.assunto === 'Assunto não identificado') && (
+                            {(semCte || situacao === 'nao_encontrado' || r.assunto === 'Assunto não identificado') && (
                               <button style={s.btnSm('#ffc107', '#0d0f14')} onClick={() => { setEditCteId(r.id); setEditCteVal(r.cte || ''); }}>
                                 Editar CTE
                               </button>
