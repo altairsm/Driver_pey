@@ -221,6 +221,8 @@ export async function getReclamacoes(matricula, inicio, fim) {
       a."NCTE" AS ncte,
       a.motivo,
       a.data_criacao,
+      a.status_original,
+      a.assunto,
       re."Lista" AS lista,
       re."Data"::date AS data_entrega,
       re."Cep" AS cep
@@ -230,7 +232,10 @@ export async function getReclamacoes(matricula, inicio, fim) {
       AND LOWER(re."Evento") = 'entrega'
       AND a.data_criacao >= $2::date
       AND a.data_criacao <= $3::date
-    ORDER BY a.data_criacao DESC
+      AND LOWER(a.assunto) IN ('acareação', 'comprovante de entrega')
+    ORDER BY
+      CASE WHEN a.status_original = 'Resolvido' THEN 1 ELSE 0 END,
+      a.data_criacao DESC
   `, [matricula, inicio, fim]);
   return result.rows;
 }

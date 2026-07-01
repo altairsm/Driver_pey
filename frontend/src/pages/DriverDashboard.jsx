@@ -546,8 +546,9 @@ export default function DriverDashboard() {
                     const mapsQ = addr?.logradouro || addr?.bairro
                       ? `${addr.logradouro || ''}, ${addr.bairro || ''}, Salvador, BA`
                       : r.cep ? `CEP ${r.cep.replace(/\D/g, '')}, Salvador, BA` : '';
+                    const resolvido = r.status_original === 'Resolvido';
                     return (
-                      <div key={r.id || i} style={s.recCard}>
+                      <div key={r.id || i} style={{ ...s.recCard, ...(resolvido ? s.recCardResolvido : s.recCardPendente) }}>
                         <div style={s.recCardRow}>
                           <div style={s.recCardLbl}>Lista</div>
                           <div style={s.recCardVal}>{r.lista}</div>
@@ -556,6 +557,16 @@ export default function DriverDashboard() {
                           <div style={s.recCardLbl}>Data Entrega</div>
                           <div style={s.recCardVal}>{formatDate(r.data_entrega || r.data_criacao)}</div>
                         </div>
+                        {r.status_original && (
+                          <div style={s.recCardRow}>
+                            <div style={s.recCardLbl}>Status</div>
+                            <div style={s.recCardVal}>
+                              <span style={resolvido ? s.recStatusResolvido : s.recStatusPendente}>
+                                {r.status_original}
+                              </span>
+                            </div>
+                          </div>
+                        )}
                         <div style={s.recCardRow}>
                           <div style={s.recCardLbl}>Endereço</div>
                           <div style={s.recCardVal}>
@@ -879,7 +890,11 @@ const s = {
   recNum: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '3rem', color: '#ff5a5a' },
   recLbl: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.6rem', color: '#6b7280' },
   recPct: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.2rem', color: '#ff9f40' },
-  recCard: { background: '#161920', border: '1px solid #2a2f3e', borderLeft: '3px solid #ff5a5a', padding: '12px 14px', marginBottom: 8, borderRadius: 2 },
+  recCard: { background: '#161920', border: '1px solid #2a2f3e', padding: '12px 14px', marginBottom: 8, borderRadius: 2 },
+  recCardResolvido: { borderLeft: '3px solid #3de8a0' },
+  recCardPendente: { borderLeft: '3px solid #ff5a5a' },
+  recStatusResolvido: { color: '#3de8a0', fontWeight: 600 },
+  recStatusPendente: { color: '#ff9f40', fontWeight: 600 },
   recCardRow: { display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid rgba(42,47,62,.5)', fontFamily: "'IBM Plex Mono', monospace" },
   recCardLbl: { fontSize: '0.58rem', color: '#6b7280', letterSpacing: '1px', textTransform: 'uppercase' },
   recCardVal: { fontSize: '0.72rem', color: '#e8eaf0' },
