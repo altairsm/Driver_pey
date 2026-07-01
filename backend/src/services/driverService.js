@@ -240,6 +240,20 @@ export async function getReclamacoes(matricula, inicio, fim) {
   return result.rows;
 }
 
+export async function getEficiencia30dias(matricula) {
+  const result = await pool.query(`
+    SELECT
+      LOWER(re."Evento") AS evento,
+      COUNT(*) AS quantidade
+    FROM relatorioentrega_export re
+    WHERE re."OperadorMatricula"::bigint = $1
+      AND re."Data"::date >= (CURRENT_DATE - INTERVAL '30 days')::date
+    GROUP BY LOWER(re."Evento")
+    ORDER BY quantidade DESC
+  `, [matricula]);
+  return result.rows;
+}
+
 export async function getUltimaImportacao() {
   const { rows } = await pool.query(`SELECT MAX(importado_em) AS ultima_importacao FROM acareacaojad`);
   return rows[0]?.ultima_importacao || null;

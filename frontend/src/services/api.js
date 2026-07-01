@@ -346,6 +346,11 @@ export async function getEficiencia(inicio, fim) {
   return data;
 }
 
+export async function getEficiencia30dias() {
+  const { data } = await api.get('/driver/eficiencia-30dias');
+  return data;
+}
+
 export async function getReclamacoes(inicio, fim) {
   const { data } = await api.get('/driver/reclamacoes', { params: { inicio, fim } });
   return data;

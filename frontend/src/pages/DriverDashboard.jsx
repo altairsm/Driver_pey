@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDriverDashboard, getDriverTrips, getDriverMe, getDriverTripsFaixas, getQuinzenas, getProdutividade, getEficiencia, getReclamacoes, solicitarPagamento, getUltimaImportacaoReclamacoes, getConfig, getTaxasAdiantamento, getBonusD0 } from '../services/api';
+import { getDriverDashboard, getDriverTrips, getDriverMe, getDriverTripsFaixas, getQuinzenas, getProdutividade, getEficiencia, getEficiencia30dias, getReclamacoes, solicitarPagamento, getUltimaImportacaoReclamacoes, getConfig, getTaxasAdiantamento, getBonusD0 } from '../services/api';
 import { sendFcmTokenWithRetry } from '../services/notificationService';
 import { LocalNotifications } from '@capacitor/local-notifications';
 
@@ -90,6 +90,7 @@ export default function DriverDashboard() {
   const [produtividade, setProdutividade] = useState([]);
   const [bonusD0, setBonusD0] = useState({ dias: [], total_entregas: 0, total_bonus: 0, valor_unitario_medio: 0 });
   const [eficiencia, setEficiencia] = useState([]);
+  const [eficiencia30dias, setEficiencia30dias] = useState([]);
   const [reclamacoes, setReclamacoes] = useState([]);
   const [expandido, setExpandido] = useState({});
   const [solicitando, setSolicitando] = useState({});
@@ -106,9 +107,10 @@ export default function DriverDashboard() {
 
   const fetchQuinzenaData = useCallback(async (inicio, fim) => {
     try {
-      const [prod, ef, rec, dash, tripList, faixasData, bD0] = await Promise.all([
+      const [prod, ef, ef30, rec, dash, tripList, faixasData, bD0] = await Promise.all([
         getProdutividade(inicio, fim),
         getEficiencia(inicio, fim),
+        getEficiencia30dias(),
         getReclamacoes(inicio, fim),
         getDriverDashboard(inicio, fim),
         getDriverTrips(inicio, fim),
@@ -118,6 +120,7 @@ export default function DriverDashboard() {
       setProdutividade(prod);
       setBonusD0(bD0);
       setEficiencia(ef);
+      setEficiencia30dias(ef30);
       setReclamacoes(rec);
       setDashboard(dash);
       setTrips(tripList);
@@ -266,6 +269,13 @@ export default function DriverDashboard() {
   const totalEntregasNum = soEntregasQ.reduce((s, e) => s + Number(e.quantidade), 0);
   const totalInsucessos = eficiencia.filter(e => isInsucesso(e.evento)).reduce((s, e) => s + Number(e.quantidade), 0);
   const pctEficiencia = totalEventos > 0 ? ((totalEntregasNum / totalEventos) * 100) : 0;
+
+  const soEntregasQ30 = eficiencia30dias.filter(e => e.evento === 'entrega');
+  const totalEventos30 = eficiencia30dias.reduce((s, e) => s + Number(e.quantidade), 0);
+  const totalEntregasNum30 = soEntregasQ30.reduce((s, e) => s + Number(e.quantidade), 0);
+  const totalInsucessos30 = eficiencia30dias.filter(e => isInsucesso(e.evento)).reduce((s, e) => s + Number(e.quantidade), 0);
+  const pctEficiencia30dias = totalEventos30 > 0 ? ((totalEntregasNum30 / totalEventos30) * 100) : 0;
+
   const totalReclamacoes = reclamacoes.length;
   const pctReclamacao = totalEntregasNum > 0 ? ((totalReclamacoes / totalEntregasNum) * 100) : 0;
 
@@ -356,9 +366,9 @@ export default function DriverDashboard() {
           </div>
 
           <div style={{ ...s.kpiCard, borderBottomColor: '#ff9f40' }}>
-            <div style={s.kpiLabel}>Insucessos</div>
-            <div style={{ ...s.kpiValue, color: '#ff9f40' }}>{totalInsucessos}</div>
-            <div style={s.kpiDetail}>{totalEventos > 0 ? ((totalInsucessos / totalEventos) * 100).toFixed(1) : '0.0'}% eventos</div>
+            <div style={s.kpiLabel}>Insucessos (30d)</div>
+            <div style={{ ...s.kpiValue, color: '#ff9f40' }}>{totalInsucessos30}</div>
+            <div style={s.kpiDetail}>{totalEventos30 > 0 ? ((totalInsucessos30 / totalEventos30) * 100).toFixed(1) : '0.0'}% eventos</div>
           </div>
           <div style={{ ...s.kpiCard, borderBottomColor: '#ff5a5a' }}>
             <div style={s.kpiLabel}>Reclamações</div>
@@ -476,34 +486,34 @@ export default function DriverDashboard() {
           {activeTab === 'eficiencia' && (
             <div style={s.section}>
               <div style={s.sectionTitle}>📊 EFICIÊNCIA</div>
-              <div style={s.sectionSub}>Proporção de entregas × insucessos</div>
+              <div style={s.sectionSub}>Últimos 30 dias — proporção de entregas × insucessos</div>
               {/* Gauge */}
               <div style={s.gaugeWrap}>
                 <div style={s.gaugeRing}>
                   <svg width="120" height="120" viewBox="0 0 120 120">
                     <circle cx="60" cy="60" r="50" fill="none" stroke="#2a2f3e" strokeWidth="10" />
                     <circle cx="60" cy="60" r="50" fill="none"
-                      stroke={pctEficiencia < 95 ? '#ff5a5a' : pctEficiencia < 97 ? '#ff9f40' : '#3de8a0'}
+                      stroke={pctEficiencia30dias < 95 ? '#ff5a5a' : pctEficiencia30dias < 97 ? '#ff9f40' : '#3de8a0'}
                       strokeWidth="10"
                       strokeDasharray="314"
-                      strokeDashoffset={314 - (pctEficiencia / 100) * 314}
+                      strokeDashoffset={314 - (pctEficiencia30dias / 100) * 314}
                       strokeLinecap="round"
                       style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(.23,1,.32,1)' }} />
                   </svg>
                   <div style={s.gaugeCenter}>
-                    <div style={{ ...s.gaugePct, color: pctEficiencia < 70 ? '#ff5a5a' : pctEficiencia < 85 ? '#ff9f40' : '#3de8a0' }}>{pctEficiencia.toFixed(2).replace('.', ',')}%</div>
-                    <div style={s.gaugeSubLabel}>eficiência</div>
+                    <div style={{ ...s.gaugePct, color: pctEficiencia30dias < 70 ? '#ff5a5a' : pctEficiencia30dias < 85 ? '#ff9f40' : '#3de8a0' }}>{pctEficiencia30dias.toFixed(2).replace('.', ',')}%</div>
+                    <div style={s.gaugeSubLabel}>eficiência (30 dias)</div>
                   </div>
                 </div>
                 <div style={s.gaugeStats}>
-                  <div style={s.gaugeRow}><span style={s.gaugeLbl}>TOTAL EVENTOS</span><span style={s.gaugeVal}>{totalEventos}</span></div>
-                  <div style={s.gaugeRow}><span style={s.gaugeLbl}>ENTREGAS</span><span style={s.gaugeVal}>{totalEntregasNum}</span></div>
-                  <div style={s.gaugeRow}><span style={s.gaugeLbl}>INSUCESSOS</span><span style={s.gaugeVal}>{totalInsucessos}</span></div>
+                  <div style={s.gaugeRow}><span style={s.gaugeLbl}>TOTAL EVENTOS</span><span style={s.gaugeVal}>{totalEventos30}</span></div>
+                  <div style={s.gaugeRow}><span style={s.gaugeLbl}>ENTREGAS</span><span style={s.gaugeVal}>{totalEntregasNum30}</span></div>
+                  <div style={s.gaugeRow}><span style={s.gaugeLbl}>INSUCESSOS</span><span style={s.gaugeVal}>{totalInsucessos30}</span></div>
                 </div>
               </div>
               {/* Eventos como cards */}
-              {eficiencia.map(e => {
-                const pct = totalEventos > 0 ? ((Number(e.quantidade) / totalEventos) * 100).toFixed(1) : '0.0';
+              {eficiencia30dias.map(e => {
+                const pct = totalEventos30 > 0 ? ((Number(e.quantidade) / totalEventos30) * 100).toFixed(1) : '0.0';
                 const isIns = isInsucesso(e.evento);
                 return (
                   <div key={e.evento} style={{ ...s.efCard, borderLeftColor: isIns ? '#ff9f40' : '#3de8a0' }}>
@@ -648,9 +658,9 @@ export default function DriverDashboard() {
                     const taxaRow = taxas.find(tx => tx.dias_ate_fechamento === Math.min(diasAteFech, 14));
                     const taxaAdiantamento = Number(taxaRow?.taxa) || 0;
                     const valorLiquido = totalValorLista * (1 - taxaAdiantamento / 100);
-                    const elegivel = !t.pago && pctEficiencia >= eficienciaMinima && dataBaixaOk && !t.tem_reclamacao_aberta && totalValorLista > 0 && totalValorLista <= maximoAdiantamento && !emSuspensao && !temSolicitacao && !reclamacoesDesatualizadas && t.status === 'Finalizado';
+                    const elegivel = !t.pago && pctEficiencia30dias >= eficienciaMinima && dataBaixaOk && !t.tem_reclamacao_aberta && totalValorLista > 0 && totalValorLista <= maximoAdiantamento && !emSuspensao && !temSolicitacao && !reclamacoesDesatualizadas && t.status === 'Finalizado';
                     const motivos = [];
-                    if (pctEficiencia < eficienciaMinima) motivos.push(`Eficiência abaixo de ${eficienciaMinima}%`);
+                    if (pctEficiencia30dias < eficienciaMinima) motivos.push(`Eficiência abaixo de ${eficienciaMinima}% nos últimos 30 dias`);
                     if (!dataBaixaOk) motivos.push('Aguarde 23h após a última baixa da lista');
                     if (t.tem_reclamacao_aberta) motivos.push('Lista possui reclamação');
                     if (totalValorLista <= 0) motivos.push('Valor da lista é zero');

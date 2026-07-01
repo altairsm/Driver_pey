@@ -3,7 +3,7 @@ import { pool } from '../db/index.js';
 import { authenticateToken } from '../middleware/auth.js';
 import {
   getDriverData, getDriverDashboard, getDriverTrips, getDriverTripsFaixas,
-  getQuinzenasDisponiveis, getProdutividade, getEficiencia, getReclamacoes,
+  getQuinzenasDisponiveis, getProdutividade, getEficiencia, getEficiencia30dias, getReclamacoes,
   solicitarPagamento, getUltimaImportacao,
   getDriverDados, atualizarDriverDados, confirmarRegras,
   getDriverMapaQuinzena, getBonusD0
@@ -85,6 +85,16 @@ router.get('/eficiencia', async (req, res) => {
     const { inicio, fim } = req.query;
     if (!inicio || !fim) return res.status(400).json({ error: 'inicio e fim são obrigatórios' });
     const data = await getEficiencia(req.user.matricula, inicio, fim);
+    res.json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+router.get('/eficiencia-30dias', async (req, res) => {
+  try {
+    const data = await getEficiencia30dias(req.user.matricula);
     res.json(data);
   } catch (err) {
     console.error(err);
