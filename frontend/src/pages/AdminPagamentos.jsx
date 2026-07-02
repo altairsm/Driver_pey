@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { getResumo, confirmarPagamento, getAdminQuinzenas, getConfig, getListasPendentesMotorista } from '../services/api';
 import Topbar from '../components/Topbar';
 
@@ -31,6 +31,18 @@ export default function AdminPagamentos() {
   const [expandido, setExpandido] = useState({});
   const [listasData, setListasData] = useState({});
   const [listasLoading, setListasLoading] = useState({});
+
+  const motoristasOrdenados = useMemo(() => {
+    if (!resumo?.motoristas) return [];
+    return [...resumo.motoristas].sort((a, b) => {
+      const prioridade = (m) => {
+        if (m.pgto === false || m.pgto === 'false') return 2;
+        if (m.pago) return 1;
+        return 0;
+      };
+      return prioridade(a) - prioridade(b);
+    });
+  }, [resumo]);
 
   const qzAtual = quinzenas[qzIdx] || null;
 
@@ -219,7 +231,7 @@ export default function AdminPagamentos() {
                   </tr>
                 </thead>
                 <tbody>
-                   {resumo.motoristas.map((m, i) => (
+                   {motoristasOrdenados.map((m, i) => (
                     <>
                     <tr key={i}>
                       <td style={styles.td}>{m.matricula}</td>

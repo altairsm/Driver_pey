@@ -755,7 +755,7 @@ export default function DriverDashboard() {
 
                         {taxaAdiantamento > 0 && totalValorLista > 0 && (
                           <div style={{ ...s.listaValor, borderTop: 'none', paddingTop: 4 }}>
-                            <div style={s.listaValorLbl}>Líquido (taxa {taxaAdiantamento}%)</div>
+                            <div style={{ ...s.listaValorLbl, color: '#e8eaf0' }}>Líquido (taxa {taxaAdiantamento}%)</div>
                             <div style={{ ...s.listaValorNum, color: '#3de8a0', fontSize: '0.9rem' }}>{formatMoney(valorLiquido)}</div>
                           </div>
                         )}
