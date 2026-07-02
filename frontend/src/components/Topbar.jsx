@@ -40,7 +40,8 @@ const GRUPOS = [
     nome: 'Relatórios',
     icon: '📊',
     ativoPrefix: '/admin/analytics',
-    items: [
+      items: [
+      { label: 'Dashboard', path: '/admin/analytics' },
       { label: 'Por Bairro', path: '/admin/analytics/bairros' },
       { label: 'Mapa de Bairros', path: '/admin/mapa' },
     ],

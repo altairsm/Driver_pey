@@ -423,6 +423,13 @@ export async function recusarSolicitacao(id) {
   return data;
 }
 
+export async function getAnalyticsComparativo(inicio, fim, matricula) {
+  const params = { inicio, fim };
+  if (matricula) params.matricula = matricula;
+  const { data } = await api.get('/admin/analytics/comparativo', { params });
+  return data;
+}
+
 export async function getAnalyticsBairros(inicio, fim, matricula) {
   const params = { inicio, fim };
   if (matricula) params.matricula = matricula;

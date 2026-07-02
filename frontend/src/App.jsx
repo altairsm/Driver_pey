@@ -21,6 +21,7 @@ import AdminBairrosSemRota from './pages/AdminBairrosSemRota'
 import AdminReclamacoes from './pages/AdminReclamacoes'
 import AdminSolicitacoesPagamento from './pages/AdminSolicitacoesPagamento'
 import AdminConfiguracoes from './pages/AdminConfiguracoes'
+import AdminAnalytics from './pages/AdminAnalytics'
 import AdminAnalyticsBairros from './pages/AdminAnalyticsBairros'
 import AdminTaxasAdiantamento from './pages/AdminTaxasAdiantamento'
 import AdminMapaBairros from './pages/AdminMapaBairros'
@@ -101,6 +102,7 @@ function App() {
       <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
       <Route path="/admin/taxas-adiantamento" element={<AdminTaxasAdiantamento />} />
       <Route path="/admin/versao" element={<AdminVersao />} />
+      <Route path="/admin/analytics" element={<AdminAnalytics />} />
       <Route path="/admin/analytics/bairros" element={<AdminAnalyticsBairros />} />
       <Route path="/admin/mapa" element={<AdminMapaBairros />} />
       <Route path="/" element={<Navigate to="/login" replace />} />
