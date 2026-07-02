@@ -207,6 +207,7 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
   const total_pagar = total_quinzena + total_bonus_d0 - total_multa - total_adiantado;
 
   const payload = {
+    tipo: 'pagamento',
     matricula: Number(matricula),
     nome: driver?.nome_completo || '',
     quinzena_inicio: inicio,

@@ -71,9 +71,10 @@ export async function aprovarSolicitacao(id) {
       matricula: sol[0].matricula,
       nome: motorista[0]?.nome_completo || '',
       lista_numero: sol[0].lista_numero,
-      valor_solicitado: Number(sol[0].valor_solicitado).toFixed(2),
-      taxa_aplicada: Number(sol[0].taxa_aplicada).toFixed(2),
-      valor_liquido: Number(valorLiquido).toFixed(2),
+      valor_solicitado: Number(sol[0].valor_solicitado),
+      taxa_aplicada: Number(sol[0].taxa_aplicada),
+      valor_liquido: Number(valorLiquido),
+      data_pagamento: new Date().toISOString().slice(0, 10),
       pre_aprovado: false,
       aprovado_por: 'admin',
     });

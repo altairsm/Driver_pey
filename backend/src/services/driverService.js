@@ -447,9 +447,10 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
         matricula,
         nome: motorista[0].nome_completo || '',
         lista_numero: listaNumero,
-        valor_solicitado: Number(valorSolicitado).toFixed(2),
-        taxa_aplicada: Number(taxaAplicada).toFixed(2),
-        valor_liquido: Number(valorLiquido).toFixed(2),
+        valor_solicitado: Number(valorSolicitado),
+        taxa_aplicada: Number(taxaAplicada),
+        valor_liquido: Number(valorLiquido),
+        data_pagamento: new Date().toISOString().slice(0, 10),
         pre_aprovado: true,
         aprovado_por: 'auto',
       });
