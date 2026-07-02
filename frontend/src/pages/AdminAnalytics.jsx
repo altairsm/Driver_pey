@@ -3,6 +3,12 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { getResumo, getAdminQuinzenas, getMotoristas } from '../services/api';
 import Topbar from '../components/Topbar';
 
+function formatQuinzena(inicio, fim) {
+  const i = String(inicio).slice(0, 10).split('-');
+  const f = String(fim).slice(0, 10).split('-');
+  return `${i[2]}/${i[1]}/${i[0].slice(2)} a ${f[2]}/${f[1]}/${f[0].slice(2)}`;
+}
+
 export default function AdminAnalytics() {
   const [quinzenas, setQuinzenas] = useState([]);
   const [qzIdx, setQzIdx] = useState(0);
@@ -94,7 +100,7 @@ export default function AdminAnalytics() {
     Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const qzLabel = qzAtual
-    ? `${new Date(qzAtual.inicio).toLocaleDateString('pt-BR')} - ${new Date(qzAtual.fim).toLocaleDateString('pt-BR')}`
+    ? formatQuinzena(qzAtual.inicio, qzAtual.fim)
     : '';
 
   const s = {
