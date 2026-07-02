@@ -423,10 +423,18 @@ export async function recusarSolicitacao(id) {
   return data;
 }
 
-export async function getAnalyticsComparativo(inicio, fim, matricula) {
-  const params = { inicio, fim };
-  if (matricula) params.matricula = matricula;
-  const { data } = await api.get('/admin/analytics/comparativo', { params });
+export async function getComparativoMotoristas(inicio, fim) {
+  const { data } = await api.get('/admin/analytics/comparativo', { params: { inicio, fim } });
+  return data;
+}
+
+export async function getDistribuicaoRotas(inicio, fim) {
+  const { data } = await api.get('/admin/analytics/distribuicao', { params: { inicio, fim } });
+  return data;
+}
+
+export async function getEvolucaoQuinzenal(n) {
+  const { data } = await api.get('/admin/analytics/evolucao', { params: { n: n || 12 } });
   return data;
 }
 
