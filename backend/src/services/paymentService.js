@@ -54,18 +54,39 @@ export async function calcularPagamentos(inicio, fim) {
         AND e."OperadorMatricula" IS NOT NULL
       GROUP BY e."OperadorMatricula"::bigint
     ),
+    bonus_d0 AS (
+      SELECT DISTINCT ON (re."NCTE", re."Lista")
+        re."NCTE" AS ncte,
+        re."Lista" AS lista,
+        COALESCE(br.bonus_d0, 0) AS bonus
+      FROM relatorioentrega_export re
+      JOIN lista_entregas le ON le."Número"::text = re."Lista"
+      LEFT JOIN ceps_bairros cb
+        ON NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '')
+           BETWEEN cb.cep_ini AND cb.cep_fim
+      LEFT JOIN bairros_rotas br ON LOWER(br.bairro) = LOWER(cb.bairro)
+      CROSS JOIN quinzena_params qp
+      WHERE LOWER(re."Evento") = 'entrega'
+        AND le.status = 'Finalizado'
+        AND le."Data Baixa"::date BETWEEN qp.inicio AND qp.fim
+        AND re."Data"::date = le."Data Emissão"
+        AND COALESCE(br.bonus_d0, 0) > 0
+      ORDER BY re."NCTE", re."Lista"
+    ),
     resumo_motorista AS (
       SELECT
-        matricula,
-        nome_entrega,
-        COUNT(CASE WHEN COALESCE(pago_raw, false) = false THEN 1 END) AS total_ctes,
-        COUNT(DISTINCT CASE WHEN COALESCE(pago_raw, false) = false THEN lista END) AS total_listas,
-        SUM(CASE WHEN COALESCE(pago_raw, false) = false THEN peso_cte ELSE 0 END) AS peso_total,
-        SUM(CASE WHEN COALESCE(pago_raw, false) = false THEN valor_peso ELSE 0 END) AS total_quinzena,
-        SUM(CASE WHEN COALESCE(pago_raw, false) = false THEN valor_faturamento ELSE 0 END) AS total_faturamento,
-        BOOL_AND(COALESCE(pago_raw, false)) AS pago
-      FROM entregas_base
-      GROUP BY matricula, nome_entrega
+        eb.matricula,
+        eb.nome_entrega,
+        COUNT(CASE WHEN COALESCE(eb.pago_raw, false) = false THEN 1 END) AS total_ctes,
+        COUNT(DISTINCT CASE WHEN COALESCE(eb.pago_raw, false) = false THEN eb.lista END) AS total_listas,
+        SUM(CASE WHEN COALESCE(eb.pago_raw, false) = false THEN eb.peso_cte ELSE 0 END) AS peso_total,
+        SUM(CASE WHEN COALESCE(eb.pago_raw, false) = false THEN eb.valor_peso ELSE 0 END) AS total_quinzena,
+        SUM(CASE WHEN COALESCE(eb.pago_raw, false) = false THEN eb.valor_faturamento ELSE 0 END) AS total_faturamento,
+        COALESCE(SUM(bd.bonus), 0)::numeric(10,2) AS total_bonus_d0,
+        BOOL_AND(COALESCE(eb.pago_raw, false)) AS pago
+      FROM entregas_base eb
+      LEFT JOIN bonus_d0 bd ON bd.ncte = eb.ncte AND bd.lista = eb.lista
+      GROUP BY eb.matricula, eb.nome_entrega
     )
     SELECT
       m."OperadorMatricula"::bigint AS matricula,
@@ -77,6 +98,7 @@ export async function calcularPagamentos(inicio, fim) {
       COALESCE(rm.total_listas, 0) AS total_listas,
       COALESCE(rm.peso_total, 0)   AS peso_total,
       COALESCE(rm.total_quinzena - COALESCE(mu.total_multa, 0), 0)::numeric(10,2) AS total_quinzena,
+      COALESCE(rm.total_bonus_d0, 0)::numeric(10,2) AS total_bonus_d0,
       COALESCE(rm.total_faturamento, 0)::numeric(10,2) AS receita_total,
       COALESCE(rm.total_faturamento - rm.total_quinzena + COALESCE(mu.total_multa, 0), 0)::numeric(10,2) AS margem_bruta,
       COALESCE(mu.total_multa, 0)::numeric(10,2) AS total_multa,
@@ -156,10 +178,33 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
       AND aprovado_em::date BETWEEN $2 AND $3
   `, [matricula, inicio, fim]);
 
+  const { rows: [bonusRow] } = await pool.query(`
+    SELECT COALESCE(SUM(sub.bonus), 0)::numeric(10,2) AS total_bonus_d0
+    FROM (
+      SELECT DISTINCT ON (re."NCTE", re."Lista")
+        COALESCE(br.bonus_d0, 0) AS bonus
+      FROM relatorioentrega_export re
+      JOIN lista_entregas le ON le."Número"::text = re."Lista"
+      LEFT JOIN ceps_bairros cb
+        ON NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '')
+           BETWEEN cb.cep_ini AND cb.cep_fim
+      LEFT JOIN bairros_rotas br ON LOWER(br.bairro) = LOWER(cb.bairro)
+      WHERE re."OperadorMatricula"::bigint = $1
+        AND LOWER(re."Evento") = 'entrega'
+        AND le.status = 'Finalizado'
+        AND (le.pago IS NULL OR le.pago = false)
+        AND le."Data Baixa"::date BETWEEN $2 AND $3
+        AND re."Data"::date = le."Data Emissão"
+        AND COALESCE(br.bonus_d0, 0) > 0
+      ORDER BY re."NCTE", re."Lista"
+    ) sub
+  `, [matricula, inicio, fim]);
+
   const total_quinzena = parseFloat(gross?.total_quinzena) || 0;
   const total_multa = parseFloat(multaRow?.total_multa) || 0;
   const total_adiantado = parseFloat(adiantadoRow?.total_adiantado) || 0;
-  const total_pagar = total_quinzena - total_multa - total_adiantado;
+  const total_bonus_d0 = parseFloat(bonusRow?.total_bonus_d0) || 0;
+  const total_pagar = total_quinzena + total_bonus_d0 - total_multa - total_adiantado;
 
   const payload = {
     matricula: Number(matricula),
@@ -168,6 +213,8 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
     quinzena_fim: fim,
     total_entregas: entregas?.total_entregas || 0,
     total_pagar: total_pagar < 0 ? 0 : total_pagar,
+    total_quinzena,
+    total_bonus_d0,
     total_multa,
     total_adiantado,
     data_pagamento: new Date().toISOString().slice(0, 10),

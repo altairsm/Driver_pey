@@ -107,9 +107,10 @@ router.get('/resumo', async (req, res) => {
       total_motoristas: pagamentos.length,
       total_ctes: pagamentos.reduce((acc, p) => acc + Number(p.total_ctes), 0),
       total_receita: pagamentos.reduce((acc, p) => acc + Number(p.receita_total), 0),
-      total_pagar: pagamentos.reduce((acc, p) => acc + Number(p.total_quinzena), 0),
+      total_pagar: pagamentos.reduce((acc, p) => acc + Number(p.total_quinzena) + Number(p.total_bonus_d0), 0),
       total_margem: pagamentos.reduce((acc, p) => acc + Number(p.margem_bruta), 0),
       total_multa: pagamentos.reduce((acc, p) => acc + Number(p.total_multa), 0),
+      total_bonus_d0: pagamentos.reduce((acc, p) => acc + Number(p.total_bonus_d0), 0),
       motoristas: pagamentos,
     };
 

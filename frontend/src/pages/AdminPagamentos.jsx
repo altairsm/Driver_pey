@@ -184,6 +184,14 @@ export default function AdminPagamentos() {
                   {formatBRL(resumo.total_margem)}
                 </span>
               </div>
+              {Number(resumo.total_bonus_d0) > 0 && (
+                <div style={styles.rCard}>
+                  <span style={styles.rLabel}>Bônus D0</span>
+                  <span style={{ ...styles.rValue, color: '#3de8a0' }}>
+                    {formatBRL(resumo.total_bonus_d0)}
+                  </span>
+                </div>
+              )}
               {resumo.total_multa > 0 && (
                 <div style={styles.rCard}>
                   <span style={styles.rLabel}>Total Multas</span>
@@ -203,6 +211,7 @@ export default function AdminPagamentos() {
                     <th style={styles.th}>CT-es</th>
                     <th style={styles.th}>Faturamento</th>
                     <th style={styles.th}>Valor Motorista</th>
+                    <th style={styles.th}>Bônus D0</th>
                     <th style={styles.th}>Multa</th>
                     <th style={styles.th}>Margem</th>
                     <th style={styles.th}>Listas</th>
@@ -219,6 +228,9 @@ export default function AdminPagamentos() {
                       <td style={styles.td}>{formatBRL(m.receita_total)}</td>
                       <td style={{ ...styles.td, color: '#3de8a0', fontWeight: 600 }}>
                         {formatBRL(m.total_quinzena)}
+                      </td>
+                      <td style={{ ...styles.td, color: '#3de8a0' }}>
+                        {formatBRL(m.total_bonus_d0)}
                       </td>
                       <td style={{ ...styles.td, color: '#ff9f40' }}>
                         {Number(m.total_multa) > 0 ? (
