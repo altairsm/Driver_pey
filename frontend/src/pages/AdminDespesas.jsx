@@ -12,6 +12,7 @@ const CATEGORIAS = [
   { value: 'pessoal', label: 'Pessoal', color: '#3de8a0' },
   { value: 'insumos', label: 'Insumos', color: '#4fc3f7' },
   { value: 'internet', label: 'Internet', color: '#ab47bc' },
+  { value: 'entregadores', label: 'Entregadores', color: '#ff6f00' },
   { value: 'outros', label: 'Outros', color: '#78909c' },
 ];
 const CAT_CORES = Object.fromEntries(CATEGORIAS.map((c) => [c.value, c.color]));

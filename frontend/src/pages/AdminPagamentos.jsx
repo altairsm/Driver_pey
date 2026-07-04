@@ -142,7 +142,7 @@ export default function AdminPagamentos() {
       await createDespesa({
         descricao: `Pagamento motoristas - ${formatQuinzena(qzAtual.inicio, qzAtual.fim)}`,
         valor: Number(resumo.total_pagar),
-        categoria: 'pessoal',
+        categoria: 'entregadores',
         data: qzAtual.fim.slice(0, 10),
         observacao: 'Incluído automaticamente do resumo de pagamentos',
       });
