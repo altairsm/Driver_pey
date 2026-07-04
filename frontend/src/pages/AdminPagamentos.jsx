@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { getResumo, confirmarPagamento, getAdminQuinzenas, getConfig, getListasPendentesMotorista } from '../services/api';
+import { getResumo, confirmarPagamento, getAdminQuinzenas, getConfig, getListasPendentesMotorista, createDespesa } from '../services/api';
 import Topbar from '../components/Topbar';
 
 function formatQuinzena(inicio, fim) {
@@ -31,6 +31,7 @@ export default function AdminPagamentos() {
   const [expandido, setExpandido] = useState({});
   const [listasData, setListasData] = useState({});
   const [listasLoading, setListasLoading] = useState({});
+  const [msgDespesa, setMsgDespesa] = useState('');
 
   const motoristasOrdenados = useMemo(() => {
     if (!resumo?.motoristas) return [];
@@ -134,6 +135,23 @@ export default function AdminPagamentos() {
     }
   };
 
+  const handleIncluirDespesa = async () => {
+    if (!resumo || !qzAtual) return;
+    setMsgDespesa('');
+    try {
+      await createDespesa({
+        descricao: `Pagamento motoristas - ${formatQuinzena(qzAtual.inicio, qzAtual.fim)}`,
+        valor: Number(resumo.total_pagar),
+        categoria: 'pessoal',
+        data: qzAtual.fim.slice(0, 10),
+        observacao: 'Incluído automaticamente do resumo de pagamentos',
+      });
+      setMsgDespesa('✓ Despesa incluída com sucesso!');
+    } catch {
+      setMsgDespesa('✗ Erro ao incluir despesa');
+    }
+  };
+
   const formatBRL = (v) =>
     `R$ ${(Number(v) || 0).toFixed(2).replace('.', ',')}`;
 
@@ -157,6 +175,20 @@ export default function AdminPagamentos() {
             <div style={styles.pagDateLabel}>
               Pagamento: {calcPagamento(qzAtual.fim.slice(0, 10), config?.dias_uteis_pagamento || 4).toLocaleDateString('pt-BR')}
             </div>
+          )}
+          {resumo && (
+            <button
+              onClick={handleIncluirDespesa}
+              style={{ ...styles.incluirBtn, opacity: Number(resumo.total_pagar) <= 0 ? 0.5 : 1 }}
+              disabled={Number(resumo.total_pagar) <= 0}
+            >
+              + Despesa
+            </button>
+          )}
+          {msgDespesa && (
+            <span style={{ fontSize: '0.75rem', color: msgDespesa.startsWith('✓') ? '#3de8a0' : '#ff5a5a', fontFamily: "'IBM Plex Mono', monospace" }}>
+              {msgDespesa}
+            </span>
           )}
         </div>
 
@@ -475,6 +507,17 @@ const styles = {
     borderBottom: '1px solid #2a2f3e',
     color: '#e8eaf0',
     fontFamily: "'IBM Plex Mono', monospace",
+  },
+  incluirBtn: {
+    background: '#1a1a3a',
+    border: '1px solid #7c4dff',
+    color: '#7c4dff',
+    padding: '6px 14px',
+    borderRadius: 4,
+    cursor: 'pointer',
+    fontSize: '0.75rem',
+    fontFamily: "'IBM Plex Mono', monospace",
+    whiteSpace: 'nowrap',
   },
   confirmBtn: {
     background: '#1a3a2a',
