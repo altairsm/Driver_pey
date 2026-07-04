@@ -433,6 +433,33 @@ export async function getDistribuicaoRotas(inicio, fim) {
   return data;
 }
 
+export async function getDespesas(inicio, fim, categoria) {
+  const params = { inicio, fim };
+  if (categoria) params.categoria = categoria;
+  const { data } = await api.get('/admin/despesas', { params });
+  return data;
+}
+
+export async function createDespesa(dados) {
+  const { data } = await api.post('/admin/despesas', dados);
+  return data;
+}
+
+export async function updateDespesa(id, dados) {
+  const { data } = await api.put(`/admin/despesas/${id}`, dados);
+  return data;
+}
+
+export async function deleteDespesa(id) {
+  const { data } = await api.delete(`/admin/despesas/${id}`);
+  return data;
+}
+
+export async function getResumoDespesas(inicio, fim) {
+  const { data } = await api.get('/admin/despesas/resumo', { params: { inicio, fim } });
+  return data;
+}
+
 export async function getEvolucaoQuinzenal(n) {
   const { data } = await api.get('/admin/analytics/evolucao', { params: { n: n || 12 } });
   return data;

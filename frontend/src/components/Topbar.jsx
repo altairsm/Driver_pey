@@ -18,6 +18,7 @@ const GRUPOS = [
     ativoPrefix: '/admin/pagamentos',
     items: [
       { label: 'Pagamentos', path: '/admin/pagamentos' },
+      { label: 'Despesas', path: '/admin/despesas' },
       { label: 'Tabelas', path: '/admin/tabelas' },
       { label: 'Adiantamentos', path: '/admin/solicitacoes-pagamento' },
       { label: 'Taxas', path: '/admin/taxas-adiantamento' },

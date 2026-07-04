@@ -620,6 +620,18 @@ export async function runMigrations() {
     `);
     console.log('  ceps_especificos backfilled from bairros_rotas');
 
+    await pool.query(`CREATE TABLE IF NOT EXISTS despesas (
+      id SERIAL PRIMARY KEY,
+      descricao VARCHAR(255) NOT NULL,
+      valor NUMERIC(10,2) NOT NULL,
+      categoria VARCHAR(50) NOT NULL,
+      data DATE NOT NULL DEFAULT CURRENT_DATE,
+      observacao TEXT,
+      criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    console.log('  -> despesas');
+
     await pool.query(`CREATE TABLE IF NOT EXISTS taxas_adiantamento (
       dias_ate_fechamento INTEGER PRIMARY KEY,
       taxa NUMERIC(5,2) NOT NULL DEFAULT 0.00
