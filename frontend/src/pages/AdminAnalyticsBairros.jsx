@@ -1,35 +1,54 @@
 import { useState, useEffect } from 'react';
-import { getAnalyticsBairros, getMotoristas } from '../services/api';
+import { getAnalyticsBairros, getMotoristas, getAdminQuinzenas } from '../services/api';
 import Topbar from '../components/Topbar';
 
+function formatQuinzena(inicio, fim) {
+  const i = String(inicio).slice(0, 10).split('-');
+  const f = String(fim).slice(0, 10).split('-');
+  return `${i[2]}/${i[1]}/${i[0].slice(2)} a ${f[2]}/${f[1]}/${f[0].slice(2)}`;
+}
+
 export default function AdminAnalyticsBairros() {
-  const [dataInicio, setDataInicio] = useState('');
-  const [dataFim, setDataFim] = useState('');
+  const [quinzenas, setQuinzenas] = useState([]);
+  const [qzIdx, setQzIdx] = useState(0);
   const [matricula, setMatricula] = useState('');
   const [motoristas, setMotoristas] = useState([]);
   const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [gerou, setGerou] = useState(false);
+
+  const qzAtual = quinzenas[qzIdx] || null;
 
   useEffect(() => {
     getMotoristas().then(setMotoristas).catch(() => {});
+    getAdminQuinzenas()
+      .then(setQuinzenas)
+      .catch(() => setError('Erro ao carregar quinzenas'))
+      .finally(() => setLoading(false));
   }, []);
 
-  const handleGerar = async () => {
-    if (!dataInicio || !dataFim) { setError('Selecione data inicial e final'); return; }
-    setLoading(true);
+  const fetchData = async (i, f) => {
     setError('');
-    setGerou(false);
     try {
-      const data = await getAnalyticsBairros(dataInicio, dataFim, matricula || undefined);
+      const data = await getAnalyticsBairros(i, f, matricula || undefined);
       setRows(data);
-      setGerou(true);
     } catch (err) {
       setError(err.response?.data?.error || 'Erro ao gerar relatório');
-    } finally {
-      setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    if (!qzAtual) return;
+    setLoading(true);
+    fetchData(qzAtual.inicio.slice(0, 10), qzAtual.fim.slice(0, 10))
+      .finally(() => setLoading(false));
+  }, [qzAtual?.inicio, qzAtual?.fim, matricula]);
+
+  const handlePrev = () => {
+    if (qzIdx < quinzenas.length - 1) setQzIdx(qzIdx + 1);
+  };
+  const handleNext = () => {
+    if (qzIdx > 0) setQzIdx(qzIdx - 1);
   };
 
   let totalGeralCtes = 0;
@@ -46,7 +65,10 @@ export default function AdminAnalyticsBairros() {
     container: { minHeight: '100vh', background: '#0d0f14', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', sans-serif" },
     content: { maxWidth: 1200, margin: '0 auto', padding: '32px 24px' },
     title: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.8rem', letterSpacing: '2px', color: '#f0c040', marginBottom: 24 },
-    filtros: { background: '#161920', border: '1px solid #2a2f3e', borderRadius: 8, padding: 20, marginBottom: 20, display: 'flex', gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' },
+    filtros: { background: '#161920', border: '1px solid #2a2f3e', borderRadius: 8, padding: 20, marginBottom: 20, display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' },
+    navRow: { display: 'flex', alignItems: 'center', gap: 12 },
+    arrowBtn: { background: '#1e2230', border: '1px solid #2a2f3e', color: '#e8eaf0', padding: '6px 14px', borderRadius: 4, cursor: 'pointer', fontSize: '0.85rem' },
+    qzLabel: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.85rem', color: '#f0c040', fontWeight: 600, minWidth: 180, textAlign: 'center' },
     field: { display: 'flex', flexDirection: 'column', gap: 4 },
     label: { fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '1px' },
     input: { background: '#1e2230', border: '1px solid #2a2f3e', color: '#e8eaf0', padding: '8px 12px', borderRadius: 4, fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.85rem' },
@@ -63,7 +85,6 @@ export default function AdminAnalyticsBairros() {
     emptyText: { textAlign: 'center', color: '#6b7280', padding: 40, fontSize: '0.9rem' },
     loadingText: { textAlign: 'center', color: '#f0c040', padding: 40, fontSize: '0.85rem' },
   };
-  s.btnDisabled = { ...s.btn, opacity: 0.5, cursor: 'not-allowed' };
 
   return (
     <div style={s.container}>
@@ -72,15 +93,16 @@ export default function AdminAnalyticsBairros() {
         <h2 style={s.title}>Relatório Analítico por Bairro</h2>
 
         <div style={s.filtros}>
-          <div style={s.field}>
-            <label style={s.label}>Data Início</label>
-            <input type="date" style={s.input} value={dataInicio}
-              onChange={(e) => setDataInicio(e.target.value)} />
-          </div>
-          <div style={s.field}>
-            <label style={s.label}>Data Fim</label>
-            <input type="date" style={s.input} value={dataFim}
-              onChange={(e) => setDataFim(e.target.value)} />
+          <div style={s.navRow}>
+            <button onClick={handlePrev} disabled={qzIdx >= quinzenas.length - 1} style={s.arrowBtn}>
+              ‹ Anterior
+            </button>
+            <span style={s.qzLabel}>
+              {qzAtual ? formatQuinzena(qzAtual.inicio, qzAtual.fim) : '—'}
+            </span>
+            <button onClick={handleNext} disabled={qzIdx <= 0} style={s.arrowBtn}>
+              Próximo ›
+            </button>
           </div>
           <div style={s.field}>
             <label style={s.label}>Motorista</label>
@@ -92,15 +114,12 @@ export default function AdminAnalyticsBairros() {
               ))}
             </select>
           </div>
-          <button style={loading ? s.btnDisabled : s.btn} onClick={handleGerar} disabled={loading}>
-            {loading ? 'Gerando...' : 'Filtrar'}
-          </button>
           {error && <div style={s.errorMsg}>{error}</div>}
         </div>
 
-        {loading && <div style={s.loadingText}>Gerando relatório...</div>}
+        {loading && <div style={s.loadingText}>Carregando...</div>}
 
-        {!loading && gerou && rows.length === 0 && (
+        {!loading && rows.length === 0 && (
           <div style={s.emptyText}>Nenhum registro encontrado no período.</div>
         )}
 
@@ -118,18 +137,16 @@ export default function AdminAnalyticsBairros() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r, i) => {
-                  return (
-                    <tr key={i}>
-                      <td style={s.td}>{r.bairro}</td>
-                      <td style={s.td}>{r.nome_tabela || '—'}</td>
-                      <td style={s.td}>{r.faixa_peso_desc}</td>
-                      <td style={s.tdNum}>{r.total_ctes}</td>
-                      <td style={s.tdNum}>{Number(r.total_receita_motorista).toFixed(2)}</td>
-                      <td style={s.tdNum}>{Number(r.total_faturamento).toFixed(2)}</td>
-                    </tr>
-                  );
-                })}
+                {rows.map((r, i) => (
+                  <tr key={i}>
+                    <td style={s.td}>{r.bairro}</td>
+                    <td style={s.td}>{r.nome_tabela || '—'}</td>
+                    <td style={s.td}>{r.faixa_peso_desc}</td>
+                    <td style={s.tdNum}>{r.total_ctes}</td>
+                    <td style={s.tdNum}>{Number(r.total_receita_motorista).toFixed(2)}</td>
+                    <td style={s.tdNum}>{Number(r.total_faturamento).toFixed(2)}</td>
+                  </tr>
+                ))}
               </tbody>
               <tfoot>
                 <tr style={s.totalRow}>
