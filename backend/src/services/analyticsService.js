@@ -21,8 +21,10 @@ export async function getAnalyticsBairros(inicio, fim, matricula) {
         ON re."Peso"::numeric BETWEEN tf.peso_de AND tf.peso_ate
       JOIN matriculos_jad mj
         ON mj."OperadorMatricula"::bigint = re."OperadorMatricula"::bigint
+      JOIN lista_entregas le ON le."Número"::text = re."Lista"
       WHERE LOWER(re."Evento") = 'entrega'
-        AND re."Data"::date BETWEEN $1 AND $2
+        AND le.status = 'Finalizado'
+        AND le."Data Baixa"::date BETWEEN $1 AND $2
         AND ($3::bigint IS NULL OR re."OperadorMatricula"::bigint = $3)
       ORDER BY re."NCTE", re."Lista",
         CASE WHEN fb.valor_peso > 0 THEN 0 ELSE 1 END,
