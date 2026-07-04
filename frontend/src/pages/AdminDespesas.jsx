@@ -148,6 +148,7 @@ export default function AdminDespesas() {
     if (!resumoDesp?.categorias) return [];
     return resumoDesp.categorias.map((c) => ({
       ...c,
+      total: Number(c.total),
       color: CAT_CORES[c.categoria] || '#78909c',
     }));
   }, [resumoDesp]);
