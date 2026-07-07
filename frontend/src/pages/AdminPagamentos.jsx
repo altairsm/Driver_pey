@@ -47,6 +47,8 @@ export default function AdminPagamentos() {
 
   const qzAtual = quinzenas[qzIdx] || null;
 
+  const quinzenaAberta = qzAtual && String(qzAtual.fim).slice(0, 10) >= new Date().toISOString().slice(0, 10);
+
   const fetchResumo = useCallback(async (inicio, fim) => {
     setLoading(true);
     setError('');
@@ -98,7 +100,7 @@ export default function AdminPagamentos() {
   };
 
   const handleConfirmar = async (matricula) => {
-    if (!qzAtual) return;
+    if (!qzAtual || quinzenaAberta) return;
     setConfirmando(matricula);
     try {
       const motorista = resumo?.motoristas?.find(m => Number(m.matricula) === Number(matricula));
@@ -324,10 +326,10 @@ export default function AdminPagamentos() {
                         ) : (
                           <button
                             onClick={() => handleConfirmar(m.matricula)}
-                            disabled={confirmando === m.matricula}
-                            style={styles.pendenteBtn}
+                            disabled={confirmando === m.matricula || quinzenaAberta}
+                            style={quinzenaAberta ? { ...styles.pendenteBtn, opacity: 0.4, cursor: 'not-allowed' } : styles.pendenteBtn}
                           >
-                            {confirmando === m.matricula ? '...' : 'Pendente'}
+                            {quinzenaAberta ? 'Aberto' : 'Confirmar'}
                           </button>
                         )}
                       </td>
