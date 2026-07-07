@@ -455,6 +455,11 @@ export async function deleteDespesa(id) {
   return data;
 }
 
+export async function getReceitaPeriodo(inicio, fim) {
+  const { data } = await api.get('/admin/receita', { params: { inicio, fim } });
+  return data;
+}
+
 export async function getResumoDespesas(inicio, fim) {
   const { data } = await api.get('/admin/despesas/resumo', { params: { inicio, fim } });
   return data;

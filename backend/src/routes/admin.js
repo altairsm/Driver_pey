@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { calcularPagamentos, confirmarPagamento, listarMotoristas, criarMotorista, atualizarMotorista, deletarMotorista, getQuinzenasAdmin, getListasPendentes } from '../services/paymentService.js';
+import { calcularPagamentos, confirmarPagamento, listarMotoristas, criarMotorista, atualizarMotorista, deletarMotorista, getQuinzenasAdmin, getListasPendentes, getReceitaPeriodo } from '../services/paymentService.js';
 
 const router = Router();
 
@@ -118,6 +118,18 @@ router.get('/resumo', async (req, res) => {
   } catch (err) {
     console.error('Erro ao gerar resumo:', err);
     res.status(500).json({ error: 'Erro ao gerar resumo' });
+  }
+});
+
+router.get('/receita', async (req, res) => {
+  try {
+    const { inicio, fim } = req.query;
+    if (!inicio || !fim) return res.status(400).json({ error: 'inicio e fim obrigatórios' });
+    const data = await getReceitaPeriodo(inicio, fim);
+    res.json(data);
+  } catch (err) {
+    console.error('Erro ao buscar receita:', err);
+    res.status(500).json({ error: 'Erro ao buscar receita' });
   }
 });
 

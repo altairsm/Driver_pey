@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import {
-  getAdminQuinzenas, getResumo,
+  getAdminQuinzenas, getReceitaPeriodo,
   getDespesas, createDespesa, updateDespesa, deleteDespesa, getResumoDespesas,
 } from '../services/api';
 import Topbar from '../components/Topbar';
@@ -56,12 +56,12 @@ export default function AdminDespesas() {
     setLoading(true);
     setError('');
     try {
-      const [r, d, rd] = await Promise.all([
-        getResumo(i, f),
+      const [rev, d, rd] = await Promise.all([
+        getReceitaPeriodo(i, f),
         getDespesas(i, f),
         getResumoDespesas(i, f),
       ]);
-      setResumo(r);
+      setResumo(rev);
       setDespesas(d);
       setResumoDesp(rd);
     } catch {

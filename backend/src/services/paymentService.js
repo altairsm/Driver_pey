@@ -264,6 +264,26 @@ export async function listarMotoristas() {
   return result.rows;
 }
 
+export async function getReceitaPeriodo(inicio, fim) {
+  const result = await pool.query(`
+    SELECT COALESCE(SUM(sub.valor_faturamento), 0)::numeric(10,2) AS total_receita
+    FROM (
+      SELECT DISTINCT ON (re."NCTE", re."Lista")
+        COALESCE(tf.valor_fixo + GREATEST(re."Peso"::numeric - 15, 0) * tf.valor_excedente_kg, 0) AS valor_faturamento
+      FROM relatorioentrega_export re
+      JOIN lista_entregas le ON le."Número"::text = re."Lista"
+      LEFT JOIN tabela_faturamento tf
+        ON re."Peso"::numeric BETWEEN tf.peso_de AND tf.peso_ate
+      WHERE LOWER(re."Evento") = 'entrega'
+        AND le.status = 'Finalizado'
+        AND le."Data Baixa"::date BETWEEN $1 AND $2
+      ORDER BY re."NCTE", re."Lista",
+        CASE WHEN tf.valor_fixo IS NOT NULL THEN 0 ELSE 1 END
+    ) sub
+  `, [inicio, fim]);
+  return { total_receita: Number(result.rows[0]?.total_receita || 0) };
+}
+
 export async function getQuinzenasAdmin() {
   const result = await pool.query(`
     SELECT DISTINCT
