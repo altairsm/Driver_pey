@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Topbar from '../components/Topbar';
-import { uploadReclamacoes, getAdminReclamacoes, updateReclamacaoCte, updateReclamacaoMotorista, vincularReclamacaoMotorista, vincularReclamacoesPendentes, deleteReclamacao, getReclamacoesQuinzenas } from '../services/api';
+import { uploadReclamacoes, getAdminReclamacoes, updateReclamacaoCte, updateReclamacaoMotorista, vincularReclamacaoMotorista, vincularReclamacoesPendentes, deleteReclamacao, getAdminQuinzenas } from '../services/api';
 
 function formatQuinzena(inicio, fim) {
   const i = String(inicio).slice(0, 10).split('-');
@@ -51,7 +51,7 @@ export default function AdminReclamacoes() {
   useEffect(() => {
     const init = async () => {
       try {
-        const qzs = await getReclamacoesQuinzenas();
+        const qzs = await getAdminQuinzenas();
         setQuinzenas(qzs);
         if (qzs.length > 0) {
           const q = qzs[0];
