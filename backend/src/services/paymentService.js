@@ -54,6 +54,10 @@ export async function calcularPagamentos(inicio, fim) {
         AND e."OperadorMatricula" IS NOT NULL
       GROUP BY e."OperadorMatricula"::bigint
     ),
+    ctes_bloqueados AS (
+      SELECT DISTINCT "NCTE" FROM acareacaojad
+      WHERE LOWER(assunto) IN ('acareação', 'comprovante de entrega')
+    ),
     bonus_d0 AS (
       SELECT DISTINCT ON (re."NCTE", re."Lista")
         re."NCTE" AS ncte,
@@ -77,15 +81,16 @@ export async function calcularPagamentos(inicio, fim) {
       SELECT
         eb.matricula,
         eb.nome_entrega,
-        COUNT(CASE WHEN COALESCE(eb.pago_raw, false) = false THEN 1 END) AS total_ctes,
-        COUNT(DISTINCT CASE WHEN COALESCE(eb.pago_raw, false) = false THEN eb.lista END) AS total_listas,
-        SUM(CASE WHEN COALESCE(eb.pago_raw, false) = false THEN eb.peso_cte ELSE 0 END) AS peso_total,
-        SUM(CASE WHEN COALESCE(eb.pago_raw, false) = false THEN eb.valor_peso ELSE 0 END) AS total_quinzena,
+        COUNT(CASE WHEN COALESCE(eb.pago_raw, false) = false AND cb."NCTE" IS NULL THEN 1 END) AS total_ctes,
+        COUNT(DISTINCT CASE WHEN COALESCE(eb.pago_raw, false) = false AND cb."NCTE" IS NULL THEN eb.lista END) AS total_listas,
+        SUM(CASE WHEN COALESCE(eb.pago_raw, false) = false AND cb."NCTE" IS NULL THEN eb.peso_cte ELSE 0 END) AS peso_total,
+        SUM(CASE WHEN COALESCE(eb.pago_raw, false) = false AND cb."NCTE" IS NULL THEN eb.valor_peso ELSE 0 END) AS total_quinzena,
         SUM(CASE WHEN COALESCE(eb.pago_raw, false) = false THEN eb.valor_faturamento ELSE 0 END) AS total_faturamento,
-        COALESCE(SUM(bd.bonus), 0)::numeric(10,2) AS total_bonus_d0,
+        COALESCE(SUM(CASE WHEN cb."NCTE" IS NULL THEN bd.bonus ELSE 0 END), 0)::numeric(10,2) AS total_bonus_d0,
         BOOL_AND(COALESCE(eb.pago_raw, false)) AS pago
       FROM entregas_base eb
       LEFT JOIN bonus_d0 bd ON bd.ncte = eb.ncte AND bd.lista = eb.lista
+      LEFT JOIN ctes_bloqueados cb ON cb."NCTE" = eb.ncte
       GROUP BY eb.matricula, eb.nome_entrega
     )
     SELECT
@@ -132,6 +137,11 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
       AND le.status = 'Finalizado'
       AND (le.pago IS NULL OR le.pago = false)
       AND le."Data Baixa"::date BETWEEN $2 AND $3
+      AND NOT EXISTS (
+        SELECT 1 FROM acareacaojad a
+        WHERE a."NCTE" = re."NCTE"
+          AND LOWER(a.assunto) IN ('acareação', 'comprovante de entrega')
+      )
   `, [matricula, inicio, fim]);
 
   const { rows: [gross] } = await pool.query(`
@@ -151,6 +161,11 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
         AND le.status = 'Finalizado'
         AND (le.pago IS NULL OR le.pago = false)
         AND le."Data Baixa"::date BETWEEN $2 AND $3
+        AND NOT EXISTS (
+          SELECT 1 FROM acareacaojad a
+          WHERE a."NCTE" = re."NCTE"
+            AND LOWER(a.assunto) IN ('acareação', 'comprovante de entrega')
+        )
       ORDER BY re."NCTE", re."Lista",
         CASE WHEN fb.valor_peso > 0 THEN 0 ELSE 1 END,
         fb.valor_peso ASC
@@ -196,6 +211,11 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
         AND le."Data Baixa"::date BETWEEN $2 AND $3
         AND re."Data"::date = le."Data Emissão"
         AND COALESCE(br.bonus_d0, 0) > 0
+        AND NOT EXISTS (
+          SELECT 1 FROM acareacaojad a
+          WHERE a."NCTE" = re."NCTE"
+            AND LOWER(a.assunto) IN ('acareação', 'comprovante de entrega')
+        )
       ORDER BY re."NCTE", re."Lista"
     ) sub
   `, [matricula, inicio, fim]);
@@ -324,6 +344,11 @@ export async function getListasPendentes(matricula, inicio, fim) {
         AND LOWER(re."Evento") = 'entrega'
         AND le.status = 'Finalizado'
         AND le."Data Baixa"::date BETWEEN $2 AND $3
+        AND NOT EXISTS (
+          SELECT 1 FROM acareacaojad a
+          WHERE a."NCTE" = re."NCTE"
+            AND LOWER(a.assunto) IN ('acareação', 'comprovante de entrega')
+        )
       ORDER BY re."NCTE", re."Lista",
         CASE WHEN fb.valor_peso > 0 THEN 0 ELSE 1 END,
         fb.valor_peso ASC
