@@ -4,6 +4,7 @@ import {
   getDistribuicaoRotas,
   getEvolucaoQuinzenal,
   getComparativoMotoristas,
+  getEficienciaAllDrivers,
 } from '../services/analyticsService.js';
 
 const router = Router();
@@ -58,6 +59,16 @@ router.get('/analytics/comparativo', async (req, res) => {
   } catch (err) {
     console.error('Erro ao buscar comparativo:', err);
     res.status(500).json({ error: 'Erro ao buscar comparativo' });
+  }
+});
+
+router.get('/analytics/eficiencia', async (req, res) => {
+  try {
+    const data = await getEficienciaAllDrivers();
+    res.json(data);
+  } catch (err) {
+    console.error('Erro ao buscar eficiência:', err);
+    res.status(500).json({ error: 'Erro ao buscar eficiência' });
   }
 });
 

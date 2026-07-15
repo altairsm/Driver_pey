@@ -266,3 +266,24 @@ export async function getComparativoMotoristas(inicio, fim) {
     })),
   };
 }
+
+export async function getEficienciaAllDrivers() {
+  const result = await pool.query(`
+    SELECT
+      m."OperadorMatricula"::bigint AS matricula,
+      m.nome_completo,
+      COUNT(*) FILTER (WHERE LOWER(re."Evento") = 'entrega')::int AS total_entregas,
+      COUNT(*)::int AS total_eventos,
+      ROUND(
+        COUNT(*) FILTER (WHERE LOWER(re."Evento") = 'entrega') * 100.0
+        / NULLIF(COUNT(*), 0),
+        2
+      ) AS eficiencia_pct
+    FROM relatorioentrega_export re
+    JOIN matriculos_jad m ON m."OperadorMatricula"::bigint = re."OperadorMatricula"::bigint
+    WHERE re."Data"::date >= (CURRENT_DATE - INTERVAL '30 days')::date
+    GROUP BY m."OperadorMatricula", m.nome_completo
+    ORDER BY eficiencia_pct DESC
+  `);
+  return result.rows;
+}

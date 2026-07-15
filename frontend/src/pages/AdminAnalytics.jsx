@@ -1,15 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-  PieChart, Pie, Cell, LineChart, Line, Legend,
+  LineChart, Line, Legend,
 } from 'recharts';
 import {
   getResumo, getAdminQuinzenas, getMotoristas,
-  getDistribuicaoRotas, getEvolucaoQuinzenal, getComparativoMotoristas,
+  getEvolucaoQuinzenal, getComparativoMotoristas, getEficienciaAllDrivers,
 } from '../services/api';
 import Topbar from '../components/Topbar';
-
-const ROTA_CORES = ['#f0c040', '#3de8a0', '#ff5a5a', '#4fc3f7', '#ab47bc', '#ff7043', '#8d6e63', '#78909c'];
 
 function formatQuinzena(inicio, fim) {
   const i = String(inicio).slice(0, 10).split('-');
@@ -33,9 +31,9 @@ export default function AdminAnalytics() {
   const [sortKey, setSortKey] = useState('margem_bruta');
   const [sortDir, setSortDir] = useState('desc');
 
-  const [distribuicao, setDistribuicao] = useState([]);
   const [evolucao, setEvolucao] = useState([]);
   const [comparativo, setComparativo] = useState(null);
+  const [eficienciaRanking, setEficienciaRanking] = useState([]);
   const [extraLoading, setExtraLoading] = useState(false);
 
   const qzAtual = quinzenas[qzIdx] || null;
@@ -60,12 +58,10 @@ export default function AdminAnalytics() {
     setExtraLoading(true);
     Promise.all([
       getResumo(i, f),
-      getDistribuicaoRotas(i, f),
       getComparativoMotoristas(i, f),
     ])
-      .then(([r, d, c]) => {
+      .then(([r, c]) => {
         setResumo(r);
-        setDistribuicao(d);
         setComparativo(c);
       })
       .catch(() => setError('Erro ao buscar dados'))
@@ -76,6 +72,12 @@ export default function AdminAnalytics() {
     if (evolucao.length > 0) return;
     getEvolucaoQuinzenal(12)
       .then(setEvolucao)
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    getEficienciaAllDrivers()
+      .then(setEficienciaRanking)
       .catch(() => {});
   }, []);
 
@@ -242,8 +244,8 @@ export default function AdminAnalytics() {
               ))}
             </div>
 
-            {/* BarCharts + PieChart row */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20, marginBottom: 32 }}>
+            {/* Gráficos */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 32 }}>
               <div>
                 <h3 style={s.sectionTitle}>Entregas por Motorista</h3>
                 {entregasData.length === 0
@@ -256,32 +258,47 @@ export default function AdminAnalytics() {
                   ? <div style={{ color: '#6b7280', fontSize: '0.85rem', padding: 20, textAlign: 'center' }}>Nenhum dado</div>
                   : renderBarChart(entregasData, 'reclamacoes', 'Reclamações', '#ff5a5a')}
               </div>
-              <div>
-                <h3 style={s.sectionTitle}>Distribuição por Rota</h3>
-                <div style={s.chartCard}>
-                  {distribuicao.length === 0
-                    ? <div style={{ color: '#6b7280', fontSize: '0.85rem', padding: 40, textAlign: 'center' }}>Sem dados</div>
-                    : (
-                      <ResponsiveContainer width="100%" height={260}>
-                        <PieChart>
-                          <Pie data={distribuicao} dataKey="total_ctes" nameKey="rota" cx="50%" cy="50%" outerRadius={90} innerRadius={40} label={({ rota, percent }) => `${rota} ${(percent * 100).toFixed(0)}%`}>
-                            {distribuicao.map((_, i) => (
-                              <Cell key={i} fill={ROTA_CORES[i % ROTA_CORES.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip contentStyle={{ background: '#1e2230', border: '1px solid #2a2f3e', borderRadius: 4, fontSize: '0.75rem' }} formatter={(v, n) => [n === 'total_ctes' ? v : formatMoney(v)]} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    )}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 8 }}>
-                    {distribuicao.map((r, i) => (
-                      <div key={r.rota} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.65rem', color: '#6b7280' }}>
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: ROTA_CORES[i % ROTA_CORES.length], display: 'inline-block' }} />
-                        {r.rota}: {r.total_ctes} CT-es
-                      </div>
-                    ))}
-                  </div>
-                </div>
+            </div>
+
+            {/* Ranking de Eficiência (últimos 30 dias) */}
+            <div style={s.section}>
+              <h3 style={s.sectionTitle}>Eficiência dos Motoristas (últimos 30 dias)</h3>
+              <div style={s.tableCard}>
+                <table style={s.table}>
+                  <thead>
+                    <tr>
+                      <th style={s.th}>#</th>
+                      <th style={s.th}>Motorista</th>
+                      <th style={{ ...s.th, textAlign: 'right' }}>Entregas</th>
+                      <th style={{ ...s.th, textAlign: 'right' }}>Eventos</th>
+                      <th style={{ ...s.th, textAlign: 'right' }}>Eficiência</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {eficienciaRanking.length === 0 ? (
+                      <tr><td colSpan={5} style={{ ...s.td, textAlign: 'center', color: '#6b7280' }}>Sem dados</td></tr>
+                    ) : eficienciaRanking.map((m, i) => {
+                      const pct = Number(m.eficiencia_pct);
+                      const cor = pct < 95 ? '#ff5a5a' : pct < 97 ? '#ff9f40' : '#3de8a0';
+                      return (
+                        <tr key={m.matricula} style={{ background: i % 2 === 0 ? 'transparent' : '#0d0f14' }}>
+                          <td style={{ ...s.tdNum, color: '#6b7280', width: 30 }}>{i + 1}</td>
+                          <td style={s.td}>{m.nome_completo?.split(' ').slice(0, 2).join(' ') || m.matricula}</td>
+                          <td style={s.tdNum}>{m.total_entregas}</td>
+                          <td style={s.tdNum}>{m.total_eventos}</td>
+                          <td style={s.tdNum}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
+                              <div style={{ width: 60, height: 6, background: '#2a2f3e', borderRadius: 3, overflow: 'hidden', flexShrink: 0 }}>
+                                <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: cor, borderRadius: 3, transition: 'width 0.5s' }} />
+                              </div>
+                              <span style={{ color: cor, fontWeight: 600, minWidth: 44, textAlign: 'right' }}>{pct.toFixed(1).replace('.', ',')}%</span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
 

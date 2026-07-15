@@ -58,6 +58,20 @@ export async function calcularPagamentos(inicio, fim) {
       SELECT DISTINCT "NCTE" FROM acareacaojad
       WHERE LOWER(assunto) IN ('acareação', 'comprovante de entrega')
     ),
+    reclamacoes_geral AS (
+      SELECT
+        e."OperadorMatricula"::bigint AS matricula,
+        COUNT(DISTINCT a."NCTE")::int AS qtd_reclamacoes
+      FROM acareacaojad a
+      JOIN relatorioentrega_export e ON e."NCTE" = a."NCTE" AND LOWER(e."Evento") = 'entrega'
+      JOIN lista_entregas le ON le."Número"::text = e."Lista"
+      CROSS JOIN quinzena_params qp
+      WHERE le."Data Baixa"::date BETWEEN qp.inicio AND qp.fim
+        AND LOWER(a.assunto) IN ('acareação', 'comprovante de entrega')
+        AND a."NCTE" IS NOT NULL
+        AND e."OperadorMatricula" IS NOT NULL
+      GROUP BY e."OperadorMatricula"::bigint
+    ),
     bonus_d0 AS (
       SELECT DISTINCT ON (re."NCTE", re."Lista")
         re."NCTE" AS ncte,
@@ -107,11 +121,12 @@ export async function calcularPagamentos(inicio, fim) {
       COALESCE(rm.total_faturamento, 0)::numeric(10,2) AS receita_total,
       COALESCE(rm.total_faturamento - rm.total_quinzena + COALESCE(mu.total_multa, 0), 0)::numeric(10,2) AS margem_bruta,
       COALESCE(mu.total_multa, 0)::numeric(10,2) AS total_multa,
-      COALESCE(mu.qtd_reclamacoes, 0) AS qtd_reclamacoes,
+      COALESCE(rg.qtd_reclamacoes, 0) AS qtd_reclamacoes,
       COALESCE(rm.pago, false) AS pago
     FROM matriculos_jad m
     LEFT JOIN resumo_motorista rm ON rm.matricula = m."OperadorMatricula"::bigint
     LEFT JOIN multas mu ON mu.matricula = m."OperadorMatricula"::bigint
+    LEFT JOIN reclamacoes_geral rg ON rg.matricula = m."OperadorMatricula"::bigint
     WHERE rm.matricula IS NOT NULL
     ORDER BY m.nome_completo;
   `;

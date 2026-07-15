@@ -470,6 +470,11 @@ export async function getEvolucaoQuinzenal(n) {
   return data;
 }
 
+export async function getEficienciaAllDrivers() {
+  const { data } = await api.get('/admin/analytics/eficiencia');
+  return data;
+}
+
 export async function getAnalyticsBairros(inicio, fim, matricula) {
   const params = { inicio, fim };
   if (matricula) params.matricula = matricula;
