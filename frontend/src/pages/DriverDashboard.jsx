@@ -630,6 +630,36 @@ export default function DriverDashboard() {
                       <div style={s.recCardVal}>{c.ncte}</div>
                     </div>
                     <div style={s.recCardRow}>
+                      <div style={s.recCardLbl}>Data Entrega</div>
+                      <div style={s.recCardVal}>{formatDate(c.data_entrega)}</div>
+                    </div>
+                    {(() => {
+                      const addr = c.cep ? cepCache[c.cep] : null;
+                      const mapsQ = addr?.logradouro || addr?.bairro
+                        ? `${addr.logradouro || ''}, ${addr.bairro || ''}, Salvador, BA`
+                        : c.cep ? `CEP ${c.cep.replace(/\D/g, '')}, Salvador, BA` : '';
+                      return (
+                        <div style={s.recCardRow}>
+                          <div style={s.recCardLbl}>Endereço</div>
+                          <div style={s.recCardVal}>
+                            {!c.cep ? (
+                              <em style={{ color: '#6b7280' }}>—</em>
+                            ) : !addr ? (
+                              <span style={{ color: '#ff9f40' }}>carregando...</span>
+                            ) : addr.logradouro ? (
+                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQ)}`} target="_blank" rel="noopener noreferrer" style={s.mapLink}>
+                                {addr.logradouro}, {addr.bairro} 📍
+                              </a>
+                            ) : (
+                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQ)}`} target="_blank" rel="noopener noreferrer" style={s.mapLink}>
+                                {addr.bairro} 📍
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                    <div style={s.recCardRow}>
                       <div style={s.recCardLbl}>Valor Total</div>
                       <div style={s.recCardVal}>{Number(c.valor_total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
                     </div>

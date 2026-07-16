@@ -36,10 +36,14 @@ export async function listarCobrancas() {
 
 export async function getCobrancasDriver(matricula) {
   const { rows } = await pool.query(`
-    SELECT *
-    FROM cobrancas
-    WHERE matricula = $1 AND ativo = true
-    ORDER BY criado_em DESC
+    SELECT
+      c.*,
+      re."Data"::date AS data_entrega,
+      re."Cep" AS cep
+    FROM cobrancas c
+    LEFT JOIN relatorioentrega_export re ON re."NCTE" = c.ncte AND LOWER(re."Evento") = 'entrega'
+    WHERE c.matricula = $1 AND c.ativo = true
+    ORDER BY c.criado_em DESC
   `, [matricula]);
   return rows;
 }
