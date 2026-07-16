@@ -647,6 +647,20 @@ export async function runMigrations() {
     )`);
     console.log('  -> versao_apk');
 
+    await pool.query(`CREATE TABLE IF NOT EXISTS cobrancas (
+      id SERIAL PRIMARY KEY,
+      ncte VARCHAR(50) NOT NULL,
+      matricula BIGINT NOT NULL,
+      valor_total NUMERIC(10,2) NOT NULL,
+      valor_restante NUMERIC(10,2) NOT NULL,
+      parcelas INTEGER NOT NULL DEFAULT 1,
+      parcelas_pagas INTEGER NOT NULL DEFAULT 0,
+      observacao TEXT,
+      criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      ativo BOOLEAN DEFAULT true
+    )`);
+    console.log('  -> cobrancas');
+
     const { rows: taxaCount } = await pool.query('SELECT COUNT(*)::int AS cnt FROM taxas_adiantamento');
     if (taxaCount[0].cnt === 0) {
       const inserts = [];

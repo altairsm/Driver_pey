@@ -572,6 +572,31 @@ export async function setVersaoAtiva(dados) {
   return data;
 }
 
+export async function listarCobrancas() {
+  const { data } = await api.get('/admin/cobrancas');
+  return data;
+}
+
+export async function criarCobranca(dados) {
+  const { data } = await api.post('/admin/cobrancas', dados);
+  return data;
+}
+
+export async function buscarMotoristaPorCTE(ncte) {
+  const { data } = await api.get(`/admin/cobrancas/buscar-motorista/${ncte}`);
+  return data;
+}
+
+export async function desativarCobranca(id) {
+  const { data } = await api.put(`/admin/cobrancas/${id}/desativar`);
+  return data;
+}
+
+export async function getCobrancasDriver() {
+  const { data } = await api.get('/driver/cobrancas');
+  return data;
+}
+
 export async function uploadApk(file, onProgress) {
   const formData = new FormData();
   formData.append('file', file);

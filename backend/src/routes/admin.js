@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { pool } from '../db/index.js';
 import { calcularPagamentos, confirmarPagamento, listarMotoristas, criarMotorista, atualizarMotorista, deletarMotorista, getQuinzenasAdmin, getListasPendentes, getReceitaPeriodo } from '../services/paymentService.js';
 
 const router = Router();
@@ -103,15 +104,41 @@ router.get('/resumo', async (req, res) => {
 
     const pagamentos = await calcularPagamentos(inicio, fim);
 
+    const matriculas = pagamentos.map(p => p.matricula);
+    let cobrancasPorMatricula = {};
+    if (matriculas.length > 0) {
+      const placeholders = matriculas.map((_, i) => `$${i + 1}`).join(',');
+      const { rows: cobrancas } = await pool.query(`
+        SELECT matricula, COUNT(*)::int AS qtd_cobrancas,
+               ROUND(SUM(valor_restante)::numeric, 2) AS total_cobrancas
+        FROM cobrancas
+        WHERE matricula IN (${placeholders}) AND ativo = true
+        GROUP BY matricula
+      `, matriculas);
+      for (const c of cobrancas) {
+        cobrancasPorMatricula[c.matricula] = {
+          qtd_cobrancas: c.qtd_cobrancas,
+          total_cobrancas: parseFloat(c.total_cobrancas) || 0,
+        };
+      }
+    }
+
+    const motoristas = pagamentos.map(p => ({
+      ...p,
+      cobrancas_ativas: cobrancasPorMatricula[p.matricula]?.qtd_cobrancas || 0,
+      total_cobrancas: cobrancasPorMatricula[p.matricula]?.total_cobrancas || 0,
+    }));
+
     const resumo = {
-      total_motoristas: pagamentos.length,
-      total_ctes: pagamentos.reduce((acc, p) => acc + Number(p.total_ctes), 0),
-      total_receita: pagamentos.reduce((acc, p) => acc + Number(p.receita_total), 0),
-      total_pagar: pagamentos.reduce((acc, p) => acc + Number(p.total_quinzena) + Number(p.total_bonus_d0), 0),
-      total_margem: pagamentos.reduce((acc, p) => acc + Number(p.margem_bruta), 0),
-      total_multa: pagamentos.reduce((acc, p) => acc + Number(p.total_multa), 0),
-      total_bonus_d0: pagamentos.reduce((acc, p) => acc + Number(p.total_bonus_d0), 0),
-      motoristas: pagamentos,
+      total_motoristas: motoristas.length,
+      total_ctes: motoristas.reduce((acc, p) => acc + Number(p.total_ctes), 0),
+      total_receita: motoristas.reduce((acc, p) => acc + Number(p.receita_total), 0),
+      total_pagar: motoristas.reduce((acc, p) => acc + Number(p.total_quinzena) + Number(p.total_bonus_d0), 0),
+      total_margem: motoristas.reduce((acc, p) => acc + Number(p.margem_bruta), 0),
+      total_multa: motoristas.reduce((acc, p) => acc + Number(p.total_multa), 0),
+      total_bonus_d0: motoristas.reduce((acc, p) => acc + Number(p.total_bonus_d0), 0),
+      total_cobrancas: motoristas.reduce((acc, p) => acc + Number(p.total_cobrancas), 0),
+      motoristas,
     };
 
     res.json(resumo);

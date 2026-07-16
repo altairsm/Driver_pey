@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDriverDashboard, getDriverTrips, getDriverMe, getDriverTripsFaixas, getQuinzenas, getProdutividade, getEficiencia, getEficiencia30dias, getReclamacoes, solicitarPagamento, getUltimaImportacaoReclamacoes, getConfig, getTaxasAdiantamento, getBonusD0 } from '../services/api';
+import { getDriverDashboard, getDriverTrips, getDriverMe, getDriverTripsFaixas, getQuinzenas, getProdutividade, getEficiencia, getEficiencia30dias, getReclamacoes, getCobrancasDriver, solicitarPagamento, getUltimaImportacaoReclamacoes, getConfig, getTaxasAdiantamento, getBonusD0 } from '../services/api';
 import { sendFcmTokenWithRetry } from '../services/notificationService';
 import { LocalNotifications } from '@capacitor/local-notifications';
 
@@ -92,6 +92,7 @@ export default function DriverDashboard() {
   const [eficiencia, setEficiencia] = useState([]);
   const [eficiencia30dias, setEficiencia30dias] = useState([]);
   const [reclamacoes, setReclamacoes] = useState([]);
+  const [cobrancas, setCobrancas] = useState([]);
   const [expandido, setExpandido] = useState({});
   const [solicitando, setSolicitando] = useState({});
   const [msgSolicitacao, setMsgSolicitacao] = useState('');
@@ -107,11 +108,12 @@ export default function DriverDashboard() {
 
   const fetchQuinzenaData = useCallback(async (inicio, fim) => {
     try {
-      const [prod, ef, ef30, rec, dash, tripList, faixasData, bD0] = await Promise.all([
+      const [prod, ef, ef30, rec, cob, dash, tripList, faixasData, bD0] = await Promise.all([
         getProdutividade(inicio, fim),
         getEficiencia(inicio, fim),
         getEficiencia30dias(),
         getReclamacoes(inicio, fim),
+        getCobrancasDriver(),
         getDriverDashboard(inicio, fim),
         getDriverTrips(inicio, fim),
         getDriverTripsFaixas(inicio, fim),
@@ -122,6 +124,7 @@ export default function DriverDashboard() {
       setEficiencia(ef);
       setEficiencia30dias(ef30);
       setReclamacoes(rec);
+      setCobrancas(cob);
       setDashboard(dash);
       setTrips(tripList);
       const agrupado = {};
@@ -600,6 +603,62 @@ export default function DriverDashboard() {
                   })}
                 </>
               )}
+            </div>
+          )}
+
+          {/* COBRANÇAS */}
+          {activeTab === 'reclamacoes' && cobrancas.length > 0 && (
+            <div style={{ ...s.section, marginTop: 16 }}>
+              <div style={s.sectionTitle}>💰 COBRANÇAS</div>
+              <div style={s.sectionSub}>CTEs com reclamação sendo debitados em parcelas</div>
+              <div style={s.recHeader}>
+                <div style={{ ...s.recNum, color: '#ff9f40' }}>{cobrancas.length}</div>
+                <div>
+                  <div style={s.recLbl}>COBRANÇAS ATIVAS</div>
+                  <div style={s.recPct}>
+                    Total: {cobrancas.reduce((s, c) => s + Number(c.valor_total), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </div>
+                </div>
+              </div>
+              {cobrancas.map((c, i) => {
+                const pct = c.valor_total > 0 ? ((c.valor_total - c.valor_restante) / c.valor_total) * 100 : 0;
+                const cor = pct < 50 ? '#ff5a5a' : pct < 100 ? '#ff9f40' : '#3de8a0';
+                return (
+                  <div key={c.id || i} style={{ ...s.recCard, borderLeftColor: cor }}>
+                    <div style={s.recCardRow}>
+                      <div style={s.recCardLbl}>CTE</div>
+                      <div style={s.recCardVal}>{c.ncte}</div>
+                    </div>
+                    <div style={s.recCardRow}>
+                      <div style={s.recCardLbl}>Valor Total</div>
+                      <div style={s.recCardVal}>{Number(c.valor_total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+                    </div>
+                    <div style={s.recCardRow}>
+                      <div style={s.recCardLbl}>Restante</div>
+                      <div style={s.recCardVal}>{Number(c.valor_restante).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+                    </div>
+                    <div style={s.recCardRow}>
+                      <div style={s.recCardLbl}>Parcelas</div>
+                      <div style={s.recCardVal}>
+                        <span style={{ color: cor, fontWeight: 600 }}>{c.parcelas_pagas}/{c.parcelas}</span>
+                        <div style={{ width: 60, height: 6, background: '#2a2f3e', borderRadius: 3, overflow: 'hidden', display: 'inline-flex', marginLeft: 8, verticalAlign: 'middle' }}>
+                          <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: cor, borderRadius: 3 }} />
+                        </div>
+                      </div>
+                    </div>
+                    {c.observacao && (
+                      <div style={s.recCardRow}>
+                        <div style={s.recCardLbl}>Obs</div>
+                        <div style={s.recCardVal}>{c.observacao}</div>
+                      </div>
+                    )}
+                    <div style={s.recCardRow}>
+                      <div style={s.recCardLbl}>Criado em</div>
+                      <div style={s.recCardVal}>{new Date(c.criado_em).toLocaleDateString('pt-BR')}</div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 

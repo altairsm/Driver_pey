@@ -27,6 +27,7 @@ import AdminTaxasAdiantamento from './pages/AdminTaxasAdiantamento'
 import AdminMapaBairros from './pages/AdminMapaBairros'
 import AdminVersao from './pages/AdminVersao'
 import AdminDespesas from './pages/AdminDespesas'
+import AdminCobrancas from './pages/AdminCobrancas'
 
 function ProtectedRoute({ children, adminOnly }) {
   const token = localStorage.getItem('token')
@@ -104,6 +105,7 @@ function App() {
       <Route path="/admin/taxas-adiantamento" element={<AdminTaxasAdiantamento />} />
       <Route path="/admin/versao" element={<AdminVersao />} />
       <Route path="/admin/despesas" element={<AdminDespesas />} />
+      <Route path="/admin/cobrancas" element={<AdminCobrancas />} />
       <Route path="/admin/analytics" element={<AdminAnalytics />} />
       <Route path="/admin/analytics/bairros" element={<AdminAnalyticsBairros />} />
       <Route path="/admin/mapa" element={<AdminMapaBairros />} />

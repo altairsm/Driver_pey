@@ -239,7 +239,36 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
   const total_multa = parseFloat(multaRow?.total_multa) || 0;
   const total_adiantado = parseFloat(adiantadoRow?.total_adiantado) || 0;
   const total_bonus_d0 = parseFloat(bonusRow?.total_bonus_d0) || 0;
-  const total_pagar = total_quinzena + total_bonus_d0 - total_multa - total_adiantado;
+  let total_pagar = total_quinzena + total_bonus_d0 - total_multa - total_adiantado;
+
+  const { rows: cobrancasAtivas } = await pool.query(`
+    SELECT id, valor_total, valor_restante, parcelas, parcelas_pagas
+    FROM cobrancas
+    WHERE matricula = $1 AND ativo = true
+    ORDER BY criado_em ASC
+  `, [matricula]);
+
+  let total_cobrancas = 0;
+  for (const cob of cobrancasAtivas) {
+    const parcelasRestantes = cob.parcelas - cob.parcelas_pagas;
+    const deducao = Math.min(
+      cob.valor_restante / Math.max(parcelasRestantes, 1),
+      cob.valor_restante,
+      Math.max(total_pagar, 0)
+    );
+    if (deducao <= 0) continue;
+
+    total_cobrancas += deducao;
+    total_pagar -= deducao;
+
+    await pool.query(`
+      UPDATE cobrancas
+      SET valor_restante = ROUND((valor_restante - $1)::numeric, 2),
+          parcelas_pagas = parcelas_pagas + 1,
+          ativo = CASE WHEN ROUND((valor_restante - $1)::numeric, 2) <= 0 THEN false ELSE ativo END
+      WHERE id = $2
+    `, [deducao, cob.id]);
+  }
 
   const payload = {
     tipo: 'pagamento',
@@ -253,6 +282,7 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
     total_bonus_d0,
     total_multa,
     total_adiantado,
+    total_cobrancas,
     data_pagamento: new Date().toISOString().slice(0, 10),
   };
 
