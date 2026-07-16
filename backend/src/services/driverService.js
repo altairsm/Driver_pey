@@ -220,7 +220,7 @@ export async function getEficiencia(matricula, inicio, fim) {
 
 export async function getReclamacoes(matricula, inicio, fim) {
   const result = await pool.query(`
-    SELECT
+    SELECT DISTINCT ON (a."NCTE")
       a.id,
       a."NCTE" AS ncte,
       a.motivo,
@@ -238,6 +238,7 @@ export async function getReclamacoes(matricula, inicio, fim) {
       AND a.data_criacao <= $3::date
       AND LOWER(a.assunto) IN ('acareação', 'comprovante de entrega')
     ORDER BY
+      a."NCTE",
       CASE WHEN a.status_original = 'Resolvido' THEN 1 ELSE 0 END,
       a.data_criacao DESC
   `, [matricula, inicio, fim]);
