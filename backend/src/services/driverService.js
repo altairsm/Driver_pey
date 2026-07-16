@@ -239,7 +239,6 @@ export async function getReclamacoes(matricula, inicio, fim) {
       AND LOWER(a.assunto) IN ('acareação', 'comprovante de entrega')
     ORDER BY
       a."NCTE",
-      CASE WHEN a.status_original = 'Resolvido' THEN 1 ELSE 0 END,
       a.data_criacao DESC
   `, [matricula, inicio, fim]);
   return result.rows;
