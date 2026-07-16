@@ -31,6 +31,7 @@ export async function getDriverDashboard(matricula, inicio = null, fim = null) {
         AND le.status = 'Finalizado'
         AND ($2::date IS NULL OR le."Data Baixa" >= $2)
         AND ($3::date IS NULL OR le."Data Baixa" <= $3)
+        AND NOT EXISTS (SELECT 1 FROM acareacaojad a WHERE a."NCTE" = re."NCTE" AND LOWER(a.assunto) IN ('acareação', 'comprovante de entrega'))
     ),
     entregas_dedup AS (
       SELECT DISTINCT ON (ncte, lista) *
@@ -82,6 +83,7 @@ export async function getDriverTrips(matricula, inicio = null, fim = null) {
       AND LOWER(re."Evento") = 'entrega'
       AND ($2::date IS NULL OR le."Data Baixa" >= $2)
       AND ($3::date IS NULL OR le."Data Baixa" <= $3)
+      AND NOT EXISTS (SELECT 1 FROM acareacaojad a WHERE a."NCTE" = re."NCTE" AND LOWER(a.assunto) IN ('acareação', 'comprovante de entrega'))
     GROUP BY re."Lista"
     ORDER BY MAX(le."Data Emissão") DESC NULLS LAST
   `, [matricula, inicio, fim]);
@@ -112,6 +114,7 @@ export async function getDriverTripsFaixas(matricula, inicio = null, fim = null)
         AND le.status = 'Finalizado'
         AND ($2::date IS NULL OR le."Data Baixa" >= $2)
         AND ($3::date IS NULL OR le."Data Baixa" <= $3)
+        AND NOT EXISTS (SELECT 1 FROM acareacaojad a WHERE a."NCTE" = re."NCTE" AND LOWER(a.assunto) IN ('acareação', 'comprovante de entrega'))
     ),
     faixas_dedup AS (
       SELECT DISTINCT ON (ncte, lista) *
@@ -178,6 +181,7 @@ export async function getProdutividade(matricula, inicio, fim) {
         AND le.status = 'Finalizado'
         AND re."Data"::date >= $2::date
         AND re."Data"::date <= $3::date
+        AND NOT EXISTS (SELECT 1 FROM acareacaojad a WHERE a."NCTE" = re."NCTE" AND LOWER(a.assunto) IN ('acareação', 'comprovante de entrega'))
     ),
     entregas_dedup AS (
       SELECT DISTINCT ON (ncte, lista) *
@@ -534,20 +538,13 @@ export async function getBonusD0(matricula, inicio, fim) {
         AND le.status = 'Finalizado'
         AND re."Data"::date >= $2::date
         AND re."Data"::date <= $3::date
-    ),
-    listas_com_reclamacao AS (
-      SELECT DISTINCT re2."Lista"
-      FROM acareacaojad a
-      JOIN relatorioentrega_export re2 ON re2."NCTE" = a."NCTE"
-      WHERE re2."OperadorMatricula"::bigint = $1
-        AND re2."Lista" IN (SELECT lista FROM ctes_d0)
+        AND NOT EXISTS (SELECT 1 FROM acareacaojad a WHERE a."NCTE" = re."NCTE" AND LOWER(a.assunto) IN ('acareação', 'comprovante de entrega'))
     )
     SELECT
       d.data,
       COUNT(*)::int AS entregas_d0,
       SUM(d.bonus_d0)::numeric(10,2) AS valor_total
     FROM ctes_d0 d
-    WHERE d.lista NOT IN (SELECT lista FROM listas_com_reclamacao)
     GROUP BY d.data
     ORDER BY d.data
   `, [matricula, inicio, fim]);
