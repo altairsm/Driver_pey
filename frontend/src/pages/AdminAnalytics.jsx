@@ -323,7 +323,7 @@ export default function AdminAnalytics() {
             )}
 
             {/* Comparativo vs Frota */}
-            {comparativo && (
+            {comparativo?.media_frota && (
               <div style={s.section}>
                 <h3 style={s.sectionTitle}>Comparativo vs Frota</h3>
                 <div style={s.tableCard}>
