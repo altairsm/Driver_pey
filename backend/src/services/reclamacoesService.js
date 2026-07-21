@@ -184,7 +184,7 @@ export async function getQuinzenasReclamacoes() {
 export async function listarReclamacoes(inicio, fim) {
   const atualizadas = await atualizarMatriculasPendentes();
 
-  const conditions = [`LOWER(a.assunto) IN ('acareação', 'comprovante de entrega')`];
+  const conditions = [`LOWER(a.assunto) IN ('acareação', 'comprovante de entrega', 'contestação de acareação')`];
   const params = [];
 
   if (inicio && fim) {
