@@ -29,6 +29,9 @@ export default function AdminReclamacoes() {
 
   const filtradas = useMemo(() => {
     if (filtroStatus === 'todos') return reclamacoes;
+    if (filtroStatus === 'Pendente') {
+      return reclamacoes.filter(r => r.status_original !== 'Resolvido');
+    }
     return reclamacoes.filter(r => r.status_original === filtroStatus);
   }, [reclamacoes, filtroStatus]);
 
