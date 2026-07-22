@@ -41,12 +41,12 @@ export async function uploadReclamacoes(fileBuffer, fileName) {
     resultado.filtradas++;
 
     const ticketId = String(row['TICKET ID'] || row['Ticket ID'] || row['ticket_id'] || '').trim();
-    const dataCriacao = String(row['DATA CRIAÇÃO DO TICKET'] || row['Data Criação'] || row['data_criacao'] || '').trim();
+    const dataCriacaoRaw = row['DATA CRIAÇÃO DO TICKET'] || row['Data Criação'] || row['data_criacao'] || '';
     const statusOrig = String(row['STATUS'] || row['Status'] || row['status'] || '').trim();
     const cteRaw = String(row['CTE'] || row['Cte'] || row['cte'] || '').trim();
 
     const cte = limparCte(cteRaw);
-    const dataParsed = parseDataBr(dataCriacao);
+    const dataParsed = parseDataBr(dataCriacaoRaw);
 
     try {
       let matricula = null;
