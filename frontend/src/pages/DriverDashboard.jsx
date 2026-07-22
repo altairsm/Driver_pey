@@ -255,7 +255,9 @@ export default function DriverDashboard() {
     try {
       const result = await solicitarPagamento(lista, valor);
       if (result.success) {
-        setMsgSolicitacao(`✅ Lista #${lista}: ${result.motivo}`);
+        setMsgSolicitacao(result.beneficio_sem_taxa
+          ? `✅ Lista #${lista}: Solicitada com sucesso — adiantamento integral, sem taxa!`
+          : `✅ Lista #${lista}: ${result.motivo}`);
       } else {
         setMsgSolicitacao(`❌ Lista #${lista}: ${result.motivo}`);
       }
@@ -745,7 +747,9 @@ export default function DriverDashboard() {
                     const maximoAdiantamento = Number(config?.valor_maximo_adiantamento) || 400;
                     const diasAteFech = t.data_baixa ? calcDiasAteFechamento(t.data_baixa) : 14;
                     const taxaRow = taxas.find(tx => tx.dias_ate_fechamento === Math.min(diasAteFech, 14));
-                    const taxaAdiantamento = Number(taxaRow?.taxa) || 0;
+                    const taxaBase = Number(taxaRow?.taxa) || 0;
+                    const lista100pct = Number(t.ctes_total) > 0 && Number(t.ctes_vinculados) === Number(t.ctes_total);
+                    const taxaAdiantamento = lista100pct ? 0 : taxaBase;
                     const valorLiquido = totalValorLista * (1 - taxaAdiantamento / 100);
                     const elegivel = !t.pago && pctEficiencia30dias >= eficienciaMinima && dataBaixaOk && !t.tem_reclamacao_aberta && totalValorLista > 0 && totalValorLista <= maximoAdiantamento && !emSuspensao && !temSolicitacao && !reclamacoesDesatualizadas && t.status === 'Finalizado';
                     const motivos = [];
@@ -842,7 +846,15 @@ export default function DriverDashboard() {
                           </div>
                         </div>
 
-                        {taxaAdiantamento > 0 && totalValorLista > 0 && (
+                        {lista100pct && totalValorLista > 0 && (
+                          <div style={{ ...s.listaValor, borderTop: 'none', paddingTop: 4, background: 'rgba(61,232,160,.08)', borderRadius: 4, padding: '6px 10px', marginTop: 4 }}>
+                            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.68rem', fontWeight: 600, color: '#3de8a0', letterSpacing: '0.5px' }}>
+                              100% entregas — adiantamento integral, sem taxa
+                            </div>
+                          </div>
+                        )}
+
+                        {!lista100pct && taxaAdiantamento > 0 && totalValorLista > 0 && (
                           <div style={{ ...s.listaValor, borderTop: 'none', paddingTop: 4 }}>
                             <div style={{ ...s.listaValorLbl, color: '#e8eaf0' }}>Líquido (taxa {taxaAdiantamento}%)</div>
                             <div style={{ ...s.listaValorNum, color: '#3de8a0', fontSize: '0.9rem' }}>{formatMoney(valorLiquido)}</div>
