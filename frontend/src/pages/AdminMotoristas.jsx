@@ -8,7 +8,7 @@ export default function AdminMotoristas() {
   const [error, setError] = useState('');
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState(null);
-  const [form, setForm] = useState({ matricula: '', nome_completo: '', cpf: '', telefone: '', auto_aprovado: false });
+  const [form, setForm] = useState({ matricula: '', nome_completo: '', cpf: '', telefone: '', auto_aprovado: false, bonus_d0_motorista: false, bonus_d0_valor: 0 });
   const [salvando, setSalvando] = useState(false);
 
   const carregar = async () => {
@@ -22,7 +22,7 @@ export default function AdminMotoristas() {
 
   const abrirNovo = () => {
     setEditando(null);
-    setForm({ matricula: '', nome_completo: '', cpf: '', telefone: '', auto_aprovado: false });
+    setForm({ matricula: '', nome_completo: '', cpf: '', telefone: '', auto_aprovado: false, bonus_d0_motorista: false, bonus_d0_valor: 0 });
     setError('');
     setModalAberto(true);
   };
@@ -35,6 +35,8 @@ export default function AdminMotoristas() {
       cpf: m.cpf || '',
       telefone: m.telefone || '',
       auto_aprovado: m.auto_aprovado === true,
+      bonus_d0_motorista: m.bonus_d0_motorista === true,
+      bonus_d0_valor: m.bonus_d0_valor || 0,
     });
     setError('');
     setModalAberto(true);
@@ -194,6 +196,26 @@ export default function AdminMotoristas() {
                     Se ativo, solicitações de adiantamento serão pré-aprovadas automaticamente
                   </div>
                 </div>
+
+                <div style={s.field}>
+                  <label style={{ ...s.label, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                    <input type="checkbox" name="bonus_d0_motorista" checked={form.bonus_d0_motorista}
+                      onChange={handleChange} style={{ width: 18, height: 18, accentColor: '#ff9f40' }} />
+                    Bônus D0 próprio (ignora bairro)
+                  </label>
+                  <div style={{ fontSize: '0.65rem', color: '#6b7280', marginTop: 2 }}>
+                    Se ativo, usa o valor abaixo em vez do bônus configurado no bairro
+                  </div>
+                </div>
+
+                {form.bonus_d0_motorista && (
+                  <div style={s.field}>
+                    <label style={s.label}>Valor do D0 (R$ por entrega)</label>
+                    <input style={s.input} name="bonus_d0_valor" type="number" step="0.01" min="0"
+                      value={form.bonus_d0_valor}
+                      onChange={(e) => setForm({...form, bonus_d0_valor: parseFloat(e.target.value) || 0})} />
+                  </div>
+                )}
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
                   <button type="button" style={s.btnSm('#6c757d', '#fff')} onClick={fecharModal}>Cancelar</button>

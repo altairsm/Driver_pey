@@ -525,9 +525,13 @@ export async function getBonusD0(matricula, inicio, fim) {
         re."NCTE" AS ncte,
         re."Lista" AS lista,
         re."Data"::date AS data,
-        COALESCE(br.bonus_d0, 0)::numeric AS bonus_d0
+        CASE
+          WHEN mj.bonus_d0_motorista = true THEN mj.bonus_d0_valor
+          ELSE COALESCE(br.bonus_d0, 0)
+        END AS bonus_d0
       FROM relatorioentrega_export re
       JOIN lista_entregas le ON le."Número"::text = re."Lista"
+      JOIN matriculos_jad mj ON mj."OperadorMatricula"::bigint = re."OperadorMatricula"::bigint
       LEFT JOIN ceps_bairros cb
         ON NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '') >= cb.cep_ini
         AND NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '') <= cb.cep_fim
@@ -538,6 +542,7 @@ export async function getBonusD0(matricula, inicio, fim) {
         AND le.status = 'Finalizado'
         AND re."Data"::date >= $2::date
         AND re."Data"::date <= $3::date
+        AND (CASE WHEN mj.bonus_d0_motorista = true THEN mj.bonus_d0_valor ELSE COALESCE(br.bonus_d0, 0) END) > 0
         AND NOT EXISTS (SELECT 1 FROM acareacaojad a WHERE a."NCTE" = re."NCTE" AND LOWER(a.assunto) IN ('acareação', 'comprovante de entrega'))
     )
     SELECT

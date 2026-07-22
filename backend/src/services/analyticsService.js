@@ -187,9 +187,13 @@ export async function getComparativoMotoristas(inicio, fim) {
       SELECT DISTINCT ON (re."NCTE", re."Lista")
         re."NCTE" AS ncte,
         re."Lista" AS lista,
-        COALESCE(br.bonus_d0, 0) AS bonus
+        CASE
+          WHEN mj.bonus_d0_motorista = true THEN mj.bonus_d0_valor
+          ELSE COALESCE(br.bonus_d0, 0)
+        END AS bonus
       FROM relatorioentrega_export re
       JOIN lista_entregas le ON le."Número"::text = re."Lista"
+      JOIN matriculos_jad mj ON mj."OperadorMatricula"::bigint = re."OperadorMatricula"::bigint
       LEFT JOIN ceps_bairros cb
         ON NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '')
            BETWEEN cb.cep_ini AND cb.cep_fim
@@ -199,7 +203,7 @@ export async function getComparativoMotoristas(inicio, fim) {
         AND le.status = 'Finalizado'
         AND le."Data Baixa"::date BETWEEN qp.inicio AND qp.fim
         AND re."Data"::date = le."Data Emissão"
-        AND COALESCE(br.bonus_d0, 0) > 0
+        AND (CASE WHEN mj.bonus_d0_motorista = true THEN mj.bonus_d0_valor ELSE COALESCE(br.bonus_d0, 0) END) > 0
       ORDER BY re."NCTE", re."Lista"
     ),
     resumo_motorista AS (

@@ -76,9 +76,13 @@ export async function calcularPagamentos(inicio, fim) {
       SELECT DISTINCT ON (re."NCTE", re."Lista")
         re."NCTE" AS ncte,
         re."Lista" AS lista,
-        COALESCE(br.bonus_d0, 0) AS bonus
+        CASE
+          WHEN mj.bonus_d0_motorista = true THEN mj.bonus_d0_valor
+          ELSE COALESCE(br.bonus_d0, 0)
+        END AS bonus
       FROM relatorioentrega_export re
       JOIN lista_entregas le ON le."Número"::text = re."Lista"
+      JOIN matriculos_jad mj ON mj."OperadorMatricula"::bigint = re."OperadorMatricula"::bigint
       LEFT JOIN ceps_bairros cb
         ON NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '')
            BETWEEN cb.cep_ini AND cb.cep_fim
@@ -88,7 +92,7 @@ export async function calcularPagamentos(inicio, fim) {
         AND le.status = 'Finalizado'
         AND le."Data Baixa"::date BETWEEN qp.inicio AND qp.fim
         AND re."Data"::date = le."Data Emissão"
-        AND COALESCE(br.bonus_d0, 0) > 0
+        AND (CASE WHEN mj.bonus_d0_motorista = true THEN mj.bonus_d0_valor ELSE COALESCE(br.bonus_d0, 0) END) > 0
       ORDER BY re."NCTE", re."Lista"
     ),
     resumo_motorista AS (
@@ -212,9 +216,13 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
     SELECT COALESCE(SUM(sub.bonus), 0)::numeric(10,2) AS total_bonus_d0
     FROM (
       SELECT DISTINCT ON (re."NCTE", re."Lista")
-        COALESCE(br.bonus_d0, 0) AS bonus
+        CASE
+          WHEN mj.bonus_d0_motorista = true THEN mj.bonus_d0_valor
+          ELSE COALESCE(br.bonus_d0, 0)
+        END AS bonus
       FROM relatorioentrega_export re
       JOIN lista_entregas le ON le."Número"::text = re."Lista"
+      JOIN matriculos_jad mj ON mj."OperadorMatricula"::bigint = re."OperadorMatricula"::bigint
       LEFT JOIN ceps_bairros cb
         ON NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '')
            BETWEEN cb.cep_ini AND cb.cep_fim
@@ -225,7 +233,7 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
         AND (le.pago IS NULL OR le.pago = false)
         AND le."Data Baixa"::date BETWEEN $2 AND $3
         AND re."Data"::date = le."Data Emissão"
-        AND COALESCE(br.bonus_d0, 0) > 0
+        AND (CASE WHEN mj.bonus_d0_motorista = true THEN mj.bonus_d0_valor ELSE COALESCE(br.bonus_d0, 0) END) > 0
         AND NOT EXISTS (
           SELECT 1 FROM acareacaojad a
           WHERE a."NCTE" = re."NCTE"
@@ -322,7 +330,9 @@ export async function listarMotoristas() {
       cpf,
       telefone,
       pgto,
-      auto_aprovado
+      auto_aprovado,
+      bonus_d0_motorista,
+      bonus_d0_valor
     FROM matriculos_jad
     ORDER BY nome_completo
   `);
@@ -414,21 +424,21 @@ export async function getListasPendentes(matricula, inicio, fim) {
 }
 
 export async function criarMotorista(dados) {
-  const { matricula, nome_completo, cpf, telefone, pgto, auto_aprovado } = dados;
+  const { matricula, nome_completo, cpf, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor } = dados;
   await pool.query(`
-    INSERT INTO matriculos_jad ("OperadorMatricula", nome_completo, cpf, telefone, pgto, auto_aprovado)
-    VALUES ($1, $2, $3, $4, $5, $6)
-  `, [matricula, nome_completo, cpf, telefone || null, pgto || null, auto_aprovado === true]);
-  return { matricula, nome_completo, cpf, telefone, pgto, auto_aprovado };
+    INSERT INTO matriculos_jad ("OperadorMatricula", nome_completo, cpf, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+  `, [matricula, nome_completo, cpf, telefone || null, pgto || null, auto_aprovado === true, bonus_d0_motorista === true, bonus_d0_valor || 0]);
+  return { matricula, nome_completo, cpf, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor };
 }
 
 export async function atualizarMotorista(matricula, dados) {
-  const { nome_completo, cpf, telefone, pgto, auto_aprovado } = dados;
+  const { nome_completo, cpf, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor } = dados;
   const result = await pool.query(`
     UPDATE matriculos_jad
-    SET nome_completo = $1, cpf = $2, telefone = $3, pgto = $4, auto_aprovado = $5
-    WHERE "OperadorMatricula" = $6
-  `, [nome_completo, cpf, telefone || null, pgto || null, auto_aprovado === true, matricula]);
+    SET nome_completo = $1, cpf = $2, telefone = $3, pgto = $4, auto_aprovado = $5, bonus_d0_motorista = $6, bonus_d0_valor = $7
+    WHERE "OperadorMatricula" = $8
+  `, [nome_completo, cpf, telefone || null, pgto || null, auto_aprovado === true, bonus_d0_motorista === true, bonus_d0_valor || 0, matricula]);
   return result.rowCount > 0;
 }
 
