@@ -72,6 +72,13 @@ export async function getDriverTrips(matricula, inicio = null, fim = null) {
        WHERE re3."Lista" = re."Lista"
          AND re3."OperadorMatricula"::bigint = $1
       ) AS ctes_total,
+      (SELECT COUNT(*) FROM relatorioentrega_export re3
+       JOIN lista_entregas le3 ON le3."Número"::text = re3."Lista"
+       WHERE re3."Lista" = re."Lista"
+         AND re3."OperadorMatricula"::bigint = $1
+         AND LOWER(re3."Evento") = 'entrega'
+         AND re3."Data"::date = le3."Data Emissão"
+      ) AS ctes_d0,
       EXISTS (
         SELECT 1 FROM acareacaojad a
         JOIN relatorioentrega_export re2 ON re2."NCTE" = a."NCTE"
@@ -442,14 +449,18 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
   const { rows: totalCtes } = await pool.query(`
     SELECT
       COUNT(*) AS total,
-      COUNT(*) FILTER (WHERE LOWER("Evento") = 'entrega') AS entregues
-    FROM relatorioentrega_export
-    WHERE "Lista" = $1::text
-      AND "OperadorMatricula"::bigint = $2
+      COUNT(*) FILTER (
+        WHERE LOWER(re."Evento") = 'entrega'
+          AND re."Data"::date = le."Data Emissão"
+      ) AS entregues_d0
+    FROM relatorioentrega_export re
+    JOIN lista_entregas le ON le."Número"::text = re."Lista"
+    WHERE re."Lista" = $1::text
+      AND re."OperadorMatricula"::bigint = $2
   `, [listaNumero, matricula]);
-  const todosEntregues = Number(totalCtes[0].total) > 0
-    && Number(totalCtes[0].entregues) === Number(totalCtes[0].total);
-  const taxaAplicada = todosEntregues ? 0 : taxaAplicadaBase;
+  const todosEntreguesD0 = Number(totalCtes[0].total) > 0
+    && Number(totalCtes[0].entregues_d0) === Number(totalCtes[0].total);
+  const taxaAplicada = todosEntreguesD0 ? 0 : taxaAplicadaBase;
 
   const { rows: motorista } = await pool.query(`
     SELECT nome_completo, auto_aprovado FROM matriculos_jad WHERE "OperadorMatricula" = $1
@@ -498,7 +509,7 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
       }
     }
 
-    return { success: true, motivo: 'Solicitação registrada com sucesso', beneficio_sem_taxa: todosEntregues, pix_estado: pixEstado };
+    return { success: true, motivo: 'Solicitação registrada com sucesso', beneficio_sem_taxa: todosEntreguesD0, pix_estado: pixEstado };
   } catch (err) {
     if (err.code === '23505') {
       return { success: false, motivo: 'Solicitação já existe para esta lista' };

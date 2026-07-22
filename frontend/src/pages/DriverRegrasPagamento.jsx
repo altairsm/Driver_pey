@@ -163,8 +163,8 @@ export default function DriverRegrasPagamento() {
             </span>
             <br /><br />
             <strong style={{ color: '#3de8a0' }}>Exceção:</strong> se <strong style={{ color: '#e8eaf0' }}>100% dos CTEs</strong> da
-            lista forem entregas com sucesso (
-            <span style={s.highlight('#3de8a0')}>Evento = entrega</span>), o adiantamento é
+            lista forem entregues na <strong style={{ color: '#e8eaf0' }}>mesma data de emissão da lista</strong> com
+            sucesso (<span style={s.highlight('#3de8a0')}>Evento = entrega, Data = Data Emissão</span>), o adiantamento é
             <strong style={{ color: '#3de8a0' }}> integral — sem taxa</strong>.
             <br /><br />
             A taxa fica registrada na solicitação para auditoria.

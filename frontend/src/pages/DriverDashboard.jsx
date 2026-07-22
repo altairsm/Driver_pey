@@ -748,7 +748,7 @@ export default function DriverDashboard() {
                     const diasAteFech = t.data_baixa ? calcDiasAteFechamento(t.data_baixa) : 14;
                     const taxaRow = taxas.find(tx => tx.dias_ate_fechamento === Math.min(diasAteFech, 14));
                     const taxaBase = Number(taxaRow?.taxa) || 0;
-                    const lista100pct = Number(t.ctes_total) > 0 && Number(t.ctes_vinculados) === Number(t.ctes_total);
+                    const lista100pct = Number(t.ctes_total) > 0 && Number(t.ctes_d0) === Number(t.ctes_total);
                     const taxaAdiantamento = lista100pct ? 0 : taxaBase;
                     const valorLiquido = totalValorLista * (1 - taxaAdiantamento / 100);
                     const elegivel = !t.pago && pctEficiencia30dias >= eficienciaMinima && dataBaixaOk && !t.tem_reclamacao_aberta && totalValorLista > 0 && totalValorLista <= maximoAdiantamento && !emSuspensao && !temSolicitacao && !reclamacoesDesatualizadas && t.status === 'Finalizado';
