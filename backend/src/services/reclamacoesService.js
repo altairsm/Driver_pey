@@ -70,9 +70,10 @@ export async function uploadReclamacoes(fileBuffer, fileName) {
         const upd = await pool.query(`
           UPDATE acareacaojad
           SET status_original = $2,
+              data_criacao = $3::date,
               importado_em = CURRENT_TIMESTAMP
           WHERE ticket_id = $1
-        `, [ticketId, statusOrig]);
+        `, [ticketId, statusOrig, dataParsed]);
         if (upd.rowCount > 0) {
           resultado.atualizadas++;
           continue;
