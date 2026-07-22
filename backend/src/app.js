@@ -19,6 +19,7 @@ import despesasRoutes from './routes/despesas.js';
 import cobrancasRoutes from './routes/cobrancas.js';
 import configuracoesRoutes from './routes/configuracoes.js';
 import taxasAdiantamentoRoutes from './routes/taxasAdiantamento.js';
+import pagamentosRoutes from './routes/pagamentos.js';
 import versaoRoutes, { publicRouter as versaoPublicRouter } from './routes/versao.js';
 import { authenticateToken, requireAdmin } from './middleware/auth.js';
 
@@ -71,6 +72,7 @@ app.use('/', cobrancasRoutes);
 app.use('/configuracoes', authenticateToken, configuracoesRoutes);
 app.use('/taxas-adiantamento', authenticateToken, taxasAdiantamentoRoutes);
 app.use('/admin', versaoRoutes);
+app.use('/admin', pagamentosRoutes);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);

@@ -423,6 +423,26 @@ export async function recusarSolicitacao(id) {
   return data;
 }
 
+export async function reverificarSolicitacao(id) {
+  const { data } = await api.post(`/admin/solicitacoes/${id}/reverificar`);
+  return data;
+}
+
+export async function getPagamentosHistorico() {
+  const { data } = await api.get('/admin/pagamentos-historico');
+  return data;
+}
+
+export async function getPagamentosPendentes() {
+  const { data } = await api.get('/admin/pagamentos-pendentes');
+  return data;
+}
+
+export async function reverificarPagamento(id) {
+  const { data } = await api.post(`/admin/pagamentos-reverificar/${id}`);
+  return data;
+}
+
 export async function getComparativoMotoristas(inicio, fim) {
   const { data } = await api.get('/admin/analytics/comparativo', { params: { inicio, fim } });
   return data;

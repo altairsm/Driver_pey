@@ -321,11 +321,13 @@ async function enviarWebhookAdiantamento(payload) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tipo: 'adiantamento', ...payload }),
     });
-    if (!res.ok) {
-      console.error(`Webhook adiantamento responded with ${res.status}: ${await res.text().catch(() => '')}`);
-    }
+    const text = await res.text();
+    let data = null;
+    try { data = JSON.parse(text); } catch {}
+    return { ok: res.ok, status: res.status, data };
   } catch (err) {
     console.error('Webhook adiantamento error:', err.message);
+    return { ok: false, status: 0, data: null, error: err.message };
   }
 }
 
@@ -461,9 +463,10 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
       VALUES ($1, $2, $3, $4, $5)
     `, [matricula, listaNumero, valorSolicitado, taxaAplicada, status]);
 
+    let pixEstado = null;
     if (temAutoAprovado) {
       const valorLiquido = valorSolicitado * (1 - taxaAplicada / 100);
-      enviarWebhookAdiantamento({
+      const webhookResult = await enviarWebhookAdiantamento({
         matricula,
         nome: motorista[0].nome_completo || '',
         lista_numero: listaNumero,
@@ -474,9 +477,28 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
         pre_aprovado: true,
         aprovado_por: 'auto',
       });
+
+      pixEstado = webhookResult.data?.estado || null;
+      const pixEndToEndId = webhookResult.data?.endToEndId || null;
+      const pixHorario = webhookResult.data?.horario || null;
+
+      const novoStatus = pixEstado === 'FINALIZADO' ? 'aprovado' : 'pre_aprovado';
+      await pool.query(`
+        UPDATE solicitacoes_pagamento
+        SET status = $1,
+            pix_end_to_end_id = $2,
+            pix_estado = $3,
+            pix_horario = $4,
+            aprovado_em = CASE WHEN $1 = 'aprovado' THEN CURRENT_TIMESTAMP ELSE aprovado_em END
+        WHERE matricula = $5 AND lista_numero = $6
+      `, [novoStatus, pixEndToEndId, pixEstado, pixHorario, matricula, listaNumero]);
+
+      if (pixEstado === 'FINALIZADO') {
+        await pool.query(`UPDATE lista_entregas SET pago = true WHERE "Número" = $1`, [listaNumero]);
+      }
     }
 
-    return { success: true, motivo: 'Solicitação registrada com sucesso', beneficio_sem_taxa: todosEntregues };
+    return { success: true, motivo: 'Solicitação registrada com sucesso', beneficio_sem_taxa: todosEntregues, pix_estado: pixEstado };
   } catch (err) {
     if (err.code === '23505') {
       return { success: false, motivo: 'Solicitação já existe para esta lista' };

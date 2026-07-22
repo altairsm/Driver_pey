@@ -18,6 +18,7 @@ const GRUPOS = [
     ativoPrefix: '/admin/pagamentos',
     items: [
       { label: 'Pagamentos', path: '/admin/pagamentos' },
+      { label: 'Histórico Pix', path: '/admin/pagamentos-historico' },
       { label: 'Despesas', path: '/admin/despesas' },
       { label: 'Cobranças', path: '/admin/cobrancas' },
       { label: 'Tabelas', path: '/admin/tabelas' },

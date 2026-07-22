@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getSolicitacoes, aprovarSolicitacao, recusarSolicitacao } from '../services/api';
+import { getSolicitacoes, aprovarSolicitacao, recusarSolicitacao, reverificarSolicitacao } from '../services/api';
 import Topbar from '../components/Topbar';
 
 export default function AdminSolicitacoesPagamento() {
@@ -7,6 +7,7 @@ export default function AdminSolicitacoesPagamento() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filtro, setFiltro] = useState('');
+  const [reverificando, setReverificando] = useState({});
 
   const carregar = async (status) => {
     setLoading(true);
@@ -27,7 +28,12 @@ export default function AdminSolicitacoesPagamento() {
   const handleAprovar = async (id) => {
     try {
       const result = await aprovarSolicitacao(id);
-      if (result.success) carregar(filtro);
+      if (result.pix_estado === 'EM_PROCESSAMENTO') {
+        setError(`Pagamento em processamento (Pix: ${result.pix_estado}). Aguardando confirmação.`);
+      } else if (!result.success && result.pix_estado === 'REJEITADO') {
+        setError(`Pagamento rejeitado pelo Pix.`);
+      }
+      carregar(filtro);
     } catch (err) {
       setError('Erro ao aprovar solicitação');
     }
@@ -42,6 +48,25 @@ export default function AdminSolicitacoesPagamento() {
     }
   };
 
+  const handleReverificar = async (id) => {
+    setReverificando(prev => ({ ...prev, [id]: true }));
+    try {
+      const result = await reverificarSolicitacao(id);
+      if (result.pix_estado === 'FINALIZADO') {
+        setError('');
+      } else if (result.pix_estado === 'EM_PROCESSAMENTO') {
+        setError('Pagamento ainda em processamento.');
+      } else {
+        setError('Pagamento rejeitado pelo Pix.');
+      }
+      carregar(filtro);
+    } catch (err) {
+      setError('Erro ao reverificar pagamento');
+    } finally {
+      setReverificando(prev => ({ ...prev, [id]: false }));
+    }
+  };
+
   const formatMoney = (v) => `R$ ${(Number(v) || 0).toFixed(2).replace('.', ',')}`;
   const formatDt = (d) => d ? new Date(d).toLocaleString('pt-BR') : '—';
 
@@ -49,7 +74,16 @@ export default function AdminSolicitacoesPagamento() {
     if (s === 'aprovado') return '#3de8a0';
     if (s === 'recusado') return '#ff5a5a';
     if (s === 'pre_aprovado') return '#00bcd4';
+    if (s === 'processando_pix') return '#ff9f40';
+    if (s === 'pix_rejeitado') return '#ff5a5a';
     return '#ff9f40';
+  };
+
+  const pixBadgeCor = (estado) => {
+    if (estado === 'FINALIZADO') return '#3de8a0';
+    if (estado === 'EM_PROCESSAMENTO') return '#ff9f40';
+    if (estado === 'REJEITADO') return '#ff5a5a';
+    return '#6b7280';
   };
 
   return (
@@ -72,6 +106,10 @@ export default function AdminSolicitacoesPagamento() {
             onClick={() => carregar('pre_aprovado')}
           >Pré-aprovadas</span>
           <span
+            style={{ ...s.filterBtn, background: filtro === 'processando_pix' ? '#ff9f40' : '#1e2230', color: filtro === 'processando_pix' ? '#0d0f14' : '#6b7280' }}
+            onClick={() => carregar('processando_pix')}
+          >Processando Pix</span>
+          <span
             style={{ ...s.filterBtn, background: filtro === 'aprovado' ? '#3de8a0' : '#1e2230', color: filtro === 'aprovado' ? '#0d0f14' : '#6b7280' }}
             onClick={() => carregar('aprovado')}
           >Aprovadas</span>
@@ -93,14 +131,15 @@ export default function AdminSolicitacoesPagamento() {
               <thead>
                 <tr>
                   <th style={s.th}>ID</th>
-                  <th style={s.th}>Matrícula</th>
                   <th style={s.th}>Motorista</th>
                   <th style={s.th}>Lista</th>
                   <th style={s.th}>Valor</th>
                   <th style={s.th}>Taxa</th>
                   <th style={s.th}>Líquido</th>
                   <th style={s.th}>Status</th>
-                  <th style={s.th}>Solicitado em</th>
+                  <th style={s.th}>Pix</th>
+                  <th style={s.th}>End-to-End</th>
+                  <th style={s.th}>Criado</th>
                   <th style={s.th}>Ação</th>
                 </tr>
               </thead>
@@ -108,7 +147,6 @@ export default function AdminSolicitacoesPagamento() {
                 {solicitacoes.map((solic) => (
                   <tr key={solic.id}>
                     <td style={s.td}>{solic.id}</td>
-                    <td style={s.td}>{solic.matricula}</td>
                     <td style={s.td}>{solic.nome_completo}</td>
                     <td style={s.td}>#{solic.lista_numero}</td>
                     <td style={s.td}>{formatMoney(solic.valor_solicitado)}</td>
@@ -118,6 +156,16 @@ export default function AdminSolicitacoesPagamento() {
                       <span style={{ ...s.badge, background: `${badgeCor(solic.status)}22`, color: badgeCor(solic.status) }}>
                         {solic.status.toUpperCase()}
                       </span>
+                    </td>
+                    <td style={s.td}>
+                      {solic.pix_estado ? (
+                        <span style={{ ...s.badge, background: `${pixBadgeCor(solic.pix_estado)}22`, color: pixBadgeCor(solic.pix_estado) }}>
+                          {solic.pix_estado}
+                        </span>
+                      ) : '—'}
+                    </td>
+                    <td style={{ ...s.td, fontSize: '0.65rem', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {solic.pix_end_to_end_id || '—'}
                     </td>
                     <td style={s.td}>{formatDt(solic.criado_em)}</td>
                     <td style={s.td}>
@@ -130,6 +178,14 @@ export default function AdminSolicitacoesPagamento() {
                             Recusar
                           </button>
                         </div>
+                      ) : solic.status === 'processando_pix' ? (
+                        <button
+                          style={{ ...s.btnAprovar, background: '#3a2a1a', borderColor: '#ff9f40', color: '#ff9f40' }}
+                          onClick={() => handleReverificar(solic.id)}
+                          disabled={reverificando[solic.id]}
+                        >
+                          {reverificando[solic.id] ? '...' : 'Reverificar'}
+                        </button>
                       ) : (
                         <span style={{ color: '#6b7280', fontSize: '0.75rem' }}>
                           {solic.aprovado_em ? `Aprovado: ${formatDt(solic.aprovado_em)}` : solic.recusado_em ? `Recusado: ${formatDt(solic.recusado_em)}` : '—'}
@@ -149,15 +205,15 @@ export default function AdminSolicitacoesPagamento() {
 
 const s = {
   container: { minHeight: '100vh', background: '#0d0f14', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', sans-serif" },
-  content: { maxWidth: 1200, margin: '0 auto', padding: '32px 24px' },
+  content: { maxWidth: 1400, margin: '0 auto', padding: '32px 24px' },
   title: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.8rem', letterSpacing: '2px', color: '#f0c040', marginBottom: 24 },
   filterRow: { display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' },
   filterBtn: { padding: '6px 16px', borderRadius: 4, cursor: 'pointer', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem', letterSpacing: '1px', border: '1px solid #2a2f3e', transition: 'all .15s' },
   error: { background: '#2a1a1a', border: '1px solid #ff5a5a', color: '#ff5a5a', padding: '10px 16px', borderRadius: 4, marginBottom: 20 },
-  tableWrap: { background: '#161920', border: '1px solid #2a2f3e', borderRadius: 8, overflow: 'hidden' },
-  table: { width: '100%', borderCollapse: 'collapse' },
-  th: { padding: '10px 14px', textAlign: 'left', fontSize: '0.7rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid #2a2f3e', background: '#1e2230' },
-  td: { padding: '10px 14px', fontSize: '0.82rem', borderBottom: '1px solid #2a2f3e', color: '#e8eaf0', fontFamily: "'IBM Plex Mono', monospace" },
+  tableWrap: { background: '#161920', border: '1px solid #2a2f3e', borderRadius: 8, overflow: 'auto' },
+  table: { width: '100%', borderCollapse: 'collapse', minWidth: 900 },
+  th: { padding: '10px 14px', textAlign: 'left', fontSize: '0.7rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '1px', borderBottom: '1px solid #2a2f3e', background: '#1e2230', whiteSpace: 'nowrap' },
+  td: { padding: '10px 14px', fontSize: '0.82rem', borderBottom: '1px solid #2a2f3e', color: '#e8eaf0', fontFamily: "'IBM Plex Mono', monospace", whiteSpace: 'nowrap' },
   badge: { display: 'inline-block', padding: '2px 8px', fontSize: '0.6rem', letterSpacing: '1px', textTransform: 'uppercase', fontFamily: "'IBM Plex Mono', monospace", borderRadius: 2 },
   btnAprovar: { background: '#1a3a2a', border: '1px solid #3de8a0', color: '#3de8a0', padding: '4px 12px', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem', fontFamily: "'IBM Plex Mono', monospace" },
   btnRecusar: { background: '#3a1a1a', border: '1px solid #ff5a5a', color: '#ff5a5a', padding: '4px 12px', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem', fontFamily: "'IBM Plex Mono', monospace" },

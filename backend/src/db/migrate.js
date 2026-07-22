@@ -752,6 +752,36 @@ export async function runMigrations() {
       UPDATE ceps_especificos SET geocode_source = 'bairro_fallback'
       WHERE lat IS NOT NULL AND geocode_source IS NULL
     `);
+
+    // ── Step 8: Pix tracking columns ──
+    await pool.query('ALTER TABLE solicitacoes_pagamento ADD COLUMN IF NOT EXISTS pix_end_to_end_id VARCHAR(100)');
+    await pool.query('ALTER TABLE solicitacoes_pagamento ADD COLUMN IF NOT EXISTS pix_estado VARCHAR(30)');
+    await pool.query('ALTER TABLE solicitacoes_pagamento ADD COLUMN IF NOT EXISTS pix_horario TIMESTAMP');
+    console.log('  solicitacoes_pagamento pix columns added');
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS pagamentos_quinzena (
+      id SERIAL PRIMARY KEY,
+      matricula BIGINT NOT NULL,
+      quinzena_inicio DATE NOT NULL,
+      quinzena_fim DATE NOT NULL,
+      total_entregas INTEGER DEFAULT 0,
+      total_quinzena NUMERIC(10,2) DEFAULT 0,
+      total_bonus_d0 NUMERIC(10,2) DEFAULT 0,
+      total_multa NUMERIC(10,2) DEFAULT 0,
+      total_adiantado NUMERIC(10,2) DEFAULT 0,
+      total_cobrancas NUMERIC(10,2) DEFAULT 0,
+      total_pagar NUMERIC(10,2) NOT NULL,
+      pix_end_to_end_id VARCHAR(100),
+      pix_estado VARCHAR(30),
+      pix_horario TIMESTAMP,
+      pix_origem JSONB,
+      pix_destino JSONB,
+      status VARCHAR(20) DEFAULT 'pendente',
+      criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      confirmado_em TIMESTAMP,
+      UNIQUE (matricula, quinzena_inicio, quinzena_fim)
+    )`);
+    console.log('  -> pagamentos_quinzena');
   } catch (err) {
     console.error('Migration error:', err);
     throw err;

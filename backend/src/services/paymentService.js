@@ -265,17 +265,8 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
       Math.max(total_pagar, 0)
     );
     if (deducao <= 0) continue;
-
     total_cobrancas += deducao;
     total_pagar -= deducao;
-
-    await pool.query(`
-      UPDATE cobrancas
-      SET valor_restante = ROUND((valor_restante - $1)::numeric, 2),
-          parcelas_pagas = parcelas_pagas + 1,
-          ativo = CASE WHEN ROUND((valor_restante - $1)::numeric, 2) <= 0 THEN false ELSE ativo END
-      WHERE id = $2
-    `, [deducao, cob.id]);
   }
 
   const payload = {
@@ -294,31 +285,86 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
     data_pagamento: new Date().toISOString().slice(0, 10),
   };
 
+  let webhookResult = { ok: false, status: 0, data: null };
   try {
     const res = await fetch('https://webhook.sactudo.com.br/webhook/Driver_Pix', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) {
-      console.error(`Webhook responded with ${res.status}: ${await res.text().catch(() => '')}`);
-    }
+    const text = await res.text();
+    let data = null;
+    try { data = JSON.parse(text); } catch {}
+    webhookResult = { ok: res.ok, status: res.status, data };
   } catch (err) {
     console.error('Webhook error:', err.message);
   }
 
-  const query = `
-    UPDATE lista_entregas le
-    SET pago = true
-    FROM relatorioentrega_export re
-    WHERE le."Número"::text = re."Lista"
-      AND re."OperadorMatricula"::bigint = $1
-      AND LOWER(re."Evento") = 'entrega'
-      AND le.status = 'Finalizado'
-      AND (le.pago IS NULL OR le.pago = false)
-      AND le."Data Baixa"::date BETWEEN $2 AND $3
-  `;
-  await pool.query(query, [matricula, inicio, fim]);
+  const pixEstado = webhookResult.data?.estado || null;
+  const pixEndToEndId = webhookResult.data?.endToEndId || null;
+  const pixHorario = webhookResult.data?.horario || null;
+  const pixOrigem = webhookResult.data?.origem || null;
+  const pixDestino = webhookResult.data?.destino || null;
+
+  await pool.query(`
+    INSERT INTO pagamentos_quinzena
+      (matricula, quinzena_inicio, quinzena_fim, total_entregas,
+       total_quinzena, total_bonus_d0, total_multa, total_adiantado,
+       total_cobrancas, total_pagar, pix_end_to_end_id, pix_estado,
+       pix_horario, pix_origem, pix_destino, status, confirmado_em)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,
+            CASE WHEN $12 = 'FINALIZADO' THEN CURRENT_TIMESTAMP ELSE NULL END)
+    ON CONFLICT (matricula, quinzena_inicio, quinzena_fim) DO UPDATE SET
+      total_entregas = $4, total_quinzena = $5, total_bonus_d0 = $6,
+      total_multa = $7, total_adiantado = $8, total_cobrancas = $9,
+      total_pagar = $10, pix_end_to_end_id = $11, pix_estado = $12,
+      pix_horario = $13, pix_origem = $14, pix_destino = $15, status = $16,
+      confirmado_em = CASE WHEN $12 = 'FINALIZADO' THEN CURRENT_TIMESTAMP ELSE pagamentos_quinzena.confirmado_em END
+  `, [matricula, inicio, fim, entregas?.total_entregas || 0,
+      total_quinzena, total_bonus_d0, total_multa, total_adiantado,
+      total_cobrancas, total_pagar < 0 ? 0 : total_pagar,
+      pixEndToEndId, pixEstado, pixHorario,
+      pixOrigem ? JSON.stringify(pixOrigem) : null,
+      pixDestino ? JSON.stringify(pixDestino) : null,
+      pixEstado === 'FINALIZADO' ? 'confirmado' : pixEstado === 'EM_PROCESSAMENTO' ? 'processando' : 'rejeitado']);
+
+  if (pixEstado === 'FINALIZADO') {
+    for (const cob of cobrancasAtivas) {
+      const parcelasRestantes = cob.parcelas - cob.parcelas_pagas;
+      const deducao = Math.min(
+        cob.valor_restante / Math.max(parcelasRestantes, 1),
+        cob.valor_restante,
+        Math.max(total_pagar + total_cobrancas, 0)
+      );
+      if (deducao <= 0) continue;
+      await pool.query(`
+        UPDATE cobrancas
+        SET valor_restante = ROUND((valor_restante - $1)::numeric, 2),
+            parcelas_pagas = parcelas_pagas + 1,
+            ativo = CASE WHEN ROUND((valor_restante - $1)::numeric, 2) <= 0 THEN false ELSE ativo END
+        WHERE id = $2
+      `, [deducao, cob.id]);
+    }
+
+    const query = `
+      UPDATE lista_entregas le
+      SET pago = true
+      FROM relatorioentrega_export re
+      WHERE le."Número"::text = re."Lista"
+        AND re."OperadorMatricula"::bigint = $1
+        AND LOWER(re."Evento") = 'entrega'
+        AND le.status = 'Finalizado'
+        AND (le.pago IS NULL OR le.pago = false)
+        AND le."Data Baixa"::date BETWEEN $2 AND $3
+    `;
+    await pool.query(query, [matricula, inicio, fim]);
+  }
+
+  return {
+    success: pixEstado === 'FINALIZADO' || pixEstado === 'EM_PROCESSAMENTO',
+    pix_estado: pixEstado,
+    total_pagar: total_pagar < 0 ? 0 : total_pagar,
+  };
 }
 
 export async function listarMotoristas() {
