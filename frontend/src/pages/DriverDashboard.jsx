@@ -556,7 +556,15 @@ export default function DriverDashboard() {
                       <div style={s.recPct}>{pctReclamacao.toFixed(2)}%</div>
                     </div>
                   </div>
-                  {reclamacoes.map((r, i) => {
+                  {(() => {
+                    const ordenadas = [...reclamacoes].sort((a, b) => {
+                      const aP = a.status_original !== 'Resolvido';
+                      const bP = b.status_original !== 'Resolvido';
+                      if (aP && !bP) return -1;
+                      if (!aP && bP) return 1;
+                      return 0;
+                    });
+                    return ordenadas.map((r, i) => {
                     const addr = r.cep ? cepCache[r.cep] : null;
                     const mapsQ = addr?.logradouro || addr?.bairro
                       ? `${addr.logradouro || ''}, ${addr.bairro || ''}, Salvador, BA`
@@ -602,7 +610,8 @@ export default function DriverDashboard() {
                         </div>
                       </div>
                     );
-                  })}
+                    });
+                  })()}
                 </>
               )}
             </div>
@@ -1003,9 +1012,9 @@ const s = {
   recPct: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.2rem', color: '#ff9f40' },
   recCard: { background: '#161920', border: '1px solid #2a2f3e', padding: '12px 14px', marginBottom: 8, borderRadius: 2 },
   recCardResolvido: { borderLeft: '3px solid #3de8a0' },
-  recCardPendente: { borderLeft: '3px solid #ff5a5a' },
+  recCardPendente: { borderLeft: '4px solid #ff5a5a', background: 'rgba(255,90,90,.10)' },
   recStatusResolvido: { color: '#3de8a0', fontWeight: 600 },
-  recStatusPendente: { color: '#ff9f40', fontWeight: 600 },
+  recStatusPendente: { color: '#ff5a5a', fontWeight: 700, background: 'rgba(255,90,90,.15)', padding: '2px 8px', borderRadius: 3, fontSize: '0.7rem', letterSpacing: '0.5px' },
   recCardRow: { display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid rgba(42,47,62,.5)', fontFamily: "'IBM Plex Mono', monospace" },
   recCardLbl: { fontSize: '0.58rem', color: '#6b7280', letterSpacing: '1px', textTransform: 'uppercase' },
   recCardVal: { fontSize: '0.72rem', color: '#e8eaf0' },
