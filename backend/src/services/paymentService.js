@@ -9,7 +9,8 @@ export async function calcularPagamentos(inicio, fim) {
         c.ctrc,
         c.cidade_entrega,
         c.id_romaneio,
-        COALESCE(pc.valor_entrega, 0) AS valor_entrega
+        COALESCE(c.frete_ctrc, 0) AS frete_ctrc,
+        COALESCE(pc.valor_entrega, 0) AS valor_despesa
       FROM ssw_ctrcs c
       JOIN ssw_romaneios r ON r.id_romaneio = c.id_romaneio
       LEFT JOIN tabela_preco_cidade pc
@@ -24,7 +25,8 @@ export async function calcularPagamentos(inicio, fim) {
         motorista_nome,
         COUNT(*) AS total_ctrcs,
         COUNT(DISTINCT id_romaneio) AS total_romaneios,
-        SUM(valor_entrega) AS valor_total
+        SUM(frete_ctrc) AS receita_total,
+        SUM(valor_despesa) AS despesa_total
       FROM entregas_periodo
       GROUP BY motorista_cpf, motorista_nome
     ),
@@ -42,8 +44,9 @@ export async function calcularPagamentos(inicio, fim) {
       m.nome,
       COALESCE(rm.total_ctrcs, 0) AS total_ctrcs,
       COALESCE(rm.total_romaneios, 0) AS total_romaneios,
-      COALESCE(rm.valor_total, 0)::numeric(10,2) AS receita_total,
-      GREATEST(COALESCE(rm.valor_total, 0) - COALESCE(a.total_adiantado, 0), 0)::numeric(10,2) AS total_pagar,
+      COALESCE(rm.receita_total, 0)::numeric(10,2) AS receita_total,
+      COALESCE(rm.despesa_total, 0)::numeric(10,2) AS despesa_total,
+      GREATEST(COALESCE(rm.despesa_total, 0) - COALESCE(a.total_adiantado, 0), 0)::numeric(10,2) AS total_pagar,
       COALESCE(a.total_adiantado, 0)::numeric(10,2) AS total_adiantado
     FROM motoristas m
     LEFT JOIN resumo_motorista rm ON rm.motorista_cpf = m.cpf
@@ -66,7 +69,8 @@ export async function confirmarPagamento(cpf, periodo) {
 
   const { rows: [totalRow] } = await pool.query(`
     SELECT COUNT(*)::int AS total_ctrcs,
-           COALESCE(SUM(pc.valor_entrega), 0)::numeric(10,2) AS total_pagar
+           COALESCE(SUM(c.frete_ctrc), 0)::numeric(10,2) AS receita,
+           COALESCE(SUM(pc.valor_entrega), 0)::numeric(10,2) AS despesa
     FROM ssw_ctrcs c
     JOIN ssw_romaneios r ON r.id_romaneio = c.id_romaneio
     LEFT JOIN tabela_preco_cidade pc
@@ -85,9 +89,10 @@ export async function confirmarPagamento(cpf, periodo) {
       AND aprovado_em::date BETWEEN $2::date AND $3::date
   `, [cpf, inicio, fim]);
 
-  const receita = parseFloat(totalRow?.total_pagar) || 0;
+  const receita = parseFloat(totalRow?.receita) || 0;
+  const despesa = parseFloat(totalRow?.despesa) || 0;
   const adiantado = parseFloat(adiantadoRow?.total_adiantado) || 0;
-  const totalPagar = Math.max(receita - adiantado, 0);
+  const totalPagar = Math.max(despesa - adiantado, 0);
 
   const payload = {
     cpf,
@@ -95,6 +100,8 @@ export async function confirmarPagamento(cpf, periodo) {
     quinzena_inicio: inicio,
     quinzena_fim: fim,
     total_ctrcs: totalRow?.total_ctrcs || 0,
+    receita,
+    despesa,
     total_pagar: totalPagar,
     total_adiantado: adiantado,
     data_pagamento: new Date().toISOString().slice(0, 10),

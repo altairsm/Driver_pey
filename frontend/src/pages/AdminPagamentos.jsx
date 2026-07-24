@@ -132,6 +132,10 @@ export default function AdminPagamentos() {
                 <span style={{ ...styles.rValue, color: '#f0c040' }}>{formatBRL(resumo.total_receita)}</span>
               </div>
               <div style={styles.rCard}>
+                <span style={styles.rLabel}>Despesa Total</span>
+                <span style={{ ...styles.rValue, color: '#ff6b6b' }}>{formatBRL(resumo.total_despesa)}</span>
+              </div>
+              <div style={styles.rCard}>
                 <span style={styles.rLabel}>Total a Pagar</span>
                 <span style={{ ...styles.rValue, color: '#3de8a0' }}>{formatBRL(resumo.total_pagar)}</span>
               </div>
@@ -146,6 +150,7 @@ export default function AdminPagamentos() {
                     <th style={styles.th}>CTRCs</th>
                     <th style={styles.th}>Romaneios</th>
                     <th style={styles.th}>Receita</th>
+                    <th style={styles.th}>Despesa</th>
                     <th style={styles.th}>Adiantado</th>
                     <th style={styles.th}>Total a Pagar</th>
                     <th style={styles.th}>Ação</th>
@@ -159,6 +164,7 @@ export default function AdminPagamentos() {
                       <td style={styles.td}>{m.total_ctrcs}</td>
                       <td style={styles.td}>{m.total_romaneios}</td>
                       <td style={styles.td}>{formatBRL(m.receita_total)}</td>
+                      <td style={{ ...styles.td, color: '#ff6b6b' }}>{formatBRL(m.despesa_total)}</td>
                       <td style={{ ...styles.td, color: '#ff9f40' }}>{formatBRL(m.total_adiantado)}</td>
                       <td style={{ ...styles.td, color: '#3de8a0', fontWeight: 600 }}>{formatBRL(m.total_pagar)}</td>
                       <td style={styles.td}>
