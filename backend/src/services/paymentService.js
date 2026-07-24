@@ -247,7 +247,7 @@ export async function getCtrcsParados() {
       COUNT(*) FILTER (WHERE (CURRENT_DATE - data_emissao) BETWEEN 16 AND 30)::int AS de_16_a_30,
       COUNT(*) FILTER (WHERE (CURRENT_DATE - data_emissao) > 30)::int AS mais_30
     FROM ssw_ctrcs
-    WHERE UPPER(ocorrencia) != 'MERCADORIA ENTREGUE'
+    WHERE (UPPER(ocorrencia) NOT IN ('MERCADORIA ENTREGUE', 'MERCADORIA DEVOLVIDA AO REMETENTE'))
        OR ocorrencia IS NULL
     GROUP BY cidade_entrega
     ORDER BY total DESC
