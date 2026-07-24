@@ -56,7 +56,7 @@ export async function getDriverRomaneios(cpf, inicio, fim) {
   return result.rows;
 }
 
-export async function getDriverRomaneioDetalhes(cpf, idRomaneio) {
+export async function getDriverRomaneioDetalhes(cpf, idRomaneio, inicio, fim) {
   const result = await pool.query(`
     SELECT
       c.cidade_entrega,
@@ -69,9 +69,10 @@ export async function getDriverRomaneioDetalhes(cpf, idRomaneio) {
       OR LOWER(pc.cidade) = LOWER(c.cidade_entrega)
     WHERE c.id_romaneio = $1
       AND EXISTS (SELECT 1 FROM ssw_romaneios WHERE id_romaneio = c.id_romaneio AND motorista_cpf = $2)
+      AND c.ocorrencia_data BETWEEN $3::date AND $4::date
     GROUP BY c.cidade_entrega, c.bairro
     ORDER BY c.cidade_entrega, c.bairro
-  `, [idRomaneio, cpf]);
+  `, [idRomaneio, cpf, inicio, fim]);
 
   return result.rows;
 }

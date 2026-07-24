@@ -49,7 +49,8 @@ router.get('/romaneios', async (req, res) => {
 
 router.get('/romaneios/:id', async (req, res) => {
   try {
-    const detalhes = await getDriverRomaneioDetalhes(req.user.cpf, req.params.id);
+    const { inicio, fim } = req.query;
+    const detalhes = await getDriverRomaneioDetalhes(req.user.cpf, req.params.id, inicio || null, fim || null);
     res.json(detalhes);
   } catch (err) {
     console.error(err);

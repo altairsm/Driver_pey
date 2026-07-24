@@ -32,6 +32,7 @@ export async function importarSsw036(rows) {
 
   const motoristaCache = new Map();
   const romaneioSet = new Set();
+  const fretePorRomaneio = new Map();
 
   for (const row of rows) {
     try {
@@ -82,6 +83,9 @@ export async function importarSsw036(rows) {
       }
 
       const freteStr = (row['FRETE CTRC'] || '0').replace(/\./g, '').replace(',', '.');
+      const freteVal = parseFloat(freteStr) || 0;
+      fretePorRomaneio.set(idRomaneio, (fretePorRomaneio.get(idRomaneio) || 0) + freteVal);
+
       const pesoSStr = (row['PESO CALCULO'] || '0').replace(/\./g, '').replace(',', '.');
       const qtdeStr = (row['QTDE VOL'] || '0').replace(/\D/g, '') || '0';
 
@@ -122,6 +126,13 @@ export async function importarSsw036(rows) {
       console.error('Erro ao processar linha SSW 036:', err.message, JSON.stringify(row).slice(0, 200));
       erros++;
     }
+  }
+
+  for (const [romId, total] of fretePorRomaneio) {
+    await pool.query(
+      'UPDATE ssw_romaneios SET total_frete = $1 WHERE id_romaneio = $2',
+      [total, romId]
+    );
   }
 
   return { motoristas, romaneios, ctrcs, erros };

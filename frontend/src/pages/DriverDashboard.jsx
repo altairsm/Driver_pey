@@ -127,7 +127,7 @@ export default function DriverDashboard() {
 
   const toggleExpandido = (id) => {
     if (!expandido[id] && !detalhesRomaneio[id]) {
-      getDriverRomaneioDetalhes(id).then(ctrcs => {
+      getDriverRomaneioDetalhes(id, qzAtual.inicio, qzAtual.fim).then(ctrcs => {
         setDetalhesRomaneio(prev => ({ ...prev, [id]: ctrcs }));
       }).catch(() => {});
     }

@@ -159,6 +159,88 @@ export async function runMigrations() {
     )`);
     console.log('  -> ssw_ocorrencias');
 
+    await pool.query(`CREATE TABLE IF NOT EXISTS versao_apk (
+      id SERIAL PRIMARY KEY,
+      commit_hash VARCHAR(50),
+      url_download TEXT,
+      ativo BOOLEAN DEFAULT false,
+      criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    console.log('  -> versao_apk');
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS ceps_especificos (
+      id SERIAL PRIMARY KEY,
+      cep VARCHAR(8) NOT NULL,
+      bairro VARCHAR(200),
+      rota VARCHAR(10),
+      nome_tabela VARCHAR(10),
+      lat NUMERIC(10,7),
+      lng NUMERIC(10,7),
+      geocode_source VARCHAR(20),
+      logradouro VARCHAR(300),
+      bairro_viacep VARCHAR(200)
+    )`);
+    console.log('  -> ceps_especificos');
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS bairros_rotas (
+      id SERIAL PRIMARY KEY,
+      bairro VARCHAR(200) NOT NULL,
+      rota VARCHAR(10),
+      nome_tabela VARCHAR(10),
+      lat NUMERIC(10,7),
+      lng NUMERIC(10,7)
+    )`);
+    console.log('  -> bairros_rotas');
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS cobrancas (
+      id SERIAL PRIMARY KEY,
+      ncte VARCHAR(50),
+      matricula BIGINT,
+      valor_total NUMERIC(10,2) DEFAULT 0,
+      valor_restante NUMERIC(10,2) DEFAULT 0,
+      parcelas INTEGER DEFAULT 1,
+      parcelas_pagas INTEGER DEFAULT 0,
+      observacao TEXT,
+      criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      ativo BOOLEAN DEFAULT true
+    )`);
+    console.log('  -> cobrancas');
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS despesas (
+      id SERIAL PRIMARY KEY,
+      descricao VARCHAR(300) NOT NULL,
+      valor NUMERIC(10,2) NOT NULL,
+      categoria VARCHAR(100),
+      data DATE,
+      observacao TEXT,
+      criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    console.log('  -> despesas');
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS pagamentos_quinzena (
+      id SERIAL PRIMARY KEY,
+      cpf VARCHAR(11) NOT NULL,
+      quinzena_inicio DATE NOT NULL,
+      quinzena_fim DATE NOT NULL,
+      total_entregas INTEGER DEFAULT 0,
+      total_quinzena NUMERIC(10,2) DEFAULT 0,
+      total_bonus_d0 NUMERIC(10,2) DEFAULT 0,
+      total_multa NUMERIC(10,2) DEFAULT 0,
+      total_adiantado NUMERIC(10,2) DEFAULT 0,
+      total_cobrancas NUMERIC(10,2) DEFAULT 0,
+      total_pagar NUMERIC(10,2) NOT NULL,
+      pix_end_to_end_id VARCHAR(100),
+      pix_estado VARCHAR(30),
+      pix_horario TIMESTAMP,
+      pix_origem JSONB,
+      pix_destino JSONB,
+      status VARCHAR(20) DEFAULT 'pendente',
+      criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      confirmado_em TIMESTAMP
+    )`);
+    console.log('  -> pagamentos_quinzena');
+
     await pool.query('CREATE INDEX IF NOT EXISTS idx_ssw_ctrcs_romaneio ON ssw_ctrcs (id_romaneio)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_ssw_ctrcs_cidade ON ssw_ctrcs (cidade_entrega)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_ssw_ctrcs_data ON ssw_ctrcs (data_entrega)');

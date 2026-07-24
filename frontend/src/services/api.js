@@ -56,8 +56,8 @@ export async function getDriverRomaneios(inicio, fim) {
   return data;
 }
 
-export async function getDriverRomaneioDetalhes(id) {
-  const { data } = await api.get(`/driver/romaneios/${id}`);
+export async function getDriverRomaneioDetalhes(id, inicio, fim) {
+  const { data } = await api.get(`/driver/romaneios/${id}`, { params: { inicio, fim } });
   return data;
 }
 
