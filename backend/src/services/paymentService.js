@@ -184,3 +184,45 @@ export async function deletarMotorista(cpf) {
   const result = await pool.query(`DELETE FROM motoristas WHERE cpf = $1`, [cpf]);
   return result.rowCount > 0;
 }
+
+export async function getCidadesSemPreco(inicio, fim) {
+  const query = `
+    SELECT
+      c.ctrc,
+      c.cidade_entrega,
+      c.ocorrencia_data,
+      c.frete_ctrc,
+      r.motorista_cpf,
+      r.motorista_nome,
+      r.id_romaneio
+    FROM ssw_ctrcs c
+    JOIN ssw_romaneios r ON r.id_romaneio = c.id_romaneio
+    LEFT JOIN tabela_preco_cidade pc
+      ON LOWER(pc.cidade) = LOWER(TRIM(SPLIT_PART(c.cidade_entrega, '/', 1)))
+      OR LOWER(pc.cidade) = LOWER(TRIM(c.cidade_entrega))
+    WHERE pc.cidade IS NULL
+      AND LOWER(c.ocorrencia) LIKE '%entregue%'
+      AND ($1::date IS NULL OR c.ocorrencia_data >= $1::date)
+      AND ($2::date IS NULL OR c.ocorrencia_data <= $2::date)
+    ORDER BY c.cidade_entrega, c.ocorrencia_data DESC
+  `;
+  const result = await pool.query(query, [inicio || null, fim || null]);
+  const ctrcs = result.rows;
+
+  const cidadesMap = new Map();
+  for (const row of ctrcs) {
+    const cidade = (row.cidade_entrega || '').trim();
+    if (!cidadesMap.has(cidade)) {
+      cidadesMap.set(cidade, { cidade, total: 0, frete_total: 0 });
+    }
+    const entry = cidadesMap.get(cidade);
+    entry.total++;
+    entry.frete_total += Number(row.frete_ctrc) || 0;
+  }
+
+  return {
+    ctrcs,
+    total: ctrcs.length,
+    cidades_unicas: [...cidadesMap.values()].sort((a, b) => b.total - a.total),
+  };
+}

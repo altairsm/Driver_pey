@@ -228,4 +228,10 @@ export async function deletePrecoCidade(cidade) {
   return data;
 }
 
+// CTRCs sem preco
+export async function getCtrcsSemPreco(inicio, fim) {
+  const { data } = await api.get('/admin/ctrcs-sem-preco', { params: { inicio, fim } });
+  return data;
+}
+
 export default api;

@@ -3,7 +3,7 @@ import { pool } from '../db/index.js';
 import {
   calcularPagamentos, confirmarPagamento,
   listarMotoristas, criarMotorista, atualizarMotorista, deletarMotorista,
-  getQuinzenasAdmin
+  getQuinzenasAdmin, getCidadesSemPreco
 } from '../services/paymentService.js';
 
 const router = Router();
@@ -112,6 +112,7 @@ router.get('/resumo', async (req, res) => {
       total_motoristas: pagamentos.length,
       total_ctrcs: pagamentos.reduce((acc, p) => acc + Number(p.total_ctrcs), 0),
       total_receita: pagamentos.reduce((acc, p) => acc + Number(p.receita_total), 0),
+      total_despesa: pagamentos.reduce((acc, p) => acc + Number(p.despesa_total), 0),
       total_pagar: pagamentos.reduce((acc, p) => acc + Number(p.total_pagar), 0),
       total_adiantado: pagamentos.reduce((acc, p) => acc + Number(p.total_adiantado), 0),
       motoristas: pagamentos,
@@ -162,6 +163,17 @@ router.delete('/precos-cidades/:cidade', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erro ao deletar preço' });
+  }
+});
+
+router.get('/ctrcs-sem-preco', async (req, res) => {
+  try {
+    const { inicio, fim } = req.query;
+    const resultado = await getCidadesSemPreco(inicio || null, fim || null);
+    res.json(resultado);
+  } catch (err) {
+    console.error('Erro ao buscar CTRCs sem preço:', err);
+    res.status(500).json({ error: 'Erro ao buscar CTRCs sem preço' });
   }
 });
 

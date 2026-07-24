@@ -7,7 +7,8 @@ const GRUPOS = [
     icon: '🚚',
     items: [
       { label: 'Upload SSW', path: '/admin/upload' },
-      { label: 'Preços Cidades', path: '/admin/precos-cidades' },
+      { label: 'Precos Cidades', path: '/admin/precos-cidades' },
+      { label: 'Cidades s/ Preco', path: '/admin/cidades-sem-preco' },
     ],
   },
   {
