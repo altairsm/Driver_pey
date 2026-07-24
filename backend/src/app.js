@@ -48,7 +48,7 @@ app.use('/auth', authRoutes);
 app.use('/driver', driverRoutes);
 app.use('/admin', authenticateToken, requireRole('admin', 'operador', 'consulta'));
 app.use('/admin', adminRoutes);
-app.use('/upload', authenticateToken, requireRole('admin'), uploadRoutes);
+app.use('/upload', authenticateToken, requireRole('admin', 'operador'), uploadRoutes);
 app.use('/configuracoes', authenticateToken, configuracoesRoutes);
 app.use('/taxas-adiantamento', authenticateToken, taxasAdiantamentoRoutes);
 app.use('/admin', authenticateToken, requireRole('admin', 'operador', 'consulta'), solicitacoesRoutes);
