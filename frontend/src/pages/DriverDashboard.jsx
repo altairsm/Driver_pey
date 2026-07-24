@@ -138,7 +138,7 @@ export default function DriverDashboard() {
     setSolicitando(rom.id_romaneio);
     setMsg({ text: '', type: '' });
     try {
-      const result = await solicitarPagamento(rom.id_romaneio, rom.valor_total);
+      const result = await solicitarPagamento(rom.id_romaneio);
       if (result.success) {
         setMsg({ text: `✅ Romaneio #${rom.id_romaneio}: ${result.motivo}`, type: 'ok' });
         await fetchQuinzenaData(qzAtual.inicio, qzAtual.fim);
@@ -417,9 +417,10 @@ export default function DriverDashboard() {
               ) : (
                 <>
                   {romaneios.map((rom) => {
-                    const hasSolic = rom.solicitacao_status && rom.solicitacao_status !== 'recusado';
-                    const eficienciaOk = pctEficiencia >= Number(config?.eficiencia_minima_adiantamento || 98);
-                    const elegivel = !hasSolic && Number(rom.valor_total) > 0 && Number(rom.valor_total) <= Number(config?.valor_maximo_adiantamento || 400) && eficienciaOk && rom.ctrcs_vinculados > 0;
+                    const solInfo = rom.solicitacao_info || {};
+                    const hasSolic = solInfo.status && solInfo.status !== 'recusado';
+                    const isPreAprovado = driver?.pre_aprovado === true;
+                    const elegivel = !hasSolic && rom.ctrcs_vinculados > 0 && Number(rom.valor_total) > 0;
 
                     return (
                       <div key={rom.id_romaneio} style={s.romCard}>
@@ -432,9 +433,9 @@ export default function DriverDashboard() {
                             <span style={{ ...s.badgeStatus, color: rom.situacao === 'Finalizado' ? '#3de8a0' : '#ff9f40', background: `${rom.situacao === 'Finalizado' ? '#3de8a0' : '#ff9f40'}22` }}>
                               {rom.situacao || 'EM ABERTO'}
                             </span>
-                            {rom.solicitacao_status && (
-                              <span style={{ ...s.badgeStatus, color: rom.solicitacao_status === 'aprovado' ? '#3de8a0' : '#ff9f40', background: `${rom.solicitacao_status === 'aprovado' ? '#3de8a0' : '#ff9f40'}22`, fontSize: '0.5rem' }}>
-                                ADIANT. {rom.solicitacao_status.toUpperCase()}
+                            {hasSolic && (
+                              <span style={{ ...s.badgeStatus, color: solInfo.status === 'aprovado' ? '#3de8a0' : '#ff9f40', background: `${solInfo.status === 'aprovado' ? '#3de8a0' : '#ff9f40'}22`, fontSize: '0.5rem' }}>
+                                {solInfo.pix_enviado ? 'PIX ENVIADO' : `ADIANT. ${solInfo.status.toUpperCase()}`}
                               </span>
                             )}
                           </div>
@@ -450,6 +451,12 @@ export default function DriverDashboard() {
                             <div style={s.romStatLbl}>Valor</div>
                           </div>
                         </div>
+
+                        {isPreAprovado && elegivel && (
+                          <div style={{ ...s.solicMsg, color: '#3de8a0', background: '#1a3a2a', border: '1px solid #3de8a0', fontSize: '0.62rem', marginBottom: 8 }}>
+                            Motorista pré-aprovado · PIX automático ao solicitar
+                          </div>
+                        )}
 
                         {expandido[rom.id_romaneio] && detalhesRomaneio[rom.id_romaneio] && (
                           <div style={s.romDetalhes}>
@@ -483,7 +490,7 @@ export default function DriverDashboard() {
                           title={!elegivel ? 'Romaneio não elegível para adiantamento' : ''}
                           style={{ ...s.btnSolicitar, ...(!elegivel ? s.btnSolicitarDisabled : {}), marginTop: 10, width: '100%' }}
                         >
-                          {solicitando === rom.id_romaneio ? '...' : hasSolic ? 'ADIANTAMENTO SOLICITADO' : 'Solicitar Pagamento Antecipado'}
+                          {solicitando === rom.id_romaneio ? '...' : hasSolic ? 'ADIANTAMENTO SOLICITADO' : isPreAprovado ? '⚡ Solicitar Adiantamento (PIX Automático)' : 'Solicitar 50% do Valor das Entregas'}
                         </button>
                       </div>
                     );

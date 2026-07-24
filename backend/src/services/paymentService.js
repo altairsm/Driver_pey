@@ -36,7 +36,9 @@ export async function calcularPagamentos(inicio, fim) {
     adiantamentos AS (
       SELECT
         motorista_cpf,
-        COALESCE(SUM(valor_solicitado), 0)::numeric(10,2) AS total_adiantado
+        COALESCE(SUM(valor_solicitado), 0)::numeric(10,2) AS total_adiantado,
+        COALESCE(SUM(valor_solicitado) FILTER (WHERE pix_enviado = true), 0)::numeric(10,2) AS total_adiantado_pix,
+        COALESCE(SUM(valor_solicitado) FILTER (WHERE pix_enviado = false OR pix_enviado IS NULL), 0)::numeric(10,2) AS total_adiantado_nao_pix
       FROM solicitacoes_pagamento
       WHERE status = 'aprovado'
         AND aprovado_em::date BETWEEN $1::date AND $2::date
@@ -49,8 +51,9 @@ export async function calcularPagamentos(inicio, fim) {
       COALESCE(rm.total_romaneios, 0) AS total_romaneios,
       COALESCE(rm.receita_total, 0)::numeric(10,2) AS receita_total,
       COALESCE(rm.despesa_total, 0)::numeric(10,2) AS despesa_total,
-      GREATEST(COALESCE(rm.despesa_total, 0) - COALESCE(a.total_adiantado, 0), 0)::numeric(10,2) AS total_pagar,
-      COALESCE(a.total_adiantado, 0)::numeric(10,2) AS total_adiantado
+      GREATEST(COALESCE(rm.despesa_total, 0) - COALESCE(a.total_adiantado_nao_pix, 0), 0)::numeric(10,2) AS total_pagar,
+      COALESCE(a.total_adiantado, 0)::numeric(10,2) AS total_adiantado,
+      COALESCE(a.total_adiantado_pix, 0)::numeric(10,2) AS total_adiantado_pix
     FROM motoristas m
     LEFT JOIN resumo_motorista rm ON rm.motorista_cpf = m.cpf
     LEFT JOIN adiantamentos a ON a.motorista_cpf = m.cpf
@@ -88,7 +91,10 @@ export async function confirmarPagamento(cpf, periodo) {
   `, [cpf, inicio, fim]);
 
   const { rows: [adiantadoRow] } = await pool.query(`
-    SELECT COALESCE(SUM(valor_solicitado), 0)::numeric(10,2) AS total_adiantado
+    SELECT
+      COALESCE(SUM(valor_solicitado), 0)::numeric(10,2) AS total_adiantado,
+      COALESCE(SUM(valor_solicitado) FILTER (WHERE pix_enviado = true), 0)::numeric(10,2) AS total_adiantado_pix,
+      COALESCE(SUM(valor_solicitado) FILTER (WHERE pix_enviado = false OR pix_enviado IS NULL), 0)::numeric(10,2) AS total_adiantado_nao_pix
     FROM solicitacoes_pagamento
     WHERE motorista_cpf = $1
       AND status = 'aprovado'
@@ -98,7 +104,8 @@ export async function confirmarPagamento(cpf, periodo) {
   const receita = parseFloat(totalRow?.receita) || 0;
   const despesa = parseFloat(totalRow?.despesa) || 0;
   const adiantado = parseFloat(adiantadoRow?.total_adiantado) || 0;
-  const totalPagar = Math.max(despesa - adiantado, 0);
+  const adiantadoNaoPix = parseFloat(adiantadoRow?.total_adiantado_nao_pix) || 0;
+  const totalPagar = Math.max(despesa - adiantadoNaoPix, 0);
 
   const payload = {
     cpf,
@@ -110,6 +117,7 @@ export async function confirmarPagamento(cpf, periodo) {
     despesa,
     total_pagar: totalPagar,
     total_adiantado: adiantado,
+    total_adiantado_pix: parseFloat(adiantadoRow?.total_adiantado_pix) || 0,
     data_pagamento: new Date().toISOString().slice(0, 10),
   };
 
@@ -131,7 +139,7 @@ export async function confirmarPagamento(cpf, periodo) {
 
 export async function listarMotoristas() {
   const result = await pool.query(`
-    SELECT cpf, nome, telefone, pix_tipo, cnpj_mei, bonus_d0, leu_regras, email, role
+    SELECT cpf, nome, telefone, pix_tipo, cnpj_mei, bonus_d0, leu_regras, email, role, pre_aprovado
     FROM motoristas
     ORDER BY nome
   `);
@@ -161,10 +169,10 @@ export async function getQuinzenasAdmin() {
 }
 
 export async function criarMotorista(dados) {
-  const { cpf, nome, telefone, pix_tipo, cnpj_mei, bonus_d0, email, role } = dados;
+  const { cpf, nome, telefone, pix_tipo, cnpj_mei, bonus_d0, email, role, pre_aprovado } = dados;
   await pool.query(`
-    INSERT INTO motoristas (cpf, nome, telefone, pix_tipo, cnpj_mei, bonus_d0, email, role)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    INSERT INTO motoristas (cpf, nome, telefone, pix_tipo, cnpj_mei, bonus_d0, email, role, pre_aprovado)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     ON CONFLICT (cpf) DO UPDATE SET
       nome = EXCLUDED.nome,
       telefone = EXCLUDED.telefone,
@@ -172,18 +180,19 @@ export async function criarMotorista(dados) {
       cnpj_mei = EXCLUDED.cnpj_mei,
       bonus_d0 = EXCLUDED.bonus_d0,
       email = COALESCE(EXCLUDED.email, motoristas.email),
-      role = COALESCE(EXCLUDED.role, motoristas.role)
-  `, [cpf, nome, telefone || null, pix_tipo || 'CPF', cnpj_mei || null, bonus_d0 ?? 0, email || null, role || 'motorista']);
-  return { cpf, nome, telefone, pix_tipo, cnpj_mei, bonus_d0, email, role };
+      role = COALESCE(EXCLUDED.role, motoristas.role),
+      pre_aprovado = EXCLUDED.pre_aprovado
+  `, [cpf, nome, telefone || null, pix_tipo || 'CPF', cnpj_mei || null, bonus_d0 ?? 0, email || null, role || 'motorista', pre_aprovado ?? false]);
+  return { cpf, nome, telefone, pix_tipo, cnpj_mei, bonus_d0, email, role, pre_aprovado };
 }
 
 export async function atualizarMotorista(cpf, dados) {
-  const { nome, telefone, pix_tipo, cnpj_mei, bonus_d0, email, role } = dados;
+  const { nome, telefone, pix_tipo, cnpj_mei, bonus_d0, email, role, pre_aprovado } = dados;
   const result = await pool.query(`
     UPDATE motoristas
-    SET nome = $1, telefone = $2, pix_tipo = $3, cnpj_mei = $4, bonus_d0 = $5, email = $6, role = $7
-    WHERE cpf = $8
-  `, [nome, telefone || null, pix_tipo || 'CPF', cnpj_mei || null, bonus_d0 ?? 0, email || null, role || 'motorista', cpf]);
+    SET nome = $1, telefone = $2, pix_tipo = $3, cnpj_mei = $4, bonus_d0 = $5, email = $6, role = $7, pre_aprovado = $8
+    WHERE cpf = $9
+  `, [nome, telefone || null, pix_tipo || 'CPF', cnpj_mei || null, bonus_d0 ?? 0, email || null, role || 'motorista', pre_aprovado ?? false, cpf]);
   return result.rowCount > 0;
 }
 

@@ -30,11 +30,12 @@ export async function runMigrations() {
     for (const col of [
       "ADD COLUMN IF NOT EXISTS email VARCHAR(200)",
       "ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'motorista'",
-      "ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)"
+      "ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)",
+      "ADD COLUMN IF NOT EXISTS pre_aprovado BOOLEAN DEFAULT false"
     ]) {
       await pool.query(`ALTER TABLE motoristas ${col}`);
     }
-    console.log('  -> motoristas (email, role, password_hash)');
+    console.log('  -> motoristas (email, role, password_hash, pre_aprovado)');
 
     await pool.query(`CREATE TABLE IF NOT EXISTS ssw_romaneios (
       id_romaneio VARCHAR(30) PRIMARY KEY,
@@ -102,14 +103,26 @@ export async function runMigrations() {
       motorista_cpf VARCHAR(11) NOT NULL REFERENCES motoristas(cpf),
       id_romaneio VARCHAR(30) NOT NULL REFERENCES ssw_romaneios(id_romaneio),
       valor_solicitado NUMERIC(10,2) NOT NULL,
+      valor_liquido NUMERIC(10,2) DEFAULT 0.00,
       taxa_aplicada NUMERIC(5,2) DEFAULT 0.00,
       status VARCHAR(20) DEFAULT 'pendente',
+      pix_enviado BOOLEAN DEFAULT false,
+      pix_enviado_em TIMESTAMP,
       criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       aprovado_em TIMESTAMP,
       recusado_em TIMESTAMP,
       UNIQUE (motorista_cpf, id_romaneio)
     )`);
     console.log('  -> solicitacoes_pagamento');
+
+    for (const col of [
+      "ADD COLUMN IF NOT EXISTS valor_liquido NUMERIC(10,2) DEFAULT 0.00",
+      "ADD COLUMN IF NOT EXISTS pix_enviado BOOLEAN DEFAULT false",
+      "ADD COLUMN IF NOT EXISTS pix_enviado_em TIMESTAMP"
+    ]) {
+      await pool.query(`DO $$ BEGIN IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='solicitacoes_pagamento') THEN ALTER TABLE solicitacoes_pagamento ${col}; END IF; END $$`);
+    }
+    console.log('  -> solicitacoes_pagamento (valor_liquido, pix_enviado, pix_enviado_em)');
 
     await pool.query(`CREATE TABLE IF NOT EXISTS configuracoes (
       id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),

@@ -92,11 +92,11 @@ router.get('/eficiencia', async (req, res) => {
 
 router.post('/solicitar-pagamento', async (req, res) => {
   try {
-    const { id_romaneio, valor_solicitado } = req.body;
-    if (!id_romaneio || !valor_solicitado) {
-      return res.status(400).json({ error: 'id_romaneio e valor_solicitado são obrigatórios' });
+    const { id_romaneio } = req.body;
+    if (!id_romaneio) {
+      return res.status(400).json({ error: 'id_romaneio é obrigatório' });
     }
-    const result = await solicitarPagamento(req.user.cpf, id_romaneio, Number(valor_solicitado));
+    const result = await solicitarPagamento(req.user.cpf, id_romaneio);
     if (!result.success) {
       return res.status(400).json({ error: result.motivo });
     }

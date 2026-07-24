@@ -10,7 +10,7 @@ export default function AdminMotoristas() {
   const [error, setError] = useState('');
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState(null);
-  const [form, setForm] = useState({ cpf: '', nome: '', telefone: '', pix_tipo: 'CPF', cnpj_mei: '', bonus_d0: 0, email: '', role: 'motorista' });
+  const [form, setForm] = useState({ cpf: '', nome: '', telefone: '', pix_tipo: 'CPF', cnpj_mei: '', bonus_d0: 0, email: '', role: 'motorista', pre_aprovado: false });
   const [salvando, setSalvando] = useState(false);
   const [enviandoSenha, setEnviandoSenha] = useState(null);
 
@@ -25,7 +25,7 @@ export default function AdminMotoristas() {
 
   const abrirNovo = () => {
     setEditando(null);
-    setForm({ cpf: '', nome: '', telefone: '', pix_tipo: 'CPF', cnpj_mei: '', bonus_d0: 0, email: '', role: 'motorista' });
+    setForm({ cpf: '', nome: '', telefone: '', pix_tipo: 'CPF', cnpj_mei: '', bonus_d0: 0, email: '', role: 'motorista', pre_aprovado: false });
     setError('');
     setModalAberto(true);
   };
@@ -41,6 +41,7 @@ export default function AdminMotoristas() {
       bonus_d0: m.bonus_d0 || 0,
       email: m.email || '',
       role: m.role || 'motorista',
+      pre_aprovado: m.pre_aprovado || false,
     });
     setError('');
     setModalAberto(true);
@@ -127,6 +128,7 @@ export default function AdminMotoristas() {
                     <th style={s.th}>Nome</th>
                     <th style={s.th}>E-mail</th>
                     <th style={s.th}>Perfil</th>
+                    <th style={s.th}>Adiantamento</th>
                     <th style={s.th}>Telefone</th>
                     <th style={s.th}>Bônus D0</th>
                     <th style={s.th}>Ações</th>
@@ -138,6 +140,13 @@ export default function AdminMotoristas() {
                         <td style={s.td}>{m.nome}</td>
                         <td style={s.td}>{m.email || '—'}</td>
                         <td style={s.td}><span style={roleBadgeStyle(m.role)}>{roleLabel(m.role)}</span></td>
+                        <td style={s.td}>
+                          {m.pre_aprovado ? (
+                            <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: '0.68rem', fontWeight: 600, background: '#1a3a2a', color: '#3de8a0' }}>PRÉ-APROVADO</span>
+                          ) : (
+                            <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: '0.68rem', fontWeight: 600, background: '#2a2f3e', color: '#6b7280' }}>MANUAL</span>
+                          )}
+                        </td>
                         <td style={s.td}>{m.telefone || '—'}</td>
                         <td style={{ ...s.td, color: '#3de8a0' }}>R$ {Number(m.bonus_d0 || 0).toFixed(2)}</td>
                         <td style={{ ...s.td, whiteSpace: 'nowrap' }}>
@@ -218,6 +227,14 @@ export default function AdminMotoristas() {
                   <label style={s.label}>Bônus D0 (R$ por entrega no mesmo dia)</label>
                   <input style={s.input} name="bonus_d0" type="number" step="0.01" min="0" value={form.bonus_d0}
                     onChange={(e) => setForm({...form, bonus_d0: e.target.value})} />
+                </div>
+                <div style={s.field}>
+                  <label style={{ ...s.label, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={form.pre_aprovado}
+                      onChange={(e) => setForm({...form, pre_aprovado: e.target.checked})}
+                      style={{ width: 16, height: 16, accentColor: '#3de8a0' }} />
+                    Adiantamento Pré-Aprovado (PIX automático)
+                  </label>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
                   <button type="button" style={s.btnSm('#6c757d', '#fff')} onClick={fecharModal}>Cancelar</button>

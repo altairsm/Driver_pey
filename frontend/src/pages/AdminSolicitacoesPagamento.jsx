@@ -84,9 +84,9 @@ export default function AdminSolicitacoesPagamento() {
                   <th style={s.th}>Motorista</th>
                   <th style={s.th}>Romaneio</th>
                   <th style={s.th}>Valor</th>
-                  <th style={s.th}>Taxa</th>
                   <th style={s.th}>Líquido</th>
                   <th style={s.th}>Status</th>
+                  <th style={s.th}>PIX</th>
                   <th style={s.th}>Solicitado em</th>
                   <th style={s.th}>Ação</th>
                 </tr>
@@ -99,12 +99,18 @@ export default function AdminSolicitacoesPagamento() {
                     <td style={s.td}>{solic.nome}</td>
                     <td style={s.td}>{solic.id_romaneio}</td>
                     <td style={s.td}>{formatMoney(solic.valor_solicitado)}</td>
-                    <td style={s.td}>{solic.taxa_aplicada ? `${solic.taxa_aplicada}%` : '—'}</td>
-                    <td style={{ ...s.td, color: '#3de8a0' }}>{formatMoney(solic.valor_solicitado * (1 - (Number(solic.taxa_aplicada) || 0) / 100))}</td>
+                    <td style={{ ...s.td, color: '#3de8a0' }}>{formatMoney(solic.valor_liquido || solic.valor_solicitado)}</td>
                     <td style={s.td}>
                       <span style={{ ...s.badge, background: `${badgeCor(solic.status)}22`, color: badgeCor(solic.status) }}>
                         {solic.status.toUpperCase()}
                       </span>
+                    </td>
+                    <td style={s.td}>
+                      {solic.pix_enviado ? (
+                        <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: '0.6rem', fontWeight: 600, background: '#1a3a2a', color: '#3de8a0', letterSpacing: '1px' }}>ENVIADO</span>
+                      ) : (
+                        <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: '0.6rem', fontWeight: 600, background: '#2a2f3e', color: '#6b7280', letterSpacing: '1px' }}>PENDENTE</span>
+                      )}
                     </td>
                     <td style={s.td}>{formatDt(solic.criado_em)}</td>
                     <td style={s.td}>

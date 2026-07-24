@@ -78,8 +78,8 @@ export async function getEficiencia() {
   return data;
 }
 
-export async function solicitarPagamento(id_romaneio, valor_solicitado) {
-  const { data } = await api.post('/driver/solicitar-pagamento', { id_romaneio, valor_solicitado });
+export async function solicitarPagamento(id_romaneio) {
+  const { data } = await api.post('/driver/solicitar-pagamento', { id_romaneio });
   return data;
 }
 

@@ -1,9 +1,10 @@
 import { pool } from '../db/index.js';
 import { getConfig } from './configuracaoService.js';
+import { notificarAdiantamentoAutomatico } from './emailService.js';
 
 export async function getDriverData(cpf) {
   const result = await pool.query(`
-    SELECT cpf, nome, telefone, leu_regras, cnpj_mei, pix_tipo, bonus_d0
+    SELECT cpf, nome, telefone, leu_regras, cnpj_mei, pix_tipo, bonus_d0, pre_aprovado
     FROM motoristas
     WHERE cpf = $1
   `, [cpf]);
@@ -41,9 +42,9 @@ export async function getDriverRomaneios(cpf, inicio, fim) {
       r.situacao,
       COUNT(c.ctrc) AS ctrcs_vinculados,
       COALESCE(SUM(pc.valor_entrega), 0)::numeric(10,2) AS valor_total,
-      (SELECT sp.status FROM solicitacoes_pagamento sp
+      (SELECT json_build_object('status', sp.status, 'pix_enviado', sp.pix_enviado) FROM solicitacoes_pagamento sp
        WHERE sp.motorista_cpf = r.motorista_cpf AND sp.id_romaneio = r.id_romaneio
-       LIMIT 1) AS solicitacao_status
+       LIMIT 1) AS solicitacao_info
     FROM ssw_romaneios r
     LEFT JOIN ssw_ctrcs c ON c.id_romaneio = r.id_romaneio
       AND UPPER(c.ocorrencia) = 'MERCADORIA ENTREGUE'
@@ -158,7 +159,7 @@ export async function getEficiencia(cpf) {
   return result.rows;
 }
 
-export async function solicitarPagamento(cpf, idRomaneio, valorSolicitado) {
+export async function solicitarPagamento(cpf, idRomaneio) {
   const config = await getConfig();
 
   const { rows: romaneio } = await pool.query(`
@@ -186,6 +187,77 @@ export async function solicitarPagamento(cpf, idRomaneio, valorSolicitado) {
     }
   }
 
+  const { rows: entregas } = await pool.query(`
+    SELECT COALESCE(SUM(pc.valor_entrega), 0)::numeric(10,2) AS valor_entregas
+    FROM ssw_ctrcs c
+    LEFT JOIN LATERAL (
+      SELECT valor_entrega FROM tabela_preco_cidade pc
+      WHERE LOWER(pc.cidade) = LOWER(TRIM(SPLIT_PART(c.cidade_entrega, '/', 1)))
+         OR LOWER(pc.cidade) = LOWER(TRIM(c.cidade_entrega))
+      LIMIT 1
+    ) pc ON true
+    WHERE c.id_romaneio = $1
+      AND UPPER(c.ocorrencia) = 'MERCADORIA ENTREGUE'
+  `, [idRomaneio]);
+
+  const valorEntregas = Number(entregas[0]?.valor_entregas) || 0;
+  if (valorEntregas <= 0) {
+    return { success: false, motivo: 'Este romaneio não possui entregas realizadas para adiantamento' };
+  }
+
+  const valorLiquido = Math.round(valorEntregas * 50) / 100;
+
+  const { rows: motoristaRow } = await pool.query(`
+    SELECT cpf, nome, email, pre_aprovado FROM motoristas WHERE cpf = $1
+  `, [cpf]);
+  const motorista = motoristaRow[0];
+
+  const { rows: taxaRow } = await pool.query(`
+    SELECT taxa FROM taxas_adiantamento WHERE dias_ate_fechamento = $1
+  `, [14]);
+  const taxaAplicada = Number(taxaRow[0]?.taxa) || 0;
+
+  const isPreAprovado = motorista?.pre_aprovado === true;
+
+  if (isPreAprovado) {
+    try {
+      const { rows: [solicitacao] } = await pool.query(`
+        INSERT INTO solicitacoes_pagamento (motorista_cpf, id_romaneio, valor_solicitado, valor_liquido, taxa_aplicada, status, pix_enviado, pix_enviado_em, aprovado_em)
+        VALUES ($1, $2, $3, $4, $5, 'aprovado', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ON CONFLICT (motorista_cpf, id_romaneio) DO NOTHING
+        RETURNING id
+      `, [cpf, idRomaneio, valorLiquido, valorLiquido, taxaAplicada]);
+
+      if (solicitacao) {
+        try {
+          await fetch('https://webhook.sactudo.com.br/webhook/Driver_Pix', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              cpf,
+              nome: motorista?.nome || '',
+              tipo: 'adiantamento',
+              id_romaneio: idRomaneio,
+              valor: valorLiquido,
+              data: new Date().toISOString(),
+            }),
+          });
+        } catch (err) {
+          console.error('Webhook PIX adiantamento error:', err.message);
+        }
+
+        notificarAdiantamentoAutomatico(motorista, valorLiquido, idRomaneio).catch(() => {});
+      }
+
+      return { success: true, motivo: `Adiantamento aprovado automaticamente: R$ ${valorLiquido.toFixed(2)} (50% de R$ ${valorEntregas.toFixed(2)}). PIX enviado!`, auto_aprovado: true, valor_liquido: valorLiquido };
+    } catch (err) {
+      if (err.code === '23505') {
+        return { success: false, motivo: 'Solicitação já existe para este romaneio' };
+      }
+      throw err;
+    }
+  }
+
   const { rows: eficienciaData } = await pool.query(`
     SELECT
       COUNT(*) FILTER (WHERE UPPER(c.ocorrencia) = 'MERCADORIA ENTREGUE') AS entregas,
@@ -203,22 +275,12 @@ export async function solicitarPagamento(cpf, idRomaneio, valorSolicitado) {
     return { success: false, motivo: `Eficiência abaixo de ${config.eficiencia_minima_adiantamento}% nos últimos 30 dias` };
   }
 
-  const maximo = Number(config.valor_maximo_adiantamento) || 400;
-  if (valorSolicitado <= 0 || valorSolicitado > maximo) {
-    return { success: false, motivo: `Valor deve ser entre R$ 0,01 e R$ ${maximo.toFixed(2)}` };
-  }
-
-  const { rows: taxaRow } = await pool.query(`
-    SELECT taxa FROM taxas_adiantamento WHERE dias_ate_fechamento = $1
-  `, [14]);
-  const taxaAplicada = Number(taxaRow[0]?.taxa) || 0;
-
   try {
     await pool.query(`
-      INSERT INTO solicitacoes_pagamento (motorista_cpf, id_romaneio, valor_solicitado, taxa_aplicada, status)
-      VALUES ($1, $2, $3, $4, 'pendente')
-    `, [cpf, idRomaneio, valorSolicitado, taxaAplicada]);
-    return { success: true, motivo: 'Solicitação registrada com sucesso' };
+      INSERT INTO solicitacoes_pagamento (motorista_cpf, id_romaneio, valor_solicitado, valor_liquido, taxa_aplicada, status)
+      VALUES ($1, $2, $3, $4, $5, 'pendente')
+    `, [cpf, idRomaneio, valorLiquido, valorLiquido, taxaAplicada]);
+    return { success: true, motivo: `Solicitação registrada: R$ ${valorLiquido.toFixed(2)} (50% de R$ ${valorEntregas.toFixed(2)}). Aguardando aprovação do administrador.` };
   } catch (err) {
     if (err.code === '23505') {
       return { success: false, motivo: 'Solicitação já existe para este romaneio' };
