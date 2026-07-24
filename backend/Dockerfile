@@ -10,6 +10,9 @@ COPY . .
 ARG COMMIT_HASH=unknown
 RUN echo -n "$COMMIT_HASH" > /app/.commit
 
+ARG VERSION=dev
+RUN echo -n "$VERSION" > /app/.version
+
 EXPOSE 3001
 
 CMD ["node", "src/app.js"]

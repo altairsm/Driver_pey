@@ -21,20 +21,19 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-function getCommitHash() {
+function getVersionFile(filename, fallback) {
   try {
     const dir = dirname(fileURLToPath(import.meta.url));
-    try {
-      return readFileSync(join(dir, '..', '.commit'), 'utf8').trim();
-    } catch {}
-    const gitDir = join(dir, '..', '..', '.git');
-    const head = readFileSync(join(gitDir, 'HEAD'), 'utf8').trim();
-    if (head.startsWith('ref: ')) {
-      const refPath = head.slice(5);
-      return readFileSync(join(gitDir, refPath), 'utf8').trim().slice(0, 7);
-    }
-    return head.slice(0, 7);
-  } catch { return 'unknown'; }
+    return readFileSync(join(dir, '..', filename), 'utf8').trim();
+  } catch { return fallback; }
+}
+
+function getCommitHash() {
+  return getVersionFile('.commit', 'unknown');
+}
+
+function getVersion() {
+  return getVersionFile('.version', 'dev');
 }
 
 app.get('/health', (req, res) => {
@@ -42,7 +41,7 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/version', (req, res) => {
-  res.json({ commit: getCommitHash() });
+  res.json({ commit: getCommitHash(), version: getVersion() });
 });
 
 app.use('/auth', authRoutes);

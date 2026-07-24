@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import api from '../services/api';
 
 const GRUPOS = [
   {
@@ -42,6 +43,11 @@ export default function Topbar({ user }) {
   const location = useLocation();
   const [aberto, setAberto] = useState(null);
   const ref = useRef(null);
+  const [version, setVersion] = useState('');
+
+  useEffect(() => {
+    api.get('/version').then(r => setVersion(r.data.version)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     function handleClick(e) {
@@ -64,6 +70,7 @@ export default function Topbar({ user }) {
     <div style={styles.topbar}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={styles.brand}>DRIVER PIX - SSW</div>
+        {version && <span style={styles.versionBadge}>{version}</span>}
       </div>
       <div style={styles.nav} ref={ref}>
         {GRUPOS.filter(g => g.items.some(i => i.roles.includes(userRole))).map((g) => (
@@ -95,6 +102,7 @@ export default function Topbar({ user }) {
 const styles = {
   topbar: { background: '#161920', borderBottom: '1px solid #2a2f3e', padding: '0 32px', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 50 },
   brand: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.5rem', letterSpacing: '3px', color: '#f0c040' },
+  versionBadge: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.65rem', letterSpacing: '1px', color: '#161920', background: '#f0c040', padding: '2px 8px', borderRadius: 4, fontWeight: 700, lineHeight: '1.4rem', verticalAlign: 'middle' },
   nav: { display: 'flex', alignItems: 'center', gap: 8 },
   grupoWrapper: { position: 'relative' },
   grupoBtn: { cursor: 'pointer', fontSize: '0.82rem', fontFamily: "'IBM Plex Mono', monospace", letterSpacing: '1px', padding: '6px 12px', border: '1px solid #2a2f3e', borderRadius: 4, whiteSpace: 'nowrap', transition: 'all .15s', userSelect: 'none' },
