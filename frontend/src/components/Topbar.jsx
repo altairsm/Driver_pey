@@ -7,33 +7,33 @@ const GRUPOS = [
     nome: 'Desempenho',
     icon: '📊',
     items: [
-      { label: 'Dashboard', path: '/admin/dashboard', roles: ['admin', 'operador'] },
+      { label: 'Dashboard', path: '/admin/dashboard', roles: ['admin', 'operador', 'consulta'] },
     ],
   },
   {
     nome: 'Entregas',
     icon: '🚚',
     items: [
-      { label: 'Upload SSW', path: '/admin/upload', roles: ['admin', 'operador'] },
-      { label: 'Precos Cidades', path: '/admin/precos-cidades', roles: ['admin'] },
-      { label: 'Cidades s/ Preco', path: '/admin/cidades-sem-preco', roles: ['admin', 'operador'] },
+      { label: 'Upload SSW', path: '/admin/upload', roles: ['admin', 'operador', 'consulta'] },
+      { label: 'Precos Cidades', path: '/admin/precos-cidades', roles: ['admin', 'consulta'] },
+      { label: 'Cidades s/ Preco', path: '/admin/cidades-sem-preco', roles: ['admin', 'operador', 'consulta'] },
     ],
   },
   {
     nome: 'Financeiro',
     icon: '💰',
     items: [
-      { label: 'Pagamentos', path: '/admin/pagamentos', roles: ['admin'] },
-      { label: 'Adiantamentos', path: '/admin/solicitacoes-pagamento', roles: ['admin', 'operador'] },
-      { label: 'Taxas', path: '/admin/taxas-adiantamento', roles: ['admin', 'operador'] },
+      { label: 'Pagamentos', path: '/admin/pagamentos', roles: ['admin', 'consulta'] },
+      { label: 'Adiantamentos', path: '/admin/solicitacoes-pagamento', roles: ['admin', 'operador', 'consulta'] },
+      { label: 'Taxas', path: '/admin/taxas-adiantamento', roles: ['admin', 'operador', 'consulta'] },
     ],
   },
   {
     nome: 'Sistema',
     icon: '⚙️',
     items: [
-      { label: 'Motoristas', path: '/admin/motoristas', roles: ['admin'] },
-      { label: 'Configurações', path: '/admin/configuracoes', roles: ['admin'] },
+      { label: 'Motoristas', path: '/admin/motoristas', roles: ['admin', 'consulta'] },
+      { label: 'Configurações', path: '/admin/configuracoes', roles: ['admin', 'consulta'] },
     ],
   },
 ];

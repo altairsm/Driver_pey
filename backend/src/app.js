@@ -46,12 +46,12 @@ app.get('/version', (req, res) => {
 
 app.use('/auth', authRoutes);
 app.use('/driver', driverRoutes);
-app.use('/admin', authenticateToken, requireRole('admin', 'operador'));
+app.use('/admin', authenticateToken, requireRole('admin', 'operador', 'consulta'));
 app.use('/admin', adminRoutes);
 app.use('/upload', authenticateToken, requireRole('admin'), uploadRoutes);
 app.use('/configuracoes', authenticateToken, configuracoesRoutes);
 app.use('/taxas-adiantamento', authenticateToken, taxasAdiantamentoRoutes);
-app.use('/admin', authenticateToken, requireRole('admin', 'operador'), solicitacoesRoutes);
+app.use('/admin', authenticateToken, requireRole('admin', 'operador', 'consulta'), solicitacoesRoutes);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
