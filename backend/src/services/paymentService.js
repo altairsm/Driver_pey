@@ -17,7 +17,7 @@ export async function calcularPagamentos(inicio, fim) {
         ON LOWER(pc.cidade) = LOWER(TRIM(SPLIT_PART(c.cidade_entrega, '/', 1)))
         OR LOWER(pc.cidade) = LOWER(TRIM(c.cidade_entrega))
       WHERE c.ocorrencia_data BETWEEN $1::date AND $2::date
-        AND LOWER(c.ocorrencia) LIKE '%entregue%'
+        AND UPPER(c.ocorrencia) = 'MERCADORIA ENTREGUE'
     ),
     resumo_motorista AS (
       SELECT
@@ -78,7 +78,7 @@ export async function confirmarPagamento(cpf, periodo) {
       OR LOWER(pc.cidade) = LOWER(TRIM(c.cidade_entrega))
     WHERE r.motorista_cpf = $1
       AND c.ocorrencia_data BETWEEN $2::date AND $3::date
-      AND LOWER(c.ocorrencia) LIKE '%entregue%'
+      AND UPPER(c.ocorrencia) = 'MERCADORIA ENTREGUE'
   `, [cpf, inicio, fim]);
 
   const { rows: [adiantadoRow] } = await pool.query(`
@@ -201,7 +201,7 @@ export async function getCidadesSemPreco(inicio, fim) {
       ON LOWER(pc.cidade) = LOWER(TRIM(SPLIT_PART(c.cidade_entrega, '/', 1)))
       OR LOWER(pc.cidade) = LOWER(TRIM(c.cidade_entrega))
     WHERE pc.cidade IS NULL
-      AND LOWER(c.ocorrencia) LIKE '%entregue%'
+      AND UPPER(c.ocorrencia) = 'MERCADORIA ENTREGUE'
       AND ($1::date IS NULL OR c.ocorrencia_data >= $1::date)
       AND ($2::date IS NULL OR c.ocorrencia_data <= $2::date)
     ORDER BY c.cidade_entrega, c.ocorrencia_data DESC

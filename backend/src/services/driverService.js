@@ -15,12 +15,15 @@ export async function getDriverDashboard(cpf, inicio, fim) {
     SELECT
       COUNT(*) AS total_ctrcs,
       COUNT(DISTINCT c.id_romaneio) AS total_romaneios,
-      COALESCE(SUM(c.frete_ctrc), 0)::numeric(10,2) AS receita_total
+      COALESCE(SUM(pc.valor_entrega), 0)::numeric(10,2) AS receita_total
     FROM ssw_ctrcs c
     JOIN ssw_romaneios r ON r.id_romaneio = c.id_romaneio
+    LEFT JOIN tabela_preco_cidade pc
+      ON LOWER(pc.cidade) = LOWER(TRIM(SPLIT_PART(c.cidade_entrega, '/', 1)))
+      OR LOWER(pc.cidade) = LOWER(TRIM(c.cidade_entrega))
     WHERE r.motorista_cpf = $1
       AND c.ocorrencia_data BETWEEN $2::date AND $3::date
-      AND LOWER(c.ocorrencia) LIKE '%entregue%'
+      AND UPPER(c.ocorrencia) = 'MERCADORIA ENTREGUE'
   `;
 
   const result = await pool.query(query, [cpf, inicio, fim]);
@@ -34,13 +37,16 @@ export async function getDriverRomaneios(cpf, inicio, fim) {
       r.data_emissao,
       r.situacao,
       COUNT(c.ctrc) AS ctrcs_vinculados,
-      COALESCE(SUM(c.frete_ctrc), 0)::numeric(10,2) AS valor_total,
+      COALESCE(SUM(pc.valor_entrega), 0)::numeric(10,2) AS valor_total,
       (SELECT sp.status FROM solicitacoes_pagamento sp
        WHERE sp.motorista_cpf = r.motorista_cpf AND sp.id_romaneio = r.id_romaneio
        LIMIT 1) AS solicitacao_status
     FROM ssw_romaneios r
     LEFT JOIN ssw_ctrcs c ON c.id_romaneio = r.id_romaneio
-      AND LOWER(c.ocorrencia) LIKE '%entregue%'
+      AND UPPER(c.ocorrencia) = 'MERCADORIA ENTREGUE'
+    LEFT JOIN tabela_preco_cidade pc
+      ON LOWER(pc.cidade) = LOWER(TRIM(SPLIT_PART(c.cidade_entrega, '/', 1)))
+      OR LOWER(pc.cidade) = LOWER(TRIM(c.cidade_entrega))
     WHERE r.motorista_cpf = $1
       AND c.ocorrencia_data BETWEEN $2::date AND $3::date
     GROUP BY r.id_romaneio, r.data_emissao, r.situacao, r.motorista_cpf
@@ -56,8 +62,11 @@ export async function getDriverRomaneioDetalhes(cpf, idRomaneio, inicio, fim) {
       c.cidade_entrega,
       c.bairro,
       COUNT(*)::int AS quantidade,
-      COALESCE(SUM(c.frete_ctrc), 0)::numeric(10,2) AS valor_total
+      COALESCE(SUM(pc.valor_entrega), 0)::numeric(10,2) AS valor_total
     FROM ssw_ctrcs c
+    LEFT JOIN tabela_preco_cidade pc
+      ON LOWER(pc.cidade) = LOWER(TRIM(SPLIT_PART(c.cidade_entrega, '/', 1)))
+      OR LOWER(pc.cidade) = LOWER(TRIM(c.cidade_entrega))
     WHERE c.id_romaneio = $1
       AND EXISTS (SELECT 1 FROM ssw_romaneios WHERE id_romaneio = c.id_romaneio AND motorista_cpf = $2)
       AND c.ocorrencia_data BETWEEN $3::date AND $4::date
@@ -99,13 +108,16 @@ export async function getProdutividade(cpf, inicio, fim) {
       COUNT(*) AS ctrcs,
       SUM(c.qtde_vol) AS volumes,
       SUM(c.peso_calculo) AS peso_total,
-      COALESCE(SUM(c.frete_ctrc), 0)::numeric(10,2) AS valor_total
+      COALESCE(SUM(pc.valor_entrega), 0)::numeric(10,2) AS valor_total
     FROM ssw_ctrcs c
     JOIN ssw_romaneios r ON r.id_romaneio = c.id_romaneio
+    LEFT JOIN tabela_preco_cidade pc
+      ON LOWER(pc.cidade) = LOWER(TRIM(SPLIT_PART(c.cidade_entrega, '/', 1)))
+      OR LOWER(pc.cidade) = LOWER(TRIM(c.cidade_entrega))
     WHERE r.motorista_cpf = $1
       AND c.ocorrencia_data >= $2::date
       AND c.ocorrencia_data <= $3::date
-      AND LOWER(c.ocorrencia) LIKE '%entregue%'
+      AND UPPER(c.ocorrencia) = 'MERCADORIA ENTREGUE'
     GROUP BY c.ocorrencia_data
     ORDER BY c.ocorrencia_data
   `, [cpf, inicio, fim]);
@@ -116,7 +128,7 @@ export async function getEficiencia(cpf, inicio, fim) {
   const result = await pool.query(`
     SELECT
       CASE
-        WHEN LOWER(c.ocorrencia) LIKE '%entregue%' THEN 'entrega'
+        WHEN UPPER(c.ocorrencia) = 'MERCADORIA ENTREGUE' THEN 'entrega'
         ELSE 'insucesso'
       END AS evento,
       COUNT(*) AS quantidade
@@ -126,7 +138,7 @@ export async function getEficiencia(cpf, inicio, fim) {
       AND c.ocorrencia_data >= $2::date
       AND c.ocorrencia_data <= $3::date
     GROUP BY CASE
-      WHEN LOWER(c.ocorrencia) LIKE '%entregue%' THEN 'entrega'
+      WHEN UPPER(c.ocorrencia) = 'MERCADORIA ENTREGUE' THEN 'entrega'
       ELSE 'insucesso'
     END
     ORDER BY quantidade DESC
@@ -164,7 +176,7 @@ export async function solicitarPagamento(cpf, idRomaneio, valorSolicitado) {
 
   const { rows: eficienciaData } = await pool.query(`
     SELECT
-      COUNT(*) FILTER (WHERE LOWER(c.ocorrencia) LIKE '%entregue%') AS entregas,
+      COUNT(*) FILTER (WHERE UPPER(c.ocorrencia) = 'MERCADORIA ENTREGUE') AS entregas,
       COUNT(*) AS total
     FROM ssw_ctrcs c
     JOIN ssw_romaneios r ON r.id_romaneio = c.id_romaneio
@@ -265,7 +277,7 @@ export async function getBonusD0(cpf, inicio, fim) {
     FROM ssw_ctrcs c
     JOIN ssw_romaneios r ON r.id_romaneio = c.id_romaneio
     WHERE r.motorista_cpf = $1
-      AND LOWER(c.ocorrencia) LIKE '%entregue%'
+      AND UPPER(c.ocorrencia) = 'MERCADORIA ENTREGUE'
       AND c.ocorrencia_data = c.data_emissao
       AND c.ocorrencia_data >= $2::date
       AND c.ocorrencia_data <= $3::date
