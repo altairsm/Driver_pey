@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import { pool } from '../db/index.js';
+import { requireRole } from '../middleware/auth.js';
 import {
   calcularPagamentos, confirmarPagamento,
   listarMotoristas, criarMotorista, atualizarMotorista, deletarMotorista,
-  getQuinzenasAdmin, getCidadesSemPreco
+  getQuinzenasAdmin, getCidadesSemPreco, getCtrcsParados
 } from '../services/paymentService.js';
+import { getEficienciaTodos, getAppUsageTodos } from '../services/driverService.js';
 
 const router = Router();
 
@@ -43,7 +45,7 @@ router.get('/motoristas', async (req, res) => {
   }
 });
 
-router.post('/confirmar-pagamento', async (req, res) => {
+router.post('/confirmar-pagamento', requireRole('admin'), async (req, res) => {
   try {
     const { cpf, inicio, fim } = req.body;
     if (!cpf || !inicio || !fim) {
@@ -58,7 +60,7 @@ router.post('/confirmar-pagamento', async (req, res) => {
   }
 });
 
-router.post('/motoristas', async (req, res) => {
+router.post('/motoristas', requireRole('admin'), async (req, res) => {
   try {
     const { cpf, nome, telefone, pix_tipo } = req.body;
     if (!cpf || !nome) {
@@ -75,7 +77,7 @@ router.post('/motoristas', async (req, res) => {
   }
 });
 
-router.put('/motoristas/:cpf', async (req, res) => {
+router.put('/motoristas/:cpf', requireRole('admin'), async (req, res) => {
   try {
     const { cpf } = req.params;
     const atualizado = await atualizarMotorista(cpf, req.body);
@@ -87,7 +89,7 @@ router.put('/motoristas/:cpf', async (req, res) => {
   }
 });
 
-router.delete('/motoristas/:cpf', async (req, res) => {
+router.delete('/motoristas/:cpf', requireRole('admin'), async (req, res) => {
   try {
     const { cpf } = req.params;
     const deletado = await deletarMotorista(cpf);
@@ -135,7 +137,7 @@ router.get('/precos-cidades', async (req, res) => {
   }
 });
 
-router.put('/precos-cidades', async (req, res) => {
+router.put('/precos-cidades', requireRole('admin'), async (req, res) => {
   try {
     const { cidade, valor_entrega } = req.body;
     if (!cidade || valor_entrega === undefined) {
@@ -155,7 +157,7 @@ router.put('/precos-cidades', async (req, res) => {
   }
 });
 
-router.delete('/precos-cidades/:cidade', async (req, res) => {
+router.delete('/precos-cidades/:cidade', requireRole('admin'), async (req, res) => {
   try {
     const { cidade } = req.params;
     await pool.query('DELETE FROM tabela_preco_cidade WHERE cidade = $1', [cidade.toUpperCase()]);
@@ -174,6 +176,36 @@ router.get('/ctrcs-sem-preco', async (req, res) => {
   } catch (err) {
     console.error('Erro ao buscar CTRCs sem preço:', err);
     res.status(500).json({ error: 'Erro ao buscar CTRCs sem preço' });
+  }
+});
+
+router.get('/eficiencia-motoristas', async (req, res) => {
+  try {
+    const data = await getEficienciaTodos();
+    res.json(data);
+  } catch (err) {
+    console.error('Erro ao buscar eficiência dos motoristas:', err);
+    res.status(500).json({ error: 'Erro ao buscar eficiência dos motoristas' });
+  }
+});
+
+router.get('/app-usage-motoristas', async (req, res) => {
+  try {
+    const data = await getAppUsageTodos();
+    res.json(data);
+  } catch (err) {
+    console.error('Erro ao buscar uso do app:', err);
+    res.status(500).json({ error: 'Erro ao buscar uso do app' });
+  }
+});
+
+router.get('/ctrcs-parados', async (req, res) => {
+  try {
+    const data = await getCtrcsParados();
+    res.json(data);
+  } catch (err) {
+    console.error('Erro ao buscar CTRCs parados:', err);
+    res.status(500).json({ error: 'Erro ao buscar CTRCs parados' });
   }
 });
 

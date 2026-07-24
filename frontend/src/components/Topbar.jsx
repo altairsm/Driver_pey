@@ -3,29 +3,36 @@ import { useNavigate, useLocation } from 'react-router-dom';
 
 const GRUPOS = [
   {
+    nome: 'Desempenho',
+    icon: '📊',
+    items: [
+      { label: 'Dashboard', path: '/admin/dashboard', roles: ['admin', 'operador'] },
+    ],
+  },
+  {
     nome: 'Entregas',
     icon: '🚚',
     items: [
-      { label: 'Upload SSW', path: '/admin/upload' },
-      { label: 'Precos Cidades', path: '/admin/precos-cidades' },
-      { label: 'Cidades s/ Preco', path: '/admin/cidades-sem-preco' },
+      { label: 'Upload SSW', path: '/admin/upload', roles: ['admin', 'operador'] },
+      { label: 'Precos Cidades', path: '/admin/precos-cidades', roles: ['admin'] },
+      { label: 'Cidades s/ Preco', path: '/admin/cidades-sem-preco', roles: ['admin', 'operador'] },
     ],
   },
   {
     nome: 'Financeiro',
     icon: '💰',
     items: [
-      { label: 'Pagamentos', path: '/admin/pagamentos' },
-      { label: 'Adiantamentos', path: '/admin/solicitacoes-pagamento' },
-      { label: 'Taxas', path: '/admin/taxas-adiantamento' },
+      { label: 'Pagamentos', path: '/admin/pagamentos', roles: ['admin'] },
+      { label: 'Adiantamentos', path: '/admin/solicitacoes-pagamento', roles: ['admin', 'operador'] },
+      { label: 'Taxas', path: '/admin/taxas-adiantamento', roles: ['admin', 'operador'] },
     ],
   },
   {
     nome: 'Sistema',
     icon: '⚙️',
     items: [
-      { label: 'Motoristas', path: '/admin/motoristas' },
-      { label: 'Configurações', path: '/admin/configuracoes' },
+      { label: 'Motoristas', path: '/admin/motoristas', roles: ['admin'] },
+      { label: 'Configurações', path: '/admin/configuracoes', roles: ['admin'] },
     ],
   },
 ];
@@ -51,13 +58,15 @@ export default function Topbar({ user }) {
     navigate(path);
   };
 
+  const userRole = user?.role || 'admin';
+
   return (
     <div style={styles.topbar}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={styles.brand}>DRIVER PIX - SSW</div>
       </div>
       <div style={styles.nav} ref={ref}>
-        {GRUPOS.map((g) => (
+        {GRUPOS.filter(g => g.items.some(i => i.roles.includes(userRole))).map((g) => (
           <div key={g.nome} style={styles.grupoWrapper}>
             <span
               style={{ ...styles.grupoBtn, color: grupoAtivo(g) ? '#f0c040' : '#6b7280', borderColor: grupoAtivo(g) ? '#f0c040' : '#2a2f3e' }}
@@ -67,7 +76,7 @@ export default function Topbar({ user }) {
             </span>
             {aberto === g.nome && (
               <div style={styles.dropdown}>
-                {g.items.map((item) => (
+                {g.items.filter(i => i.roles.includes(userRole)).map((item) => (
                   <span key={item.path} style={{ ...styles.dropdownItem, color: location.pathname === item.path ? '#f0c040' : '#fdfdfd' }} onClick={() => navegar(item.path)}>
                     {item.label}
                   </span>

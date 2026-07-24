@@ -12,7 +12,7 @@ import uploadRoutes from './routes/upload.js';
 import configuracoesRoutes from './routes/configuracoes.js';
 import taxasAdiantamentoRoutes from './routes/taxasAdiantamento.js';
 import solicitacoesRoutes from './routes/solicitacoes.js';
-import { authenticateToken, requireAdmin } from './middleware/auth.js';
+import { authenticateToken, requireAdmin, requireRole } from './middleware/auth.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -47,12 +47,12 @@ app.get('/version', (req, res) => {
 
 app.use('/auth', authRoutes);
 app.use('/driver', driverRoutes);
-app.use('/admin', authenticateToken, requireAdmin);
+app.use('/admin', authenticateToken, requireRole('admin', 'operador'));
 app.use('/admin', adminRoutes);
-app.use('/upload', authenticateToken, requireAdmin, uploadRoutes);
+app.use('/upload', authenticateToken, requireRole('admin'), uploadRoutes);
 app.use('/configuracoes', authenticateToken, configuracoesRoutes);
 app.use('/taxas-adiantamento', authenticateToken, taxasAdiantamentoRoutes);
-app.use('/admin', authenticateToken, requireAdmin, solicitacoesRoutes);
+app.use('/admin', authenticateToken, requireRole('admin', 'operador'), solicitacoesRoutes);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);

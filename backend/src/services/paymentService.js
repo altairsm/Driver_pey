@@ -235,3 +235,22 @@ export async function getCidadesSemPreco(inicio, fim) {
     cidades_unicas: [...cidadesMap.values()].sort((a, b) => b.total - a.total),
   };
 }
+
+export async function getCtrcsParados() {
+  const result = await pool.query(`
+    SELECT
+      cidade_entrega,
+      COUNT(*)::int AS total,
+      COUNT(*) FILTER (WHERE (CURRENT_DATE - data_emissao) <= 3)::int AS ate_3_dias,
+      COUNT(*) FILTER (WHERE (CURRENT_DATE - data_emissao) BETWEEN 4 AND 7)::int AS de_4_a_7,
+      COUNT(*) FILTER (WHERE (CURRENT_DATE - data_emissao) BETWEEN 8 AND 15)::int AS de_8_a_15,
+      COUNT(*) FILTER (WHERE (CURRENT_DATE - data_emissao) BETWEEN 16 AND 30)::int AS de_16_a_30,
+      COUNT(*) FILTER (WHERE (CURRENT_DATE - data_emissao) > 30)::int AS mais_30
+    FROM ssw_ctrcs
+    WHERE UPPER(ocorrencia) != 'MERCADORIA ENTREGUE'
+       OR ocorrencia IS NULL
+    GROUP BY cidade_entrega
+    ORDER BY total DESC
+  `);
+  return result.rows;
+}

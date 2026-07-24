@@ -118,9 +118,17 @@ export async function runMigrations() {
       username VARCHAR(50) UNIQUE NOT NULL,
       password_hash VARCHAR(255) NOT NULL,
       nome VARCHAR(200) NOT NULL,
+      role VARCHAR(20) DEFAULT 'admin',
       criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
     console.log('  -> admin_users');
+
+    await pool.query(`DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='admin_users' AND column_name='role') THEN
+        ALTER TABLE admin_users ADD COLUMN role VARCHAR(20) DEFAULT 'admin';
+      END IF;
+    END $$`);
+    console.log('  -> admin_users.role (alter)');
 
     await pool.query(`CREATE TABLE IF NOT EXISTS fcm_tokens (
       cpf VARCHAR(11) PRIMARY KEY,
@@ -292,8 +300,8 @@ export async function runMigrations() {
     if (adminCount[0].cnt === 0) {
       const hash = await bcrypt.hash('501578', 10);
       await pool.query(`
-        INSERT INTO admin_users (username, password_hash, nome)
-        VALUES ($1, $2, $3)
+        INSERT INTO admin_users (username, password_hash, nome, role)
+        VALUES ($1, $2, $3, 'admin')
         ON CONFLICT (username) DO NOTHING
       `, ['125281', hash, 'Administrador']);
       console.log('  Admin user seeded (125281)');

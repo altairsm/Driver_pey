@@ -10,6 +10,9 @@ export default function AdminSswPrecos() {
   const [editando, setEditando] = useState(null);
   const [editValor, setEditValor] = useState('');
 
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isAdmin = user.role === 'admin';
+
   const fetchCidades = async () => {
     try {
       const data = await getPrecosCidades();
@@ -63,28 +66,30 @@ export default function AdminSswPrecos() {
       <div style={styles.content}>
         <h2 style={styles.title}>Tabela de Preço por Cidade</h2>
 
-        <div style={styles.card}>
-          <div style={styles.cardHeader}>Nova Cidade</div>
-          <div style={styles.cardBody}>
-            <div style={styles.formRow}>
-              <input
-                style={styles.input}
-                placeholder="Cidade"
-                value={novaCidade}
-                onChange={(e) => setNovaCidade(e.target.value.toUpperCase())}
-              />
-              <input
-                style={{ ...styles.input, maxWidth: 120 }}
-                type="number"
-                step="0.01"
-                placeholder="Valor"
-                value={novoValor}
-                onChange={(e) => setNovoValor(e.target.value)}
-              />
-              <button onClick={handleAdd} style={styles.addBtn}>Adicionar</button>
+        {isAdmin && (
+          <div style={styles.card}>
+            <div style={styles.cardHeader}>Nova Cidade</div>
+            <div style={styles.cardBody}>
+              <div style={styles.formRow}>
+                <input
+                  style={styles.input}
+                  placeholder="Cidade"
+                  value={novaCidade}
+                  onChange={(e) => setNovaCidade(e.target.value.toUpperCase())}
+                />
+                <input
+                  style={{ ...styles.input, maxWidth: 120 }}
+                  type="number"
+                  step="0.01"
+                  placeholder="Valor"
+                  value={novoValor}
+                  onChange={(e) => setNovoValor(e.target.value)}
+                />
+                <button onClick={handleAdd} style={styles.addBtn}>Adicionar</button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div style={styles.card}>
           <div style={styles.cardHeader}>Cidades Cadastradas ({cidades.length})</div>
@@ -100,7 +105,7 @@ export default function AdminSswPrecos() {
                     <tr>
                       <th style={styles.th}>Cidade</th>
                       <th style={styles.th}>Valor Entrega</th>
-                      <th style={styles.th}>Ações</th>
+                      {isAdmin && <th style={styles.th}>Ações</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -120,19 +125,21 @@ export default function AdminSswPrecos() {
                             `R$ ${Number(c.valor_entrega).toFixed(2)}`
                           )}
                         </td>
-                        <td style={styles.td}>
-                          {editando === c.cidade ? (
-                            <div style={{ display: 'flex', gap: 6 }}>
-                              <button onClick={() => handleUpdate(c.cidade)} style={styles.smallBtn}>Salvar</button>
-                              <button onClick={() => setEditando(null)} style={{ ...styles.smallBtn, background: '#2a2f3e', color: '#9ca3af' }}>Cancelar</button>
-                            </div>
-                          ) : (
-                            <div style={{ display: 'flex', gap: 6 }}>
-                              <button onClick={() => { setEditando(c.cidade); setEditValor(c.valor_entrega); }} style={styles.smallBtn}>Editar</button>
-                              <button onClick={() => handleDelete(c.cidade)} style={{ ...styles.smallBtn, background: '#3a1a1a', color: '#ff5a5a' }}>Remover</button>
-                            </div>
-                          )}
-                        </td>
+                        {isAdmin && (
+                          <td style={styles.td}>
+                            {editando === c.cidade ? (
+                              <div style={{ display: 'flex', gap: 6 }}>
+                                <button onClick={() => handleUpdate(c.cidade)} style={styles.smallBtn}>Salvar</button>
+                                <button onClick={() => setEditando(null)} style={{ ...styles.smallBtn, background: '#2a2f3e', color: '#9ca3af' }}>Cancelar</button>
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', gap: 6 }}>
+                                <button onClick={() => { setEditando(c.cidade); setEditValor(c.valor_entrega); }} style={styles.smallBtn}>Editar</button>
+                                <button onClick={() => handleDelete(c.cidade)} style={{ ...styles.smallBtn, background: '#3a1a1a', color: '#ff5a5a' }}>Remover</button>
+                              </div>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>

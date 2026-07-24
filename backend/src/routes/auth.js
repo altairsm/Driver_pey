@@ -44,7 +44,7 @@ router.post('/admin-login', async (req, res) => {
     }
 
     const result = await pool.query(`
-      SELECT id, username, password_hash, nome FROM admin_users WHERE username = $1
+      SELECT id, username, password_hash, nome, role FROM admin_users WHERE username = $1
     `, [username]);
 
     if (result.rows.length === 0) {
@@ -60,10 +60,10 @@ router.post('/admin-login', async (req, res) => {
     const token = generateToken({
       username: admin.username,
       nome: admin.nome,
-      role: 'admin',
+      role: admin.role || 'admin',
     });
 
-    res.json({ token, admin: { username: admin.username, nome: admin.nome } });
+    res.json({ token, admin: { username: admin.username, nome: admin.nome, role: admin.role || 'admin' } });
   } catch (err) {
     console.error('Admin login error:', err);
     res.status(500).json({ error: 'Erro interno do servidor' });

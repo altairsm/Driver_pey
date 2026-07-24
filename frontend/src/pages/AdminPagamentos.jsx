@@ -29,6 +29,9 @@ export default function AdminPagamentos() {
   const [confirmando, setConfirmando] = useState(null);
   const [config, setConfig] = useState(null);
 
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isAdmin = user.role === 'admin';
+
   const qzAtual = quinzenas[qzIdx] || null;
 
   const fetchResumo = useCallback(async (inicio, fim) => {
@@ -153,7 +156,7 @@ export default function AdminPagamentos() {
                     <th style={styles.th}>Despesa</th>
                     <th style={styles.th}>Adiantado</th>
                     <th style={styles.th}>Total a Pagar</th>
-                    <th style={styles.th}>Ação</th>
+                    {isAdmin && <th style={styles.th}>Ação</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -167,11 +170,13 @@ export default function AdminPagamentos() {
                       <td style={{ ...styles.td, color: '#ff6b6b' }}>{formatBRL(m.despesa_total)}</td>
                       <td style={{ ...styles.td, color: '#ff9f40' }}>{formatBRL(m.total_adiantado)}</td>
                       <td style={{ ...styles.td, color: '#3de8a0', fontWeight: 600 }}>{formatBRL(m.total_pagar)}</td>
-                      <td style={styles.td}>
-                        <button onClick={() => handleConfirmar(m.cpf)} disabled={confirmando === m.cpf} style={styles.pendenteBtn}>
-                          {confirmando === m.cpf ? '...' : 'Confirmar'}
-                        </button>
-                      </td>
+                      {isAdmin && (
+                        <td style={styles.td}>
+                          <button onClick={() => handleConfirmar(m.cpf)} disabled={confirmando === m.cpf} style={styles.pendenteBtn}>
+                            {confirmando === m.cpf ? '...' : 'Confirmar'}
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

@@ -234,4 +234,20 @@ export async function getCtrcsSemPreco(inicio, fim) {
   return data;
 }
 
+// Admin Dashboard
+export async function getEficienciaMotoristas() {
+  const { data } = await api.get('/admin/eficiencia-motoristas');
+  return data;
+}
+
+export async function getAppUsageMotoristas() {
+  const { data } = await api.get('/admin/app-usage-motoristas');
+  return data;
+}
+
+export async function getCtrcsParados() {
+  const { data } = await api.get('/admin/ctrcs-parados');
+  return data;
+}
+
 export default api;

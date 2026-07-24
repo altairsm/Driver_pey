@@ -308,3 +308,40 @@ export async function getBonusD0(cpf, inicio, fim) {
     valor_unitario: Number(valorUnitario),
   };
 }
+
+export async function getEficienciaTodos() {
+  const result = await pool.query(`
+    SELECT
+      r.motorista_cpf AS cpf,
+      r.motorista_nome AS nome,
+      COUNT(*) FILTER (WHERE UPPER(c.ocorrencia) = 'MERCADORIA ENTREGUE')::int AS entregas,
+      COUNT(*)::int AS total,
+      ROUND(COUNT(*) FILTER (WHERE UPPER(c.ocorrencia) = 'MERCADORIA ENTREGUE') * 100.0 / NULLIF(COUNT(*), 0), 2)::numeric(5,2) AS pct_eficiencia
+    FROM ssw_ctrcs c
+    JOIN ssw_romaneios r ON r.id_romaneio = c.id_romaneio
+    WHERE c.ocorrencia_data >= (CURRENT_DATE - INTERVAL '30 days')::date
+    GROUP BY r.motorista_cpf, r.motorista_nome
+    ORDER BY pct_eficiencia DESC
+  `);
+  return result.rows;
+}
+
+export async function getAppUsageTodos() {
+  const result = await pool.query(`
+    SELECT
+      r.motorista_cpf AS cpf,
+      r.motorista_nome AS nome,
+      COUNT(*) FILTER (WHERE o.origem_ocorrencia = 'APP')::int AS app,
+      COUNT(*) FILTER (WHERE o.origem_ocorrencia = 'BASE')::int AS base,
+      COUNT(*) FILTER (WHERE o.origem_ocorrencia IS NULL OR o.origem_ocorrencia = '')::int AS sem_origem,
+      COUNT(*)::int AS total,
+      ROUND(COUNT(*) FILTER (WHERE o.origem_ocorrencia = 'APP') * 100.0 / NULLIF(COUNT(*), 0), 1)::numeric(5,1) AS pct_app
+    FROM ssw_ocorrencias o
+    JOIN ssw_ctrcs c ON c.ctrc = o.ctrc_normalizado
+    JOIN ssw_romaneios r ON r.id_romaneio = c.id_romaneio
+    WHERE c.ocorrencia_data >= (CURRENT_DATE - INTERVAL '30 days')::date
+    GROUP BY r.motorista_cpf, r.motorista_nome
+    ORDER BY pct_app DESC
+  `);
+  return result.rows;
+}
