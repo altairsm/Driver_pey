@@ -3,6 +3,8 @@ import { getMotoristas, createMotorista, updateMotorista, deleteMotorista, sendM
 import Topbar from '../components/Topbar';
 
 export default function AdminMotoristas() {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isAdmin = user.role === 'admin';
   const [motoristas, setMotoristas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -113,7 +115,7 @@ export default function AdminMotoristas() {
         <div style={s.card}>
           <div style={s.cardHeader}>
             <h5 style={s.cardTitle}>Cadastro de Motoristas</h5>
-            <button style={s.btn('#f0c040', '#0d0f14')} onClick={abrirNovo}>+ Novo</button>
+            {isAdmin && <button style={s.btn('#f0c040', '#0d0f14')} onClick={abrirNovo}>+ Novo</button>}
           </div>
           <div style={s.cardBody}>
             {loading ? <div style={s.loadingText}>Carregando...</div>
@@ -142,8 +144,10 @@ export default function AdminMotoristas() {
                           {m.email && <button style={s.btnSm('#0d6efd', '#fff')} onClick={() => handleEnviarSenha(m)} disabled={enviandoSenha === m.cpf}>
                             {enviandoSenha === m.cpf ? '...' : 'Senha'}
                           </button>}
-                          <button style={s.btnSm('#ffc107', '#0d0f14')} onClick={() => abrirEditar(m)}>Editar</button>
-                          <button style={s.btnSm('#dc3545', '#fff')} onClick={() => handleExcluir(m)}>Excluir</button>
+                          {isAdmin && <>
+                            <button style={s.btnSm('#ffc107', '#0d0f14')} onClick={() => abrirEditar(m)}>Editar</button>
+                            <button style={s.btnSm('#dc3545', '#fff')} onClick={() => handleExcluir(m)}>Excluir</button>
+                          </>}
                         </td>
                       </tr>
                     ))}

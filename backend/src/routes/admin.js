@@ -211,7 +211,7 @@ router.get('/ctrcs-parados', async (req, res) => {
   }
 });
 
-router.post('/motoristas/:cpf/enviar-senha', requireRole('admin'), async (req, res) => {
+router.post('/motoristas/:cpf/enviar-senha', requireRole('admin', 'operador'), async (req, res) => {
   try {
     const { cpf } = req.params;
     const { rows } = await pool.query('SELECT cpf, nome, email FROM motoristas WHERE cpf = $1', [cpf]);

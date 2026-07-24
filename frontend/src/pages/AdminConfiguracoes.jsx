@@ -3,6 +3,8 @@ import { getConfig, updateConfig } from '../services/api';
 import Topbar from '../components/Topbar';
 
 export default function AdminConfiguracoes() {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isAdmin = user.role === 'admin';
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -62,19 +64,19 @@ export default function AdminConfiguracoes() {
           <div style={s.field}>
             <label style={s.label}>Dias úteis para pagamento após fechamento da quinzena</label>
             <input type="number" min="1" max="30" value={config.dias_uteis_pagamento}
-              onChange={e => handleChange('dias_uteis_pagamento', e.target.value)} style={s.input} />
+              onChange={e => handleChange('dias_uteis_pagamento', e.target.value)} style={s.input} disabled={!isAdmin} />
           </div>
 
           <div style={s.field}>
             <label style={s.label}>Eficiência mínima (%) para solicitar adiantamento</label>
             <input type="number" min="0" max="100" step="0.01" value={config.eficiencia_minima_adiantamento}
-              onChange={e => handleChange('eficiencia_minima_adiantamento', e.target.value)} style={s.input} />
+              onChange={e => handleChange('eficiencia_minima_adiantamento', e.target.value)} style={s.input} disabled={!isAdmin} />
           </div>
 
           <div style={s.field}>
             <label style={s.label}>Valor máximo para adiantamento (R$) — limite por romaneio</label>
             <input type="number" min="0" max="9999" step="0.01" value={config.valor_maximo_adiantamento}
-              onChange={e => handleChange('valor_maximo_adiantamento', e.target.value)} style={s.input} />
+              onChange={e => handleChange('valor_maximo_adiantamento', e.target.value)} style={s.input} disabled={!isAdmin} />
           </div>
         </div>
 
@@ -85,19 +87,19 @@ export default function AdminConfiguracoes() {
           <div style={s.field}>
             <label style={s.label}>Servidor SMTP (host)</label>
             <input type="text" placeholder="smtp.gmail.com" value={config.smtp_host || ''}
-              onChange={e => handleChange('smtp_host', e.target.value)} style={s.input} />
+              onChange={e => handleChange('smtp_host', e.target.value)} style={s.input} disabled={!isAdmin} />
           </div>
 
           <div style={{ display: 'flex', gap: 12 }}>
             <div style={{ ...s.field, flex: 1 }}>
               <label style={s.label}>Porta</label>
               <input type="number" placeholder="587" value={config.smtp_port || 587}
-                onChange={e => handleChange('smtp_port', e.target.value)} style={s.input} />
+                onChange={e => handleChange('smtp_port', e.target.value)} style={s.input} disabled={!isAdmin} />
             </div>
             <div style={{ ...s.field, flex: 1 }}>
               <label style={s.label}>Seguro (SSL/TLS)</label>
               <select value={config.smtp_secure ? 'true' : 'false'}
-                onChange={e => handleChange('smtp_secure', e.target.value === 'true')} style={s.select}>
+                onChange={e => handleChange('smtp_secure', e.target.value === 'true')} style={s.select} disabled={!isAdmin}>
                 <option value="false">Não (STARTTLS)</option>
                 <option value="true">Sim (SSL/TLS)</option>
               </select>
@@ -107,25 +109,27 @@ export default function AdminConfiguracoes() {
           <div style={s.field}>
             <label style={s.label}>Usuário SMTP (e-mail)</label>
             <input type="email" placeholder="seuemail@gmail.com" value={config.smtp_user || ''}
-              onChange={e => handleChange('smtp_user', e.target.value)} style={s.input} />
+              onChange={e => handleChange('smtp_user', e.target.value)} style={s.input} disabled={!isAdmin} />
           </div>
 
           <div style={s.field}>
             <label style={s.label}>Senha SMTP</label>
             <input type="password" placeholder="Senha ou chave de aplicativo" value={config.smtp_pass || ''}
-              onChange={e => handleChange('smtp_pass', e.target.value)} style={s.input} />
+              onChange={e => handleChange('smtp_pass', e.target.value)} style={s.input} disabled={!isAdmin} />
           </div>
 
           <div style={s.field}>
             <label style={s.label}>E-mail remetente (From)</label>
             <input type="email" placeholder="noreply@ssw.com.br" value={config.smtp_from || ''}
-              onChange={e => handleChange('smtp_from', e.target.value)} style={s.input} />
+              onChange={e => handleChange('smtp_from', e.target.value)} style={s.input} disabled={!isAdmin} />
           </div>
         </div>
 
-        <button onClick={handleSave} disabled={saving} style={{ ...s.btn, marginTop: 20 }}>
-          {saving ? 'Salvando...' : 'Salvar Configurações'}
-        </button>
+        {isAdmin && (
+          <button onClick={handleSave} disabled={saving} style={{ ...s.btn, marginTop: 20 }}>
+            {saving ? 'Salvando...' : 'Salvar Configurações'}
+          </button>
+        )}
 
         {msg && (
           <div style={{ ...s.msg, color: msg.includes('sucesso') ? '#3de8a0' : '#ff5a5a', marginTop: 12 }}>

@@ -32,8 +32,8 @@ const GRUPOS = [
     nome: 'Sistema',
     icon: '⚙️',
     items: [
-      { label: 'Motoristas', path: '/admin/motoristas', roles: ['admin', 'consulta'] },
-      { label: 'Configurações', path: '/admin/configuracoes', roles: ['admin', 'consulta'] },
+      { label: 'Motoristas', path: '/admin/motoristas', roles: ['admin', 'operador', 'consulta'] },
+      { label: 'Configurações', path: '/admin/configuracoes', roles: ['admin', 'operador', 'consulta'] },
     ],
   },
 ];
