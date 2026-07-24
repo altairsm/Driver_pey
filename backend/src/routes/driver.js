@@ -82,9 +82,7 @@ router.get('/produtividade', async (req, res) => {
 
 router.get('/eficiencia', async (req, res) => {
   try {
-    const { inicio, fim } = req.query;
-    if (!inicio || !fim) return res.status(400).json({ error: 'inicio e fim são obrigatórios' });
-    const data = await getEficiencia(req.user.cpf, inicio, fim);
+    const data = await getEficiencia(req.user.cpf);
     res.json(data);
   } catch (err) {
     console.error(err);

@@ -137,7 +137,7 @@ export async function getProdutividade(cpf, inicio, fim) {
   return result.rows;
 }
 
-export async function getEficiencia(cpf, inicio, fim) {
+export async function getEficiencia(cpf) {
   const result = await pool.query(`
     SELECT
       CASE
@@ -148,14 +148,13 @@ export async function getEficiencia(cpf, inicio, fim) {
     FROM ssw_ctrcs c
     JOIN ssw_romaneios r ON r.id_romaneio = c.id_romaneio
     WHERE r.motorista_cpf = $1
-      AND c.ocorrencia_data >= $2::date
-      AND c.ocorrencia_data <= $3::date
+      AND c.ocorrencia_data >= (CURRENT_DATE - INTERVAL '30 days')::date
     GROUP BY CASE
       WHEN UPPER(c.ocorrencia) = 'MERCADORIA ENTREGUE' THEN 'entrega'
       ELSE 'insucesso'
     END
     ORDER BY quantidade DESC
-  `, [cpf, inicio, fim]);
+  `, [cpf]);
   return result.rows;
 }
 

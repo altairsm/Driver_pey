@@ -71,8 +71,8 @@ export async function getProdutividade(inicio, fim) {
   return data;
 }
 
-export async function getEficiencia(inicio, fim) {
-  const { data } = await api.get('/driver/eficiencia', { params: { inicio, fim } });
+export async function getEficiencia() {
+  const { data } = await api.get('/driver/eficiencia');
   return data;
 }
 

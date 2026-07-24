@@ -64,7 +64,7 @@ export default function DriverDashboard() {
         getDriverDashboard(inicio, fim),
         getDriverRomaneios(inicio, fim),
         getProdutividade(inicio, fim),
-        getEficiencia(inicio, fim),
+        getEficiencia(),
         getBonusD0(inicio, fim).catch(() => null),
         getAppUsage(inicio, fim).catch(() => null),
       ]);
@@ -356,7 +356,7 @@ export default function DriverDashboard() {
           {activeTab === 'eficiencia' && (
             <div style={s.section}>
               <div style={s.sectionTitle}>📊 EFICIÊNCIA</div>
-              <div style={s.sectionSub}>Proporção de entregas × insucessos</div>
+              <div style={s.sectionSub}>Proporção de entregas × insucessos — últimos 30 dias</div>
               <div style={s.gaugeWrap}>
                 <div style={s.gaugeRing}>
                   <svg width="120" height="120" viewBox="0 0 120 120">
