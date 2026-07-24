@@ -13,9 +13,12 @@ export async function calcularPagamentos(inicio, fim) {
         COALESCE(pc.valor_entrega, 0) AS valor_despesa
       FROM ssw_ctrcs c
       JOIN ssw_romaneios r ON r.id_romaneio = c.id_romaneio
-      LEFT JOIN tabela_preco_cidade pc
-        ON LOWER(pc.cidade) = LOWER(TRIM(SPLIT_PART(c.cidade_entrega, '/', 1)))
-        OR LOWER(pc.cidade) = LOWER(TRIM(c.cidade_entrega))
+      LEFT JOIN LATERAL (
+        SELECT valor_entrega FROM tabela_preco_cidade pc
+        WHERE LOWER(pc.cidade) = LOWER(TRIM(SPLIT_PART(c.cidade_entrega, '/', 1)))
+           OR LOWER(pc.cidade) = LOWER(TRIM(c.cidade_entrega))
+        LIMIT 1
+      ) pc ON true
       WHERE c.ocorrencia_data BETWEEN $1::date AND $2::date
         AND UPPER(c.ocorrencia) = 'MERCADORIA ENTREGUE'
     ),
@@ -73,9 +76,12 @@ export async function confirmarPagamento(cpf, periodo) {
            COALESCE(SUM(pc.valor_entrega), 0)::numeric(10,2) AS despesa
     FROM ssw_ctrcs c
     JOIN ssw_romaneios r ON r.id_romaneio = c.id_romaneio
-    LEFT JOIN tabela_preco_cidade pc
-      ON LOWER(pc.cidade) = LOWER(TRIM(SPLIT_PART(c.cidade_entrega, '/', 1)))
-      OR LOWER(pc.cidade) = LOWER(TRIM(c.cidade_entrega))
+    LEFT JOIN LATERAL (
+      SELECT valor_entrega FROM tabela_preco_cidade pc
+      WHERE LOWER(pc.cidade) = LOWER(TRIM(SPLIT_PART(c.cidade_entrega, '/', 1)))
+         OR LOWER(pc.cidade) = LOWER(TRIM(c.cidade_entrega))
+      LIMIT 1
+    ) pc ON true
     WHERE r.motorista_cpf = $1
       AND c.ocorrencia_data BETWEEN $2::date AND $3::date
       AND UPPER(c.ocorrencia) = 'MERCADORIA ENTREGUE'
@@ -197,9 +203,12 @@ export async function getCidadesSemPreco(inicio, fim) {
       r.id_romaneio
     FROM ssw_ctrcs c
     JOIN ssw_romaneios r ON r.id_romaneio = c.id_romaneio
-    LEFT JOIN tabela_preco_cidade pc
-      ON LOWER(pc.cidade) = LOWER(TRIM(SPLIT_PART(c.cidade_entrega, '/', 1)))
-      OR LOWER(pc.cidade) = LOWER(TRIM(c.cidade_entrega))
+    LEFT JOIN LATERAL (
+      SELECT cidade FROM tabela_preco_cidade pc
+      WHERE LOWER(pc.cidade) = LOWER(TRIM(SPLIT_PART(c.cidade_entrega, '/', 1)))
+         OR LOWER(pc.cidade) = LOWER(TRIM(c.cidade_entrega))
+      LIMIT 1
+    ) pc ON true
     WHERE pc.cidade IS NULL
       AND UPPER(c.ocorrencia) = 'MERCADORIA ENTREGUE'
       AND ($1::date IS NULL OR c.ocorrencia_data >= $1::date)

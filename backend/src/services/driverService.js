@@ -18,9 +18,12 @@ export async function getDriverDashboard(cpf, inicio, fim) {
       COALESCE(SUM(pc.valor_entrega), 0)::numeric(10,2) AS receita_total
     FROM ssw_ctrcs c
     JOIN ssw_romaneios r ON r.id_romaneio = c.id_romaneio
-    LEFT JOIN tabela_preco_cidade pc
-      ON LOWER(pc.cidade) = LOWER(TRIM(SPLIT_PART(c.cidade_entrega, '/', 1)))
-      OR LOWER(pc.cidade) = LOWER(TRIM(c.cidade_entrega))
+    LEFT JOIN LATERAL (
+      SELECT valor_entrega FROM tabela_preco_cidade pc
+      WHERE LOWER(pc.cidade) = LOWER(TRIM(SPLIT_PART(c.cidade_entrega, '/', 1)))
+         OR LOWER(pc.cidade) = LOWER(TRIM(c.cidade_entrega))
+      LIMIT 1
+    ) pc ON true
     WHERE r.motorista_cpf = $1
       AND c.ocorrencia_data BETWEEN $2::date AND $3::date
       AND UPPER(c.ocorrencia) = 'MERCADORIA ENTREGUE'
@@ -44,9 +47,12 @@ export async function getDriverRomaneios(cpf, inicio, fim) {
     FROM ssw_romaneios r
     LEFT JOIN ssw_ctrcs c ON c.id_romaneio = r.id_romaneio
       AND UPPER(c.ocorrencia) = 'MERCADORIA ENTREGUE'
-    LEFT JOIN tabela_preco_cidade pc
-      ON LOWER(pc.cidade) = LOWER(TRIM(SPLIT_PART(c.cidade_entrega, '/', 1)))
-      OR LOWER(pc.cidade) = LOWER(TRIM(c.cidade_entrega))
+    LEFT JOIN LATERAL (
+      SELECT valor_entrega FROM tabela_preco_cidade pc
+      WHERE LOWER(pc.cidade) = LOWER(TRIM(SPLIT_PART(c.cidade_entrega, '/', 1)))
+         OR LOWER(pc.cidade) = LOWER(TRIM(c.cidade_entrega))
+      LIMIT 1
+    ) pc ON true
     WHERE r.motorista_cpf = $1
       AND c.ocorrencia_data BETWEEN $2::date AND $3::date
     GROUP BY r.id_romaneio, r.data_emissao, r.situacao, r.motorista_cpf
@@ -64,11 +70,15 @@ export async function getDriverRomaneioDetalhes(cpf, idRomaneio, inicio, fim) {
       COUNT(*)::int AS quantidade,
       COALESCE(SUM(pc.valor_entrega), 0)::numeric(10,2) AS valor_total
     FROM ssw_ctrcs c
-    LEFT JOIN tabela_preco_cidade pc
-      ON LOWER(pc.cidade) = LOWER(TRIM(SPLIT_PART(c.cidade_entrega, '/', 1)))
-      OR LOWER(pc.cidade) = LOWER(TRIM(c.cidade_entrega))
+    LEFT JOIN LATERAL (
+      SELECT valor_entrega FROM tabela_preco_cidade pc
+      WHERE LOWER(pc.cidade) = LOWER(TRIM(SPLIT_PART(c.cidade_entrega, '/', 1)))
+         OR LOWER(pc.cidade) = LOWER(TRIM(c.cidade_entrega))
+      LIMIT 1
+    ) pc ON true
     WHERE c.id_romaneio = $1
       AND EXISTS (SELECT 1 FROM ssw_romaneios WHERE id_romaneio = c.id_romaneio AND motorista_cpf = $2)
+      AND UPPER(c.ocorrencia) = 'MERCADORIA ENTREGUE'
       AND c.ocorrencia_data BETWEEN $3::date AND $4::date
     GROUP BY c.cidade_entrega, c.bairro
     ORDER BY c.cidade_entrega, c.bairro
@@ -111,9 +121,12 @@ export async function getProdutividade(cpf, inicio, fim) {
       COALESCE(SUM(pc.valor_entrega), 0)::numeric(10,2) AS valor_total
     FROM ssw_ctrcs c
     JOIN ssw_romaneios r ON r.id_romaneio = c.id_romaneio
-    LEFT JOIN tabela_preco_cidade pc
-      ON LOWER(pc.cidade) = LOWER(TRIM(SPLIT_PART(c.cidade_entrega, '/', 1)))
-      OR LOWER(pc.cidade) = LOWER(TRIM(c.cidade_entrega))
+    LEFT JOIN LATERAL (
+      SELECT valor_entrega FROM tabela_preco_cidade pc
+      WHERE LOWER(pc.cidade) = LOWER(TRIM(SPLIT_PART(c.cidade_entrega, '/', 1)))
+         OR LOWER(pc.cidade) = LOWER(TRIM(c.cidade_entrega))
+      LIMIT 1
+    ) pc ON true
     WHERE r.motorista_cpf = $1
       AND c.ocorrencia_data >= $2::date
       AND c.ocorrencia_data <= $3::date
