@@ -30,14 +30,16 @@ api.interceptors.response.use(
 );
 
 // Auth
-export async function login(cpf) {
-  const { data } = await api.post('/auth/login', { cpf });
+export async function login(identifier, password) {
+  const clean = identifier.replace(/\D/g, '');
+  const isCpf = /^\d{11}$/.test(clean);
+  const payload = isCpf ? { cpf: clean, password } : { email: identifier, password };
+  const { data } = await api.post('/auth/login', payload);
   return data;
 }
 
 export async function adminLogin(username, password) {
-  const { data } = await api.post('/auth/admin-login', { username, password });
-  return data;
+  return login(username, password);
 }
 
 export async function getMe() {
@@ -154,6 +156,11 @@ export async function updateMotorista(cpf, dados) {
 
 export async function deleteMotorista(cpf) {
   const { data } = await api.delete(`/admin/motoristas/${cpf}`);
+  return data;
+}
+
+export async function sendMotoristaPassword(cpf) {
+  const { data } = await api.post(`/admin/motoristas/${cpf}/enviar-senha`);
   return data;
 }
 

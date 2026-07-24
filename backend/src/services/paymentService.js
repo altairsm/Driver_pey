@@ -131,7 +131,7 @@ export async function confirmarPagamento(cpf, periodo) {
 
 export async function listarMotoristas() {
   const result = await pool.query(`
-    SELECT cpf, nome, telefone, pix_tipo, cnpj_mei, bonus_d0, leu_regras
+    SELECT cpf, nome, telefone, pix_tipo, cnpj_mei, bonus_d0, leu_regras, email, role
     FROM motoristas
     ORDER BY nome
   `);
@@ -161,27 +161,29 @@ export async function getQuinzenasAdmin() {
 }
 
 export async function criarMotorista(dados) {
-  const { cpf, nome, telefone, pix_tipo, cnpj_mei, bonus_d0 } = dados;
+  const { cpf, nome, telefone, pix_tipo, cnpj_mei, bonus_d0, email, role } = dados;
   await pool.query(`
-    INSERT INTO motoristas (cpf, nome, telefone, pix_tipo, cnpj_mei, bonus_d0)
-    VALUES ($1, $2, $3, $4, $5, $6)
+    INSERT INTO motoristas (cpf, nome, telefone, pix_tipo, cnpj_mei, bonus_d0, email, role)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     ON CONFLICT (cpf) DO UPDATE SET
       nome = EXCLUDED.nome,
       telefone = EXCLUDED.telefone,
       pix_tipo = EXCLUDED.pix_tipo,
       cnpj_mei = EXCLUDED.cnpj_mei,
-      bonus_d0 = EXCLUDED.bonus_d0
-  `, [cpf, nome, telefone || null, pix_tipo || 'CPF', cnpj_mei || null, bonus_d0 ?? 0]);
-  return { cpf, nome, telefone, pix_tipo, cnpj_mei, bonus_d0 };
+      bonus_d0 = EXCLUDED.bonus_d0,
+      email = COALESCE(EXCLUDED.email, motoristas.email),
+      role = COALESCE(EXCLUDED.role, motoristas.role)
+  `, [cpf, nome, telefone || null, pix_tipo || 'CPF', cnpj_mei || null, bonus_d0 ?? 0, email || null, role || 'motorista']);
+  return { cpf, nome, telefone, pix_tipo, cnpj_mei, bonus_d0, email, role };
 }
 
 export async function atualizarMotorista(cpf, dados) {
-  const { nome, telefone, pix_tipo, cnpj_mei, bonus_d0 } = dados;
+  const { nome, telefone, pix_tipo, cnpj_mei, bonus_d0, email, role } = dados;
   const result = await pool.query(`
     UPDATE motoristas
-    SET nome = $1, telefone = $2, pix_tipo = $3, cnpj_mei = $4, bonus_d0 = $5
-    WHERE cpf = $6
-  `, [nome, telefone || null, pix_tipo || 'CPF', cnpj_mei || null, bonus_d0 ?? 0, cpf]);
+    SET nome = $1, telefone = $2, pix_tipo = $3, cnpj_mei = $4, bonus_d0 = $5, email = $6, role = $7
+    WHERE cpf = $8
+  `, [nome, telefone || null, pix_tipo || 'CPF', cnpj_mei || null, bonus_d0 ?? 0, email || null, role || 'motorista', cpf]);
   return result.rowCount > 0;
 }
 

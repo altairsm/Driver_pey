@@ -27,6 +27,15 @@ export async function runMigrations() {
     )`);
     console.log('  -> motoristas');
 
+    for (const col of [
+      "ADD COLUMN IF NOT EXISTS email VARCHAR(200)",
+      "ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'motorista'",
+      "ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)"
+    ]) {
+      await pool.query(`ALTER TABLE motoristas ${col}`);
+    }
+    console.log('  -> motoristas (email, role, password_hash)');
+
     await pool.query(`CREATE TABLE IF NOT EXISTS ssw_romaneios (
       id_romaneio VARCHAR(30) PRIMARY KEY,
       motorista_cpf VARCHAR(11) NOT NULL REFERENCES motoristas(cpf),
@@ -108,10 +117,28 @@ export async function runMigrations() {
       eficiencia_minima_adiantamento NUMERIC(5,2) NOT NULL DEFAULT 98.00,
       taxa_adiantamento NUMERIC(5,2) NOT NULL DEFAULT 0.00,
       valor_maximo_adiantamento NUMERIC(10,2) NOT NULL DEFAULT 400.00,
+      smtp_host VARCHAR(200),
+      smtp_port INTEGER DEFAULT 587,
+      smtp_user VARCHAR(200),
+      smtp_pass VARCHAR(200),
+      smtp_from VARCHAR(200),
+      smtp_secure BOOLEAN DEFAULT false,
       criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
     console.log('  -> configuracoes');
+
+    for (const col of [
+      "ADD COLUMN IF NOT EXISTS smtp_host VARCHAR(200)",
+      "ADD COLUMN IF NOT EXISTS smtp_port INTEGER DEFAULT 587",
+      "ADD COLUMN IF NOT EXISTS smtp_user VARCHAR(200)",
+      "ADD COLUMN IF NOT EXISTS smtp_pass VARCHAR(200)",
+      "ADD COLUMN IF NOT EXISTS smtp_from VARCHAR(200)",
+      "ADD COLUMN IF NOT EXISTS smtp_secure BOOLEAN DEFAULT false"
+    ]) {
+      await pool.query(`DO $$ BEGIN IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='configuracoes') THEN ALTER TABLE configuracoes ${col}; END IF; END $$`);
+    }
+    console.log('  -> configuracoes (smtp columns)');
 
     await pool.query(`CREATE TABLE IF NOT EXISTS admin_users (
       id SERIAL PRIMARY KEY,
@@ -121,14 +148,38 @@ export async function runMigrations() {
       role VARCHAR(20) DEFAULT 'admin',
       criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
-    console.log('  -> admin_users');
+    console.log('  -> admin_users (legacy, kept for migration)');
 
     await pool.query(`DO $$ BEGIN
       IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='admin_users' AND column_name='role') THEN
         ALTER TABLE admin_users ADD COLUMN role VARCHAR(20) DEFAULT 'admin';
       END IF;
     END $$`);
-    console.log('  -> admin_users.role (alter)');
+
+    try {
+      const { rows: admins } = await pool.query('SELECT * FROM admin_users');
+      if (admins.length > 0) {
+        for (const admin of admins) {
+          const cpf = admin.username.padStart(11, '0');
+          await pool.query(`
+            INSERT INTO motoristas (cpf, nome, email, role, password_hash)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (cpf) DO UPDATE SET
+              email = COALESCE(EXCLUDED.email, motoristas.email),
+              role = EXCLUDED.role,
+              password_hash = COALESCE(EXCLUDED.password_hash, motoristas.password_hash)
+          `, [cpf, admin.nome, admin.username + '@ssw.local', admin.role || 'admin', admin.password_hash]);
+        }
+        console.log(`  Migrated ${admins.length} admin_users to motoristas`);
+        await pool.query('DROP TABLE IF EXISTS admin_users');
+        console.log('  Dropped admin_users table');
+      } else {
+        await pool.query('DROP TABLE IF EXISTS admin_users');
+        console.log('  Dropped admin_users table (empty)');
+      }
+    } catch (err) {
+      console.log('  admin_users migration skipped:', err.message);
+    }
 
     await pool.query(`CREATE TABLE IF NOT EXISTS fcm_tokens (
       cpf VARCHAR(11) PRIMARY KEY,
@@ -296,17 +347,17 @@ export async function runMigrations() {
     `);
     console.log('  Configuracoes seeded');
 
-    const { rows: adminCount } = await pool.query('SELECT COUNT(*)::int AS cnt FROM admin_users');
+    const { rows: adminCount } = await pool.query("SELECT COUNT(*)::int AS cnt FROM motoristas WHERE role = 'admin'");
     if (adminCount[0].cnt === 0) {
       const hash = await bcrypt.hash('501578', 10);
       await pool.query(`
-        INSERT INTO admin_users (username, password_hash, nome, role)
-        VALUES ($1, $2, $3, 'admin')
-        ON CONFLICT (username) DO NOTHING
-      `, ['125281', hash, 'Administrador']);
-      console.log('  Admin user seeded (125281)');
+        INSERT INTO motoristas (cpf, nome, email, role, password_hash)
+        VALUES ($1, $2, $3, 'admin', $4)
+        ON CONFLICT (cpf) DO NOTHING
+      `, ['00000000000', 'Administrador', 'admin@ssw.com.br', hash]);
+      console.log('  Admin user seeded (admin@ssw.com.br / 501578)');
     } else {
-      console.log('  admin_users already has data, skipping seed');
+      console.log('  admin motorista already exists, skipping seed');
     }
 
     console.log('Migrations: all seed data done');

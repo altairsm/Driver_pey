@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import bcrypt from 'bcrypt';
 import { pool } from '../db/index.js';
 import { requireRole } from '../middleware/auth.js';
 import {
@@ -7,6 +8,7 @@ import {
   getQuinzenasAdmin, getCidadesSemPreco, getCtrcsParados
 } from '../services/paymentService.js';
 import { getEficienciaTodos, getAppUsageTodos } from '../services/driverService.js';
+import { enviarSenhaPorEmail } from '../services/emailService.js';
 
 const router = Router();
 
@@ -206,6 +208,27 @@ router.get('/ctrcs-parados', async (req, res) => {
   } catch (err) {
     console.error('Erro ao buscar CTRCs parados:', err);
     res.status(500).json({ error: 'Erro ao buscar CTRCs parados' });
+  }
+});
+
+router.post('/motoristas/:cpf/enviar-senha', requireRole('admin'), async (req, res) => {
+  try {
+    const { cpf } = req.params;
+    const { rows } = await pool.query('SELECT cpf, nome, email FROM motoristas WHERE cpf = $1', [cpf]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Motorista não encontrado' });
+
+    const motorista = rows[0];
+    if (!motorista.email) return res.status(400).json({ error: 'Motorista não possui e-mail cadastrado' });
+
+    const senha = Math.random().toString(36).slice(-8).toUpperCase();
+    const hash = await bcrypt.hash(senha, 10);
+    await pool.query('UPDATE motoristas SET password_hash = $1 WHERE cpf = $2', [hash, cpf]);
+    await enviarSenhaPorEmail(motorista.email, motorista.nome, senha);
+
+    res.json({ success: true, message: `Senha enviada para ${motorista.email}` });
+  } catch (err) {
+    console.error('Erro ao enviar senha:', err);
+    res.status(500).json({ error: err.message || 'Erro ao enviar senha' });
   }
 });
 

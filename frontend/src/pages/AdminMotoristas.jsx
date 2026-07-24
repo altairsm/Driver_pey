@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getMotoristas, createMotorista, updateMotorista, deleteMotorista } from '../services/api';
+import { getMotoristas, createMotorista, updateMotorista, deleteMotorista, sendMotoristaPassword } from '../services/api';
 import Topbar from '../components/Topbar';
 
 export default function AdminMotoristas() {
@@ -8,8 +8,9 @@ export default function AdminMotoristas() {
   const [error, setError] = useState('');
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState(null);
-  const [form, setForm] = useState({ cpf: '', nome: '', telefone: '', pix_tipo: 'CPF', cnpj_mei: '', bonus_d0: 0 });
+  const [form, setForm] = useState({ cpf: '', nome: '', telefone: '', pix_tipo: 'CPF', cnpj_mei: '', bonus_d0: 0, email: '', role: 'motorista' });
   const [salvando, setSalvando] = useState(false);
+  const [enviandoSenha, setEnviandoSenha] = useState(null);
 
   const carregar = async () => {
     setLoading(true);
@@ -22,7 +23,7 @@ export default function AdminMotoristas() {
 
   const abrirNovo = () => {
     setEditando(null);
-    setForm({ cpf: '', nome: '', telefone: '', pix_tipo: 'CPF', cnpj_mei: '', bonus_d0: 0 });
+    setForm({ cpf: '', nome: '', telefone: '', pix_tipo: 'CPF', cnpj_mei: '', bonus_d0: 0, email: '', role: 'motorista' });
     setError('');
     setModalAberto(true);
   };
@@ -36,6 +37,8 @@ export default function AdminMotoristas() {
       pix_tipo: m.pix_tipo || 'CPF',
       cnpj_mei: m.cnpj_mei || '',
       bonus_d0: m.bonus_d0 || 0,
+      email: m.email || '',
+      role: m.role || 'motorista',
     });
     setError('');
     setModalAberto(true);
@@ -79,6 +82,29 @@ export default function AdminMotoristas() {
     }
   };
 
+  const handleEnviarSenha = async (m) => {
+    setEnviandoSenha(m.cpf);
+    try {
+      const result = await sendMotoristaPassword(m.cpf);
+      alert(result.message || 'Senha enviada com sucesso');
+    } catch (err) {
+      alert(err.response?.data?.error || 'Erro ao enviar senha');
+    } finally {
+      setEnviandoSenha(null);
+    }
+  };
+
+  const roleLabel = (role) => {
+    const labels = { motorista: 'Motorista', admin: 'Admin', operador: 'Operador', consulta: 'Consulta' };
+    return labels[role] || role;
+  };
+
+  const roleBadgeStyle = (role) => ({
+    display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: '0.68rem', fontWeight: 600,
+    background: role === 'admin' ? '#dc3545' : role === 'operador' ? '#0d6efd' : role === 'consulta' ? '#6c757d' : '#198754',
+    color: '#fff',
+  });
+
   return (
     <div style={s.container}>
       <Topbar user={{ nome: 'Admin' }} />
@@ -97,8 +123,9 @@ export default function AdminMotoristas() {
                   <thead><tr>
                     <th style={s.th}>CPF</th>
                     <th style={s.th}>Nome</th>
+                    <th style={s.th}>E-mail</th>
+                    <th style={s.th}>Perfil</th>
                     <th style={s.th}>Telefone</th>
-                    <th style={s.th}>PIX</th>
                     <th style={s.th}>Bônus D0</th>
                     <th style={s.th}>Ações</th>
                   </tr></thead>
@@ -107,10 +134,14 @@ export default function AdminMotoristas() {
                       <tr key={m.cpf}>
                         <td style={s.td}>{m.cpf}</td>
                         <td style={s.td}>{m.nome}</td>
+                        <td style={s.td}>{m.email || '—'}</td>
+                        <td style={s.td}><span style={roleBadgeStyle(m.role)}>{roleLabel(m.role)}</span></td>
                         <td style={s.td}>{m.telefone || '—'}</td>
-                        <td style={s.td}>{m.pix_tipo || 'CPF'}</td>
                         <td style={{ ...s.td, color: '#3de8a0' }}>R$ {Number(m.bonus_d0 || 0).toFixed(2)}</td>
                         <td style={{ ...s.td, whiteSpace: 'nowrap' }}>
+                          {m.email && <button style={s.btnSm('#0d6efd', '#fff')} onClick={() => handleEnviarSenha(m)} disabled={enviandoSenha === m.cpf}>
+                            {enviandoSenha === m.cpf ? '...' : 'Senha'}
+                          </button>}
                           <button style={s.btnSm('#ffc107', '#0d0f14')} onClick={() => abrirEditar(m)}>Editar</button>
                           <button style={s.btnSm('#dc3545', '#fff')} onClick={() => handleExcluir(m)}>Excluir</button>
                         </td>
@@ -144,6 +175,20 @@ export default function AdminMotoristas() {
                   <label style={s.label}>Nome Completo</label>
                   <input style={s.input} name="nome" value={form.nome}
                     onChange={handleChange} required />
+                </div>
+                <div style={s.field}>
+                  <label style={s.label}>E-mail</label>
+                  <input style={s.input} name="email" type="email" value={form.email}
+                    onChange={handleChange} placeholder="email@exemplo.com.br" />
+                </div>
+                <div style={s.field}>
+                  <label style={s.label}>Perfil de Acesso</label>
+                  <select style={s.select} name="role" value={form.role} onChange={handleChange}>
+                    <option value="motorista">Motorista</option>
+                    <option value="admin">Admin</option>
+                    <option value="operador">Operador</option>
+                    <option value="consulta">Consulta</option>
+                  </select>
                 </div>
                 <div style={s.field}>
                   <label style={s.label}>Telefone</label>
@@ -187,7 +232,7 @@ export default function AdminMotoristas() {
 
 const s = {
   container: { minHeight: '100vh', background: '#0d0f14', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', sans-serif" },
-  content: { maxWidth: 1100, margin: '0 auto', padding: '32px 24px' },
+  content: { maxWidth: 1200, margin: '0 auto', padding: '32px 24px' },
   title: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.8rem', letterSpacing: '2px', color: '#f0c040', marginBottom: 24 },
   card: { background: '#161920', border: '1px solid #2a2f3e', borderRadius: 8, overflow: 'hidden' },
   cardHeader: { padding: '12px 20px', background: '#1e2230', borderBottom: '1px solid #2a2f3e', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
@@ -199,7 +244,7 @@ const s = {
   btn: (bg, c) => ({ background: bg, color: c, border: 'none', padding: '8px 20px', borderRadius: 4, cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }),
   btnSm: (bg, c) => ({ background: bg, color: c, border: 'none', padding: '4px 10px', borderRadius: 4, cursor: 'pointer', fontSize: '0.72rem', fontWeight: 600, marginRight: 4 }),
   overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
-  modal: { background: '#161920', border: '1px solid #2a2f3e', borderRadius: 8, width: '100%', maxWidth: 480 },
+  modal: { background: '#161920', border: '1px solid #2a2f3e', borderRadius: 8, width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto' },
   mh: { padding: '16px 20px', borderBottom: '1px solid #2a2f3e', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   mt: { fontSize: '1rem', color: '#e8eaf0', margin: 0 },
   mb: { padding: 20 },

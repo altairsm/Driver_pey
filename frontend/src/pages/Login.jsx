@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login, adminLogin } from '../services/api';
+import { login } from '../services/api';
 
 export default function Login() {
-  const [cpf, setCpf] = useState('');
-  const [username, setUsername] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -22,35 +20,26 @@ export default function Login() {
     } catch {}
   }, []);
 
-  const handleDriverSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const data = await login(cpf);
+      const clean = identifier.replace(/\D/g, '');
+      const isCpf = /^\d{11}$/.test(clean);
+      const data = await login(isCpf ? clean : identifier, password);
       localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.driver));
-      if (data.driver.leu_regras) {
-        navigate('/driver');
+      localStorage.setItem('user', JSON.stringify(data.user));
+      const role = data.user.role || 'motorista';
+      if (role === 'motorista') {
+        if (data.user.leu_regras) {
+          navigate('/driver');
+        } else {
+          navigate('/driver/regras-pagamento');
+        }
       } else {
-        navigate('/driver/regras-pagamento');
+        navigate('/admin/pagamentos');
       }
-    } catch (err) {
-      setError(err.response?.data?.error || 'Erro ao fazer login');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAdminSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      const data = await adminLogin(username, password);
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.admin));
-      navigate('/admin/pagamentos');
     } catch (err) {
       setError(err.response?.data?.error || 'Erro ao fazer login');
     } finally {
@@ -64,52 +53,40 @@ export default function Login() {
         <div style={s.cardAccent} />
         <div style={s.cardContent}>
           <div style={s.logo}>SSW TRANSPORTES</div>
-          <div style={s.subtitle}>
-            {isAdmin ? 'Portal Administrativo' : 'Portal do Motorista'}
+          <div style={s.subtitle}>Portal de Acesso</div>
+
+          <form onSubmit={handleSubmit} style={s.form}>
+            <div style={s.field}>
+              <label style={s.label}>CPF ou E-mail</label>
+              <input
+                style={s.input}
+                type="text"
+                placeholder="000.000.000-00 ou e-mail"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                required
+              />
+            </div>
+            <div style={s.field}>
+              <label style={s.label}>Senha</label>
+              <input
+                style={s.input}
+                type="password"
+                placeholder="Senha"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            {error && <div style={s.error}>{error}</div>}
+            <button type="submit" style={{ ...s.button, opacity: loading ? 0.6 : 1 }} disabled={loading}>
+              {loading ? 'Entrando...' : 'Entrar'}
+            </button>
+          </form>
+
+          <div style={s.hint}>
+            Motorista sem acesso? Solicite ao administrador.
           </div>
-
-          {!isAdmin ? (
-            <form onSubmit={handleDriverSubmit} style={s.form}>
-              <div style={s.field}>
-                <label style={s.label}>CPF</label>
-                <input
-                  style={s.input}
-                  type="text"
-                  placeholder="000.000.000-00"
-                  value={cpf}
-                  onChange={(e) => setCpf(e.target.value.replace(/\D/g, ''))}
-                  maxLength={11}
-                  required
-                />
-              </div>
-              {error && <div style={s.error}>{error}</div>}
-              <button type="submit" style={{ ...s.button, opacity: loading ? 0.6 : 1 }} disabled={loading}>
-                {loading ? 'Entrando...' : 'Entrar'}
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handleAdminSubmit} style={s.form}>
-              <div style={s.field}>
-                <label style={s.label}>Usuário</label>
-                <input style={s.input} type="text" placeholder="Usuário" value={username}
-                  onChange={(e) => setUsername(e.target.value)} required />
-              </div>
-              <div style={s.field}>
-                <label style={s.label}>Senha</label>
-                <input style={s.input} type="password" placeholder="Senha" value={password}
-                  onChange={(e) => setPassword(e.target.value)} required />
-              </div>
-              {error && <div style={s.error}>{error}</div>}
-              <button type="submit" style={{ ...s.button, opacity: loading ? 0.6 : 1 }} disabled={loading}>
-                {loading ? 'Entrando...' : 'Entrar'}
-              </button>
-            </form>
-          )}
-
-          <div style={s.divider}>ou</div>
-          <button onClick={() => { setIsAdmin(!isAdmin); setError(''); }} style={s.adminBtn}>
-            {isAdmin ? 'Voltar ao Login do Motorista' : 'Acesso Administrativo'}
-          </button>
         </div>
       </div>
     </div>
@@ -129,6 +106,5 @@ const s = {
   input: { background: '#1e2230', border: '1px solid #2a2f3e', color: '#e8eaf0', padding: '12px 16px', fontSize: '1rem', borderRadius: 4, outline: 'none', fontFamily: "'IBM Plex Mono', monospace" },
   button: { background: '#f0c040', color: '#0d0f14', border: 'none', padding: '14px', fontSize: '1rem', fontWeight: 600, borderRadius: 4, cursor: 'pointer', marginTop: 8 },
   error: { color: '#ff5a5a', fontSize: '0.85rem', textAlign: 'center' },
-  divider: { color: '#6b7280', textAlign: 'center', margin: '20px 0 12px', fontSize: '0.85rem' },
-  adminBtn: { width: '100%', background: 'transparent', border: '1px solid #2a2f3e', color: '#6b7280', padding: '12px', borderRadius: 4, cursor: 'pointer', fontSize: '0.85rem' },
+  hint: { color: '#4b5563', textAlign: 'center', marginTop: 24, fontSize: '0.8rem' },
 };

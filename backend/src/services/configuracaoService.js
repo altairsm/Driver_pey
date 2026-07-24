@@ -22,15 +22,30 @@ export function clearConfigCache() {
 }
 
 export async function atualizarConfig(dados) {
-  const { dias_uteis_pagamento, eficiencia_minima_adiantamento, valor_maximo_adiantamento } = dados;
+  const {
+    dias_uteis_pagamento,
+    eficiencia_minima_adiantamento,
+    valor_maximo_adiantamento,
+    smtp_host, smtp_port, smtp_user, smtp_pass, smtp_from, smtp_secure
+  } = dados;
   await pool.query(`
     UPDATE configuracoes
     SET dias_uteis_pagamento = $1,
         eficiencia_minima_adiantamento = $2,
         valor_maximo_adiantamento = $3,
+        smtp_host = $4,
+        smtp_port = $5,
+        smtp_user = $6,
+        smtp_pass = $7,
+        smtp_from = $8,
+        smtp_secure = $9,
         atualizado_em = CURRENT_TIMESTAMP
     WHERE id = 1
-  `, [dias_uteis_pagamento, eficiencia_minima_adiantamento, valor_maximo_adiantamento]);
+  `, [
+    dias_uteis_pagamento, eficiencia_minima_adiantamento, valor_maximo_adiantamento,
+    smtp_host || null, smtp_port || 587, smtp_user || null,
+    smtp_pass || null, smtp_from || null, smtp_secure || false
+  ]);
   clearConfigCache();
   return getConfig();
 }
