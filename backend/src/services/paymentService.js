@@ -300,11 +300,12 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
     console.error('Webhook error:', err.message);
   }
 
-  const pixEstado = webhookResult.data?.estado || null;
-  const pixEndToEndId = webhookResult.data?.endToEndId || null;
-  const pixHorario = webhookResult.data?.horario || null;
-  const pixOrigem = webhookResult.data?.origem || null;
-  const pixDestino = webhookResult.data?.destino || null;
+  const webhookData = Array.isArray(webhookResult.data) ? webhookResult.data[0] : webhookResult.data;
+  const pixEstado = webhookData?.estado || null;
+  const pixEndToEndId = webhookData?.endToEndId || null;
+  const pixHorario = webhookData?.horario || null;
+  const pixOrigem = webhookData?.origem || null;
+  const pixDestino = webhookData?.destino || null;
 
   await pool.query(`
     INSERT INTO pagamentos_quinzena

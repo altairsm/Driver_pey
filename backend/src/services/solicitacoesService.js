@@ -70,9 +70,10 @@ export async function aprovarSolicitacao(id) {
     aprovado_por: 'admin',
   });
 
-  const pixEstado = webhookResult.data?.estado || null;
-  const pixEndToEndId = webhookResult.data?.endToEndId || null;
-  const pixHorario = webhookResult.data?.horario || null;
+  const webhookData = Array.isArray(webhookResult.data) ? webhookResult.data[0] : webhookResult.data;
+  const pixEstado = webhookData?.estado || null;
+  const pixEndToEndId = webhookData?.endToEndId || null;
+  const pixHorario = webhookData?.horario || null;
 
   const client = await pool.connect();
   try {
@@ -161,9 +162,10 @@ export async function reverificarSolicitacao(id) {
     aprovado_por: 'admin',
   });
 
-  const pixEstado = webhookResult.data?.estado || null;
-  const pixEndToEndId = webhookResult.data?.endToEndId || null;
-  const pixHorario = webhookResult.data?.horario || null;
+  const webhookData = Array.isArray(webhookResult.data) ? webhookResult.data[0] : webhookResult.data;
+  const pixEstado = webhookData?.estado || null;
+  const pixEndToEndId = webhookData?.endToEndId || null;
+  const pixHorario = webhookData?.horario || null;
 
   const client = await pool.connect();
   try {

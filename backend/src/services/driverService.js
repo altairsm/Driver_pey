@@ -489,9 +489,10 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
         aprovado_por: 'auto',
       });
 
-      pixEstado = webhookResult.data?.estado || null;
-      const pixEndToEndId = webhookResult.data?.endToEndId || null;
-      const pixHorario = webhookResult.data?.horario || null;
+      const webhookData = Array.isArray(webhookResult.data) ? webhookResult.data[0] : webhookResult.data;
+      pixEstado = webhookData?.estado || null;
+      const pixEndToEndId = webhookData?.endToEndId || null;
+      const pixHorario = webhookData?.horario || null;
 
       const novoStatus = pixEstado === 'FINALIZADO' ? 'aprovado' : 'pre_aprovado';
       await pool.query(`
