@@ -313,14 +313,14 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
        total_quinzena, total_bonus_d0, total_multa, total_adiantado,
        total_cobrancas, total_pagar, pix_end_to_end_id, pix_estado,
        pix_horario, pix_origem, pix_destino, status, confirmado_em)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,
-            CASE WHEN $12 = 'FINALIZADO' THEN CURRENT_TIMESTAMP ELSE NULL END)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,($12)::varchar(30),$13,$14,$15,$16,
+            CASE WHEN ($12)::varchar(30) = 'FINALIZADO' THEN CURRENT_TIMESTAMP ELSE NULL END)
     ON CONFLICT (matricula, quinzena_inicio, quinzena_fim) DO UPDATE SET
       total_entregas = $4, total_quinzena = $5, total_bonus_d0 = $6,
       total_multa = $7, total_adiantado = $8, total_cobrancas = $9,
-      total_pagar = $10, pix_end_to_end_id = $11, pix_estado = $12,
+      total_pagar = $10, pix_end_to_end_id = $11, pix_estado = ($12)::varchar(30),
       pix_horario = $13, pix_origem = $14, pix_destino = $15, status = $16,
-      confirmado_em = CASE WHEN $12 = 'FINALIZADO' THEN CURRENT_TIMESTAMP ELSE pagamentos_quinzena.confirmado_em END
+      confirmado_em = CASE WHEN ($12)::varchar(30) = 'FINALIZADO' THEN CURRENT_TIMESTAMP ELSE pagamentos_quinzena.confirmado_em END
   `, [matricula, inicio, fim, entregas?.total_entregas || 0,
       total_quinzena, total_bonus_d0, total_multa, total_adiantado,
       total_cobrancas, total_pagar < 0 ? 0 : total_pagar,

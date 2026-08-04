@@ -8,7 +8,9 @@ RUN npm install --production
 COPY . .
 
 ARG COMMIT_HASH=unknown
+ARG VERSION=unknown
 RUN echo -n "$COMMIT_HASH" > /app/.commit
+RUN echo -n "$VERSION" > /app/.version
 
 EXPOSE 3001
 

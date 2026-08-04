@@ -16,10 +16,19 @@ if (commit === 'DEV') {
   }
 }
 
-const json = { commit, url_download: '' };
+let version = process.env.VERSION || '';
+if (!version) {
+  try {
+    version = execSync('git describe --tags --abbrev=0 2>/dev/null || true', { encoding: 'utf8', cwd: join(__dirname, '..', '..') }).trim();
+  } catch {
+    version = '';
+  }
+}
+
+const json = { commit, version, url_download: '' };
 writeFileSync(join(publicDir, 'version.json'), JSON.stringify(json, null, 2));
-console.log(`✔ version.json written: commit=${commit}`);
+console.log(`✔ version.json written: commit=${commit} version=${version}`);
 
 mkdirSync(srcDir, { recursive: true });
-writeFileSync(join(srcDir, 'version.js'), `export const COMMIT_HASH = '${commit}';\n`);
-console.log(`✔ src/version.js written: COMMIT_HASH=${commit}`);
+writeFileSync(join(srcDir, 'version.js'), `export const COMMIT_HASH = '${commit}';\nexport const VERSION = '${version}';\n`);
+console.log(`✔ src/version.js written: COMMIT_HASH=${commit} VERSION=${version}`);

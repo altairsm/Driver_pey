@@ -46,12 +46,19 @@ function getCommitHash() {
   } catch { return 'unknown'; }
 }
 
+function getVersion() {
+  try {
+    const dir = dirname(fileURLToPath(import.meta.url));
+    return readFileSync(join(dir, '..', '.version'), 'utf8').trim();
+  } catch { return ''; }
+}
+
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 app.get('/version', (req, res) => {
-  res.json({ commit: getCommitHash() });
+  res.json({ commit: getCommitHash(), version: getVersion() });
 });
 
 app.use('/auth', authRoutes);

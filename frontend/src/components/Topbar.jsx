@@ -68,11 +68,15 @@ export default function Topbar({ user }) {
   const [aberto, setAberto] = useState(null);
   const ref = useRef(null);
   const [commit, setCommit] = useState('');
+  const [version, setVersion] = useState('');
 
   useEffect(() => {
     fetch('/api/version')
       .then(r => r.json())
-      .then(d => setCommit(d.commit))
+      .then(d => {
+        setCommit(d.commit);
+        if (d.version) setVersion(d.version);
+      })
       .catch(() => {});
   }, []);
 
@@ -102,6 +106,7 @@ export default function Topbar({ user }) {
     <div style={styles.topbar}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={styles.brand}>DRIVER PIX - INTUITIVA LOG</div>
+        {version && <span style={styles.versionBadge}>{version}</span>}
         {commit && <span style={styles.commitBadge}>{commit}</span>}
       </div>
       <div style={styles.nav} ref={ref}>
@@ -259,5 +264,15 @@ const styles = {
     padding: '2px 8px',
     borderRadius: 4,
     border: '1px solid #2a2f3e',
+  },
+  versionBadge: {
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: '0.7rem',
+    color: '#22c55e',
+    letterSpacing: '0.5px',
+    background: '#1e2230',
+    padding: '2px 8px',
+    borderRadius: 4,
+    border: '1px solid #16a34a',
   },
 };

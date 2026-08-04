@@ -1,6 +1,7 @@
 FROM node:22-alpine AS build
 
 ARG COMMIT_HASH=DEV
+ARG VERSION=unknown
 
 WORKDIR /app
 
@@ -9,8 +10,9 @@ RUN npm install
 
 COPY . .
 ENV COMMIT_HASH=$COMMIT_HASH
+ENV VERSION=$VERSION
 RUN npm run build
-RUN echo "{\"commit\":\"$COMMIT_HASH\",\"url_download\":\"\"}" > dist/version.json
+RUN echo "{\"commit\":\"$COMMIT_HASH\",\"version\":\"$VERSION\",\"url_download\":\"\"}" > dist/version.json
 
 FROM nginx:alpine
 

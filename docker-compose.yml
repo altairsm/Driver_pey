@@ -23,6 +23,7 @@ services:
       context: ./backend
       args:
         COMMIT_HASH: ${COMMIT_HASH:-unknown}
+        VERSION: ${VERSION:-unknown}
     container_name: driver-pey-backend
     ports:
       - "3001:3001"
@@ -46,6 +47,7 @@ services:
       context: ./frontend
       args:
         COMMIT_HASH: ${COMMIT_HASH:-unknown}
+        VERSION: ${VERSION:-unknown}
     container_name: driver-pey-frontend
     ports:
       - "8080:80"

@@ -93,9 +93,9 @@ router.post('/pagamentos-reverificar/:id', async (req, res) => {
 
     await pool.query(`
       UPDATE pagamentos_quinzena
-      SET pix_end_to_end_id = $1, pix_estado = $2, pix_horario = $3,
-          pix_origem = $4, pix_destino = $5, status = $6,
-          confirmado_em = CASE WHEN $6 = 'confirmado' THEN CURRENT_TIMESTAMP ELSE confirmado_em END
+      SET pix_end_to_end_id = $1, pix_estado = ($2)::varchar(30), pix_horario = $3,
+          pix_origem = $4, pix_destino = $5, status = ($6)::varchar(20),
+          confirmado_em = CASE WHEN ($6)::varchar(20) = 'confirmado' THEN CURRENT_TIMESTAMP ELSE confirmado_em END
       WHERE id = $7
     `, [pixEndToEndId, pixEstado, pixHorario,
         pixOrigem || null,
