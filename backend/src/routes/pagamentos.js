@@ -80,11 +80,12 @@ router.post('/pagamentos-reverificar/:id', async (req, res) => {
     };
 
     const webhookResult = await enviarWebhookAdiantamento(payload);
-    const pixEstado = webhookResult.data?.estado || null;
-    const pixEndToEndId = webhookResult.data?.endToEndId || null;
-    const pixHorario = webhookResult.data?.horario || null;
-    const pixOrigem = webhookResult.data?.origem || null;
-    const pixDestino = webhookResult.data?.destino || null;
+    const webhookData = Array.isArray(webhookResult.data) ? webhookResult.data[0] : webhookResult.data;
+    const pixEstado = webhookData?.estado || null;
+    const pixEndToEndId = webhookData?.endToEndId || null;
+    const pixHorario = webhookData?.horario || null;
+    const pixOrigem = webhookData?.origem || null;
+    const pixDestino = webhookData?.destino || null;
 
     const novoStatus = pixEstado === 'FINALIZADO' ? 'confirmado'
                      : pixEstado === 'EM_PROCESSAMENTO' ? 'processando'
@@ -97,8 +98,8 @@ router.post('/pagamentos-reverificar/:id', async (req, res) => {
           confirmado_em = CASE WHEN $6 = 'confirmado' THEN CURRENT_TIMESTAMP ELSE confirmado_em END
       WHERE id = $7
     `, [pixEndToEndId, pixEstado, pixHorario,
-        pixOrigem ? JSON.stringify(pixOrigem) : null,
-        pixDestino ? JSON.stringify(pixDestino) : null,
+        pixOrigem || null,
+        pixDestino || null,
         novoStatus, p.id]);
 
     if (pixEstado === 'FINALIZADO') {
