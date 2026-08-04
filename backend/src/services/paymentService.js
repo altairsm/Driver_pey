@@ -325,8 +325,8 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
       total_quinzena, total_bonus_d0, total_multa, total_adiantado,
       total_cobrancas, total_pagar < 0 ? 0 : total_pagar,
       pixEndToEndId, pixEstado, pixHorario,
-      pixOrigem ? JSON.stringify(pixOrigem) : null,
-      pixDestino ? JSON.stringify(pixDestino) : null,
+      pixOrigem || null,
+      pixDestino || null,
       pixEstado === 'FINALIZADO' ? 'confirmado' : pixEstado === 'EM_PROCESSAMENTO' ? 'processando' : 'rejeitado']);
 
   if (pixEstado === 'FINALIZADO') {
