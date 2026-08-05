@@ -25,7 +25,7 @@ router.get('/pagamentos-historico', async (req, res) => {
     const { rows } = await pool.query(`
       SELECT pq.*, m.nome_completo
       FROM pagamentos_quinzena pq
-      JOIN matriculas_jad m ON m."OperadorMatricula"::bigint = pq.matricula
+      JOIN matriculos_jad m ON m."OperadorMatricula"::bigint = pq.matricula
       ORDER BY pq.criado_em DESC
       LIMIT 100
     `);
@@ -41,7 +41,7 @@ router.get('/pagamentos-pendentes', async (req, res) => {
     const { rows } = await pool.query(`
       SELECT pq.*, m.nome_completo
       FROM pagamentos_quinzena pq
-      JOIN matriculas_jad m ON m."OperadorMatricula"::bigint = pq.matricula
+      JOIN matriculos_jad m ON m."OperadorMatricula"::bigint = pq.matricula
       WHERE pq.status = 'processando'
       ORDER BY pq.criado_em DESC
     `);
@@ -57,7 +57,7 @@ router.post('/pagamentos-reverificar/:id', async (req, res) => {
     const { rows: pg } = await pool.query(`
       SELECT pq.*, m.nome_completo
       FROM pagamentos_quinzena pq
-      JOIN matriculas_jad m ON m."OperadorMatricula"::bigint = pq.matricula
+      JOIN matriculos_jad m ON m."OperadorMatricula"::bigint = pq.matricula
       WHERE pq.id = $1
     `, [req.params.id]);
     if (pg.length === 0) return res.status(404).json({ error: 'Pagamento não encontrado' });
