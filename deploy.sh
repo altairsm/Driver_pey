@@ -8,6 +8,15 @@ NC='\033[0m'
 
 echo -e "${GREEN}=== Driver_Pey Deploy ===${NC}"
 
+# Guardrail: impedir deploy caso este repositorio aponte para o projeto errado
+EXPECTED_REMOTE="https://github.com/altairsm/Driver_pey.git"
+CURRENT_REMOTE=$(git remote get-url origin 2>/dev/null || true)
+if [ "$CURRENT_REMOTE" != "$EXPECTED_REMOTE" ]; then
+  echo -e "${RED}[!] Repositorio errado: origin=$CURRENT_REMOTE${NC}"
+  echo -e "${RED}[!] Esperado: $EXPECTED_REMOTE. Abortando para evitar mistura com Driver_PIX_SSW.${NC}"
+  exit 1
+fi
+
 CONFIG_DIR="/etc/nginx/sites-available"
 CONFIG_FILE="$CONFIG_DIR/driver-pey"
 
