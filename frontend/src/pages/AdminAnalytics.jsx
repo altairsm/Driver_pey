@@ -114,11 +114,11 @@ export default function AdminAnalytics() {
         margem: Number(m.margem_bruta),
         pagar: Number(m.total_quinzena),
       }))
-      .sort((a, b) => a.entregas - b.entregas);
+      .sort((a, b) => b.entregas - a.entregas);
   }, [resumo, filtroMotorista]);
 
   const reclamacoesData = useMemo(() => {
-    return [...entregasData].sort((a, b) => a.reclamacoes - b.reclamacoes);
+    return [...entregasData].sort((a, b) => b.reclamacoes - a.reclamacoes);
   }, [entregasData]);
 
   const ranking = useMemo(() => {
@@ -187,10 +187,10 @@ export default function AdminAnalytics() {
   const renderBarChart = (data, dataKey, label, color) => (
     <div style={s.chartCard}>
       <ResponsiveContainer width="100%" height={Math.max(200, data.length * 32)}>
-        <BarChart data={data} layout="vertical" margin={{ top: 0, right: 20, left: 150, bottom: 0 }}>
+        <BarChart data={data} layout="vertical" margin={{ top: 0, right: 20, left: 140, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#2a2f3e" />
           <XAxis type="number" tick={chartText} axisLine={{ stroke: '#2a2f3e' }} />
-          <YAxis type="category" dataKey="nome" tick={chartText} axisLine={{ stroke: '#2a2f3e' }} width={140} />
+          <YAxis type="category" dataKey="nome" tick={{ ...chartText, textAnchor: 'start', dx: -130 }} axisLine={{ stroke: '#2a2f3e' }} width={140} />
           <Tooltip contentStyle={{ background: '#1e2230', border: '1px solid #2a2f3e', borderRadius: 4, fontSize: '0.75rem' }} labelStyle={{ color: '#f0c040' }} itemStyle={{ color: '#e8eaf0' }} formatter={(v) => [dataKey === 'entregas' || dataKey === 'reclamacoes' ? v : formatMoney(v), label]} />
           <Bar dataKey={dataKey} fill={color} radius={[0, 3, 3, 0]} />
         </BarChart>
