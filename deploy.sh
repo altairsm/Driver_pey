@@ -31,10 +31,14 @@ fi
 
 # 2. Atualizar código
 echo -e "${YELLOW}[1/5] Atualizando código...${NC}"
-git pull --tags
+git pull
+git fetch --tags --force
 
 export COMMIT_HASH=$(git rev-parse --short HEAD)
 export VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo unknown)
+if [ "$VERSION" = "unknown" ]; then
+  echo -e "${RED}[!] AVISO: VERSION ficou 'unknown' (git describe sem tags). Deploy continua, mas a toolbar mostrara unknown.${NC}"
+fi
 
 # 3. Reconstruir containers
 echo -e "${YELLOW}[2/5] Reconstruindo containers...${NC}"
