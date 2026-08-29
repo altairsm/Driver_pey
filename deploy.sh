@@ -9,11 +9,14 @@ NC='\033[0m'
 echo -e "${GREEN}=== Driver_Pey Deploy ===${NC}"
 
 # Guardrail: impedir deploy caso este repositorio aponte para o projeto errado
-EXPECTED_REMOTE="https://github.com/altairsm/Driver_pey.git"
+# Normaliza a URL (remove scheme, usuario:senha e aceita forma SSH git@host:path)
+EXPECTED_REPO="github.com/altairsm/Driver_pey.git"
 CURRENT_REMOTE=$(git remote get-url origin 2>/dev/null || true)
-if [ "$CURRENT_REMOTE" != "$EXPECTED_REMOTE" ]; then
-  echo -e "${RED}[!] Repositorio errado: origin=$CURRENT_REMOTE${NC}"
-  echo -e "${RED}[!] Esperado: $EXPECTED_REMOTE. Abortando para evitar mistura com Driver_PIX_SSW.${NC}"
+NORM_REMOTE=$(echo "$CURRENT_REMOTE" | sed -E 's#^git@#https://#; s#^[a-z]+://##; s#^[^@]+@##; s#:#/#')
+if [ "$NORM_REMOTE" != "$EXPECTED_REPO" ]; then
+  MASKED=$(echo "$CURRENT_REMOTE" | sed -E 's#(://)[^@]+@#\1***@#')
+  echo -e "${RED}[!] Repositorio errado: origin=$MASKED${NC}"
+  echo -e "${RED}[!] Esperado: $EXPECTED_REPO. Abortando para evitar mistura com Driver_PIX_SSW.${NC}"
   exit 1
 fi
 
