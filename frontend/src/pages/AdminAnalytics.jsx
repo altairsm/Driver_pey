@@ -110,8 +110,9 @@ export default function AdminAnalytics() {
         matricula: m.matricula,
         entregas: Number(m.total_ctes),
         reclamacoes: Number(m.qtd_reclamacoes),
+        total: Number(m.qtd_reclamacoes_total || 0),
         resolvidas: Number(m.qtd_reclamacoes_resolvidas || 0),
-        pendentes: Math.max(0, Number(m.qtd_reclamacoes) - Number(m.qtd_reclamacoes_resolvidas || 0)),
+        pendentes: Math.max(0, Number(m.qtd_reclamacoes_total || 0) - Number(m.qtd_reclamacoes_resolvidas || 0)),
         receita: Number(m.receita_total),
         margem: Number(m.margem_bruta),
         pagar: Number(m.total_quinzena),
@@ -120,7 +121,7 @@ export default function AdminAnalytics() {
   }, [resumo, filtroMotorista]);
 
   const reclamacoesData = useMemo(() => {
-    return [...entregasData].sort((a, b) => b.reclamacoes - a.reclamacoes);
+    return [...entregasData].sort((a, b) => b.total - a.total);
   }, [entregasData]);
 
   const ranking = useMemo(() => {

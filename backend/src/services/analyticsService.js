@@ -183,21 +183,17 @@ export async function getComparativoMotoristas(inicio, fim) {
         AND e."OperadorMatricula" IS NOT NULL
       GROUP BY e."OperadorMatricula"::bigint
     ),
-    multas_resolvidas AS (
+    reclamacoes_motorista AS (
       SELECT
         e."OperadorMatricula"::bigint AS matricula,
-        COUNT(*)::int AS qtd_reclamacoes_resolvidas
+        COUNT(*)::int AS qtd_reclamacoes_total,
+        COUNT(*) FILTER (WHERE LOWER(TRIM(r.status_original)) = 'resolvido')::int AS qtd_reclamacoes_resolvidas
       FROM acareacaojad r
       JOIN relatorioentrega_export e ON e."NCTE" = r."NCTE" AND LOWER(e."Evento") = 'entrega'
-      JOIN solicitacoes_pagamento sp ON sp.lista_numero = NULLIF(e."Lista", '')::bigint
-        AND sp.matricula = e."OperadorMatricula"::bigint
-        AND sp.status = 'aprovado'
-        AND sp.aprovado_em < r.data_criacao::timestamp
       CROSS JOIN quinzena_params qp
       WHERE r.data_criacao BETWEEN qp.inicio AND qp.fim
         AND r."NCTE" IS NOT NULL
         AND e."OperadorMatricula" IS NOT NULL
-        AND r.status_original = 'Resolvido'
       GROUP BY e."OperadorMatricula"::bigint
     ),
     bonus_d0 AS (
@@ -244,7 +240,8 @@ export async function getComparativoMotoristas(inicio, fim) {
       COALESCE(rm.total_faturamento, 0)::numeric(10,2) AS total_faturamento,
       COALESCE(rm.total_faturamento - rm.total_receita + COALESCE(mu.qtd_reclamacoes, 0) * (SELECT COALESCE(multa_reclamacao, 0) FROM configuracoes WHERE id = 1), 0)::numeric(10,2) AS margem_bruta,
       COALESCE(mu.qtd_reclamacoes, 0)::int AS qtd_reclamacoes,
-      COALESCE(mr.qtd_reclamacoes_resolvidas, 0)::int AS qtd_reclamacoes_resolvidas,
+      COALESCE(rmt.qtd_reclamacoes_total, 0)::int AS qtd_reclamacoes_total,
+      COALESCE(rmt.qtd_reclamacoes_resolvidas, 0)::int AS qtd_reclamacoes_resolvidas,
       CASE WHEN COALESCE(rm.total_ctes, 0) > 0
         THEN ROUND((COALESCE(mu.qtd_reclamacoes, 0)::numeric / rm.total_ctes) * 100, 2)
         ELSE 0
@@ -252,7 +249,7 @@ export async function getComparativoMotoristas(inicio, fim) {
     FROM matriculos_jad m
     LEFT JOIN resumo_motorista rm ON rm.matricula = m."OperadorMatricula"::bigint
     LEFT JOIN multas mu ON mu.matricula = m."OperadorMatricula"::bigint
-    LEFT JOIN multas_resolvidas mr ON mr.matricula = m."OperadorMatricula"::bigint
+    LEFT JOIN reclamacoes_motorista rmt ON rmt.matricula = m."OperadorMatricula"::bigint
     WHERE rm.matricula IS NOT NULL
     ORDER BY rm.total_ctes DESC
   `;
