@@ -113,8 +113,13 @@ export default function AdminAnalytics() {
         receita: Number(m.receita_total),
         margem: Number(m.margem_bruta),
         pagar: Number(m.total_quinzena),
-      }));
+      }))
+      .sort((a, b) => a.entregas - b.entregas);
   }, [resumo, filtroMotorista]);
+
+  const reclamacoesData = useMemo(() => {
+    return [...entregasData].sort((a, b) => a.reclamacoes - b.reclamacoes);
+  }, [entregasData]);
 
   const ranking = useMemo(() => {
     return [...entregasData].sort((a, b) => {
@@ -182,10 +187,10 @@ export default function AdminAnalytics() {
   const renderBarChart = (data, dataKey, label, color) => (
     <div style={s.chartCard}>
       <ResponsiveContainer width="100%" height={Math.max(200, data.length * 32)}>
-        <BarChart data={data} layout="vertical" margin={{ top: 0, right: 20, left: 100, bottom: 0 }}>
+        <BarChart data={data} layout="vertical" margin={{ top: 0, right: 20, left: 150, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#2a2f3e" />
           <XAxis type="number" tick={chartText} axisLine={{ stroke: '#2a2f3e' }} />
-          <YAxis type="category" dataKey="nome" tick={chartText} axisLine={{ stroke: '#2a2f3e' }} width={90} />
+          <YAxis type="category" dataKey="nome" tick={chartText} axisLine={{ stroke: '#2a2f3e' }} width={140} />
           <Tooltip contentStyle={{ background: '#1e2230', border: '1px solid #2a2f3e', borderRadius: 4, fontSize: '0.75rem' }} labelStyle={{ color: '#f0c040' }} itemStyle={{ color: '#e8eaf0' }} formatter={(v) => [dataKey === 'entregas' || dataKey === 'reclamacoes' ? v : formatMoney(v), label]} />
           <Bar dataKey={dataKey} fill={color} radius={[0, 3, 3, 0]} />
         </BarChart>
@@ -274,9 +279,9 @@ export default function AdminAnalytics() {
               </div>
               <div>
                 <h3 style={s.sectionTitle}>Reclamações por Motorista</h3>
-                {entregasData.length === 0
-                  ? <div style={{ color: '#6b7280', fontSize: '0.85rem', padding: 20, textAlign: 'center' }}>Nenhum dado</div>
-                  : renderBarChart(entregasData, 'reclamacoes', 'Reclamações', '#ff5a5a')}
+        {entregasData.length === 0
+          ? <div style={{ color: '#6b7280', fontSize: '0.85rem', padding: 20, textAlign: 'center' }}>Nenhum dado</div>
+          : renderBarChart(reclamacoesData, 'reclamacoes', 'Reclamações', '#ff5a5a')}
               </div>
             </div>
 
