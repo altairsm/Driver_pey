@@ -109,7 +109,18 @@ export async function calcularPagamentos(inicio, fim) {
       FROM entregas_base eb
       LEFT JOIN bonus_d0 bd ON bd.ncte = eb.ncte AND bd.lista = eb.lista
       LEFT JOIN ctes_bloqueados cb ON cb."NCTE" = eb.ncte
-      GROUP BY eb.matricula, eb.nome_entrega
+        GROUP BY eb.matricula, eb.nome_entrega
+    ),
+    reclamacoes_motorista AS (
+      SELECT
+        r."OperadorMatricula"::bigint AS matricula,
+        COUNT(*)::int AS qtd_reclamacoes_total,
+        COUNT(*) FILTER (WHERE LOWER(TRIM(r.status_original)) = 'resolvido')::int AS qtd_reclamacoes_resolvidas
+      FROM acareacaojad r
+      CROSS JOIN quinzena_params qp
+      WHERE r.data_criacao BETWEEN qp.inicio AND qp.fim
+        AND r."OperadorMatricula" IS NOT NULL
+      GROUP BY r."OperadorMatricula"::bigint
     )
     SELECT
       m."OperadorMatricula"::bigint AS matricula,
@@ -126,11 +137,14 @@ export async function calcularPagamentos(inicio, fim) {
       COALESCE(rm.total_faturamento - rm.total_quinzena + COALESCE(mu.total_multa, 0), 0)::numeric(10,2) AS margem_bruta,
       COALESCE(mu.total_multa, 0)::numeric(10,2) AS total_multa,
       COALESCE(rg.qtd_reclamacoes, 0) AS qtd_reclamacoes,
+      COALESCE(rmt.qtd_reclamacoes_total, 0)::int AS qtd_reclamacoes_total,
+      COALESCE(rmt.qtd_reclamacoes_resolvidas, 0)::int AS qtd_reclamacoes_resolvidas,
       COALESCE(rm.pago, false) AS pago
     FROM matriculos_jad m
     LEFT JOIN resumo_motorista rm ON rm.matricula = m."OperadorMatricula"::bigint
     LEFT JOIN multas mu ON mu.matricula = m."OperadorMatricula"::bigint
     LEFT JOIN reclamacoes_geral rg ON rg.matricula = m."OperadorMatricula"::bigint
+    LEFT JOIN reclamacoes_motorista rmt ON rmt.matricula = m."OperadorMatricula"::bigint
     WHERE rm.matricula IS NOT NULL
     ORDER BY m.nome_completo;
   `;
