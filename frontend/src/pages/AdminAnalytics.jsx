@@ -110,6 +110,8 @@ export default function AdminAnalytics() {
         matricula: m.matricula,
         entregas: Number(m.total_ctes),
         reclamacoes: Number(m.qtd_reclamacoes),
+        resolvidas: Number(m.qtd_reclamacoes_resolvidas || 0),
+        pendentes: Math.max(0, Number(m.qtd_reclamacoes) - Number(m.qtd_reclamacoes_resolvidas || 0)),
         receita: Number(m.receita_total),
         margem: Number(m.margem_bruta),
         pagar: Number(m.total_quinzena),
@@ -198,6 +200,22 @@ export default function AdminAnalytics() {
     </div>
   );
 
+  const renderReclamacoesChart = (data) => (
+    <div style={s.chartCard}>
+      <ResponsiveContainer width="100%" height={Math.max(200, data.length * 32)}>
+        <BarChart data={data} layout="vertical" margin={{ top: 0, right: 20, left: 140, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#2a2f3e" />
+          <XAxis type="number" tick={chartText} axisLine={{ stroke: '#2a2f3e' }} />
+          <YAxis type="category" dataKey="nome" tick={{ ...chartText, textAnchor: 'start', dx: -130 }} axisLine={{ stroke: '#2a2f3e' }} width={140} />
+          <Tooltip contentStyle={{ background: '#1e2230', border: '1px solid #2a2f3e', borderRadius: 4, fontSize: '0.75rem' }} labelStyle={{ color: '#f0c040' }} itemStyle={{ color: '#e8eaf0' }} formatter={(v, n) => [v, n === 'resolvidas' ? 'Resolvidas' : n === 'pendentes' ? 'Pendentes' : n]} />
+          <Legend wrapperStyle={{ fontSize: '0.7rem', color: '#e8eaf0' }} />
+          <Bar dataKey="resolvidas" name="Resolvidas" stackId="a" fill="#3de8a0" />
+          <Bar dataKey="pendentes" name="Pendentes" stackId="a" fill="#ff5a5a" radius={[0, 3, 3, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+
   if (loading && !resumo) {
     return (
       <div style={s.container}>
@@ -281,7 +299,7 @@ export default function AdminAnalytics() {
                 <h3 style={s.sectionTitle}>Reclamações por Motorista</h3>
         {entregasData.length === 0
           ? <div style={{ color: '#6b7280', fontSize: '0.85rem', padding: 20, textAlign: 'center' }}>Nenhum dado</div>
-          : renderBarChart(reclamacoesData, 'reclamacoes', 'Reclamações', '#ff5a5a')}
+          : renderReclamacoesChart(reclamacoesData)}
               </div>
             </div>
 
