@@ -185,16 +185,14 @@ export async function getComparativoMotoristas(inicio, fim) {
     ),
     reclamacoes_motorista AS (
       SELECT
-        e."OperadorMatricula"::bigint AS matricula,
+        r."OperadorMatricula"::bigint AS matricula,
         COUNT(*)::int AS qtd_reclamacoes_total,
         COUNT(*) FILTER (WHERE LOWER(TRIM(r.status_original)) = 'resolvido')::int AS qtd_reclamacoes_resolvidas
       FROM acareacaojad r
-      JOIN relatorioentrega_export e ON e."NCTE" = r."NCTE" AND LOWER(e."Evento") = 'entrega'
       CROSS JOIN quinzena_params qp
       WHERE r.data_criacao BETWEEN qp.inicio AND qp.fim
-        AND r."NCTE" IS NOT NULL
-        AND e."OperadorMatricula" IS NOT NULL
-      GROUP BY e."OperadorMatricula"::bigint
+        AND r."OperadorMatricula" IS NOT NULL
+      GROUP BY r."OperadorMatricula"::bigint
     ),
     bonus_d0 AS (
       SELECT DISTINCT ON (re."NCTE", re."Lista")
