@@ -5,6 +5,7 @@ import {
   getEvolucaoQuinzenal,
   getComparativoMotoristas,
   getEficienciaAllDrivers,
+  getEntregasReclamacoesPorData,
 } from '../services/analyticsService.js';
 
 const router = Router();
@@ -69,6 +70,18 @@ router.get('/analytics/eficiencia', async (req, res) => {
   } catch (err) {
     console.error('Erro ao buscar eficiência:', err);
     res.status(500).json({ error: 'Erro ao buscar eficiência' });
+  }
+});
+
+router.get('/relatorios/entregas-reclamacoes', async (req, res) => {
+  try {
+    const inicio = req.query.inicio || new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+    const fim = req.query.fim || new Date().toISOString().slice(0, 10);
+    const data = await getEntregasReclamacoesPorData(inicio, fim);
+    res.json(data);
+  } catch (err) {
+    console.error('Erro ao buscar entregas x reclamações:', err);
+    res.status(500).json({ error: 'Erro ao buscar entregas x reclamações' });
   }
 });
 

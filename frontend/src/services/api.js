@@ -1,7 +1,11 @@
 import axios from 'axios';
 
+const API_TIMEOUT_MS = Number(import.meta.env.VITE_API_TIMEOUT_MS) || 20_000;
+
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
+  timeout: API_TIMEOUT_MS,
+  timeoutErrorMessage: 'A API não respondeu dentro do prazo',
 });
 
 api.interceptors.request.use((config) => {
@@ -492,6 +496,11 @@ export async function getEvolucaoQuinzenal(n) {
 
 export async function getEficienciaAllDrivers() {
   const { data } = await api.get('/admin/analytics/eficiencia');
+  return data;
+}
+
+export async function getEntregasReclamacoes(inicio, fim) {
+  const { data } = await api.get('/admin/relatorios/entregas-reclamacoes', { params: { inicio, fim } });
   return data;
 }
 

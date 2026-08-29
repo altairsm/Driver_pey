@@ -287,7 +287,39 @@ export async function getEficienciaAllDrivers() {
     JOIN matriculos_jad m ON m."OperadorMatricula"::bigint = re."OperadorMatricula"::bigint
     WHERE re."Data"::date >= (CURRENT_DATE - INTERVAL '30 days')::date
     GROUP BY m."OperadorMatricula", m.nome_completo
-    ORDER BY eficiencia_pct DESC
+      ORDER BY eficiencia_pct DESC
   `);
+  return result.rows;
+}
+
+export async function getEntregasReclamacoesPorData(inicio, fim) {
+  const query = `
+    WITH datas_entrega AS (
+      SELECT DISTINCT "Data" AS data FROM relatorioentrega_export
+      WHERE "Data" IS NOT NULL AND "Data"::date BETWEEN $1 AND $2
+    ),
+    eventos_por_data AS (
+      SELECT "Data" AS data, COUNT(*)::int AS total_eventos
+      FROM relatorioentrega_export
+      WHERE "Data" IS NOT NULL AND "Data"::date BETWEEN $1 AND $2
+      GROUP BY "Data"
+    ),
+    reclamacoes_por_data AS (
+      SELECT data_criacao AS data, COUNT(*)::int AS total_reclamacoes
+      FROM acareacaojad
+      WHERE data_criacao IS NOT NULL AND data_criacao::date BETWEEN $1 AND $2
+      GROUP BY data_criacao
+    )
+    SELECT d.data,
+      COALESCE(e.total_eventos, 0)::int AS total_eventos,
+      COALESCE(r.total_reclamacoes, 0)::int AS total_reclamacoes,
+      (COALESCE(r.total_reclamacoes, 0) > 0) AS tem_reclamacao
+    FROM datas_entrega d
+    LEFT JOIN eventos_por_data e ON e.data = d.data
+    LEFT JOIN reclamacoes_por_data r ON r.data = d.data
+    ORDER BY d.data
+  `;
+
+  const result = await pool.query(query, [inicio, fim]);
   return result.rows;
 }

@@ -70,7 +70,7 @@ export default function AdminAnalytics() {
 
   useEffect(() => {
     if (evolucao.length > 0) return;
-    getEvolucaoQuinzenal(12)
+    getEvolucaoQuinzenal(8)
       .then(setEvolucao)
       .catch(() => {});
   }, []);
@@ -186,7 +186,7 @@ export default function AdminAnalytics() {
           <CartesianGrid strokeDasharray="3 3" stroke="#2a2f3e" />
           <XAxis type="number" tick={chartText} axisLine={{ stroke: '#2a2f3e' }} />
           <YAxis type="category" dataKey="nome" tick={chartText} axisLine={{ stroke: '#2a2f3e' }} width={90} />
-          <Tooltip contentStyle={{ background: '#1e2230', border: '1px solid #2a2f3e', borderRadius: 4, fontSize: '0.75rem' }} labelStyle={{ color: '#f0c040' }} formatter={(v) => [dataKey === 'entregas' ? v : formatMoney(v), label]} />
+          <Tooltip contentStyle={{ background: '#1e2230', border: '1px solid #2a2f3e', borderRadius: 4, fontSize: '0.75rem' }} labelStyle={{ color: '#f0c040' }} itemStyle={{ color: '#e8eaf0' }} formatter={(v) => [dataKey === 'entregas' || dataKey === 'reclamacoes' ? v : formatMoney(v), label]} />
           <Bar dataKey={dataKey} fill={color} radius={[0, 3, 3, 0]} />
         </BarChart>
       </ResponsiveContainer>
@@ -243,6 +243,26 @@ export default function AdminAnalytics() {
                 </div>
               ))}
             </div>
+
+            {/* Evolução Quinzenal */}
+            {evolucaoChartData.length > 0 && (
+              <div style={s.section}>
+                <h3 style={s.sectionTitle}>Evolução Quinzenal (últimas {evolucao.length})</h3>
+                <div style={s.chartCard}>
+                  <ResponsiveContainer width="100%" height={260}>
+                    <LineChart data={evolucaoChartData} margin={{ top: 10, right: 20, left: 20, bottom: 10 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#2a2f3e" />
+                      <XAxis dataKey="quinzena" tick={chartText} axisLine={{ stroke: '#2a2f3e' }} />
+                      <YAxis tick={chartText} axisLine={{ stroke: '#2a2f3e' }} />
+                      <Tooltip contentStyle={{ background: '#1e2230', border: '1px solid #2a2f3e', borderRadius: 4, fontSize: '0.75rem' }} labelStyle={{ color: '#f0c040' }} itemStyle={{ color: '#e8eaf0' }} />
+                      <Legend wrapperStyle={{ fontSize: '0.7rem', color: '#6b7280' }} />
+                      <Line type="monotone" dataKey="ctes" name="CT-es" stroke="#f0c040" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="receita" name="Receita (R$)" stroke="#3de8a0" strokeWidth={2} dot={{ r: 3 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
 
             {/* Gráficos */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 32 }}>
@@ -301,26 +321,6 @@ export default function AdminAnalytics() {
                 </table>
               </div>
             </div>
-
-            {/* Evolução Quinzenal */}
-            {evolucaoChartData.length > 0 && (
-              <div style={s.section}>
-                <h3 style={s.sectionTitle}>Evolução Quinzenal (últimas {evolucao.length})</h3>
-                <div style={s.chartCard}>
-                  <ResponsiveContainer width="100%" height={260}>
-                    <LineChart data={evolucaoChartData} margin={{ top: 10, right: 20, left: 20, bottom: 10 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#2a2f3e" />
-                      <XAxis dataKey="quinzena" tick={chartText} axisLine={{ stroke: '#2a2f3e' }} />
-                      <YAxis tick={chartText} axisLine={{ stroke: '#2a2f3e' }} />
-                      <Tooltip contentStyle={{ background: '#1e2230', border: '1px solid #2a2f3e', borderRadius: 4, fontSize: '0.75rem' }} labelStyle={{ color: '#f0c040' }} />
-                      <Legend wrapperStyle={{ fontSize: '0.7rem', color: '#6b7280' }} />
-                      <Line type="monotone" dataKey="ctes" name="CT-es" stroke="#f0c040" strokeWidth={2} dot={{ r: 3 }} />
-                      <Line type="monotone" dataKey="receita" name="Receita (R$)" stroke="#3de8a0" strokeWidth={2} dot={{ r: 3 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            )}
 
             {/* Comparativo vs Frota */}
             {comparativo?.media_frota && (

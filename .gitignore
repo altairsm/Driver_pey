@@ -6,3 +6,5 @@ backend/uploads/*
 *.log
 backend/firebase-service-account.json
 fix_firebase.js
+
+docker-compose.override.yml

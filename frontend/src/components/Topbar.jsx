@@ -47,6 +47,7 @@ const GRUPOS = [
       { label: 'Dashboard', path: '/admin/analytics' },
       { label: 'Por Bairro', path: '/admin/analytics/bairros' },
       { label: 'Mapa de Bairros', path: '/admin/mapa' },
+      { label: 'Entregas x Reclamações', path: '/admin/relatorios/entregas' },
     ],
   },
   {

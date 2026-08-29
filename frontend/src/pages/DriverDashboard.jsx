@@ -103,6 +103,7 @@ export default function DriverDashboard() {
   const [taxas, setTaxas] = useState([]);
   const [activeTab, setActiveTab] = useState('reclamacoes');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   const qzAtual = quinzenas[qzIdx] || null;
 
@@ -134,12 +135,18 @@ export default function DriverDashboard() {
       }
       setFaixas(agrupado);
     } catch (err) {
-      setError('Erro ao carregar dados da quinzena');
+      const timedOut = err?.code === 'ECONNABORTED' || err?.code === 'ETIMEDOUT';
+      setError(timedOut
+        ? 'O servidor demorou para responder. Verifique a conexão e tente novamente.'
+        : 'Erro ao carregar dados da quinzena');
     }
   }, []);
 
   useEffect(() => {
     const init = async () => {
+      setLoading(true);
+      setError('');
+
       try {
         const me = await getDriverMe();
         setDriver(me);
@@ -162,13 +169,16 @@ export default function DriverDashboard() {
           await fetchQuinzenaData(q.inicio.slice(0, 10), q.fim.slice(0, 10));
         }
       } catch (e) {
-        setError('Erro ao carregar dados');
+        const timedOut = e?.code === 'ECONNABORTED' || e?.code === 'ETIMEDOUT';
+        setError(timedOut
+          ? 'O servidor demorou para responder. Verifique a conexão e tente novamente.'
+          : 'Erro ao carregar dados');
       } finally {
         setLoading(false);
       }
     };
     init();
-  }, [fetchQuinzenaData]);
+  }, [fetchQuinzenaData, retryCount, navigate]);
 
   useEffect(() => {
     const cepsUnicos = [...new Set(reclamacoes.map(r => r.cep).filter(Boolean))];
@@ -337,7 +347,14 @@ export default function DriverDashboard() {
       {menuOpen && <div style={s.overlay} onClick={() => setMenuOpen(false)} />}
 
       <div style={s.content}>
-        {error && <div style={s.error}>{error}</div>}
+        {error && (
+          <div style={s.error} role="alert">
+            <span>{error}</span>
+            <button type="button" style={s.retryButton} onClick={() => setRetryCount(count => count + 1)}>
+              Tentar novamente
+            </button>
+          </div>
+        )}
 
         {/* ── HERO / QUINZENA ── */}
         <div style={s.hero}>
@@ -925,7 +942,8 @@ const s = {
 
   // ── Content ──
   content: { maxWidth: 600, margin: '0 auto', paddingBottom: 80 },
-  error: { background: '#2a1a1a', border: '1px solid #ff5a5a', color: '#ff5a5a', padding: '12px 16px', margin: '12px 16px', fontSize: '0.85rem', borderRadius: 4 },
+  error: { background: '#2a1a1a', border: '1px solid #ff5a5a', color: '#ff5a5a', padding: '12px 16px', margin: '12px 16px', fontSize: '0.85rem', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' },
+  retryButton: { background: 'transparent', border: '1px solid #ff5a5a', color: '#ff5a5a', borderRadius: 4, padding: '6px 10px', cursor: 'pointer', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.7rem', whiteSpace: 'nowrap' },
 
   // ── Hero ──
   hero: { padding: '24px 16px 0' },
