@@ -322,7 +322,7 @@ export async function getEntregasReclamacoesPorData(inicio, fim) {
       SELECT data_criacao AS data, COUNT(*)::int AS total_reclamacoes
       FROM acareacaojad
       WHERE data_criacao IS NOT NULL AND data_criacao::date BETWEEN $1 AND $2
-        AND LOWER(assunto) IN ('acareacao', 'contestacao de acareacao', 'comprovante de entrega')
+        AND LOWER(assunto) IN ('acareação', 'comprovante de entrega', 'contestação de acareação')
       GROUP BY data_criacao
     )
     SELECT d.data,
