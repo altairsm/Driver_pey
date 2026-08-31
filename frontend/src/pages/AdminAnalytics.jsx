@@ -190,10 +190,10 @@ export default function AdminAnalytics() {
   const renderBarChart = (data, dataKey, label, color) => (
     <div style={s.chartCard}>
       <ResponsiveContainer width="100%" height={Math.max(200, data.length * 32)}>
-        <BarChart data={data} layout="vertical" margin={{ top: 0, right: 20, left: 140, bottom: 0 }}>
+        <BarChart data={data} layout="vertical" margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#2a2f3e" />
           <XAxis type="number" tick={chartText} axisLine={{ stroke: '#2a2f3e' }} />
-          <YAxis type="category" dataKey="nome" tick={{ ...chartText, textAnchor: 'start', dx: -130 }} axisLine={{ stroke: '#2a2f3e' }} width={140} />
+          <YAxis type="category" dataKey="nome" tick={{ ...chartText, textAnchor: 'end' }} axisLine={{ stroke: '#2a2f3e' }} width={130} />
           <Tooltip contentStyle={{ background: '#1e2230', border: '1px solid #2a2f3e', borderRadius: 4, fontSize: '0.75rem' }} labelStyle={{ color: '#f0c040' }} itemStyle={{ color: '#e8eaf0' }} formatter={(v) => [dataKey === 'entregas' || dataKey === 'reclamacoes' ? v : formatMoney(v), label]} />
           <Bar dataKey={dataKey} fill={color} radius={[0, 3, 3, 0]} />
         </BarChart>
@@ -204,10 +204,10 @@ export default function AdminAnalytics() {
   const renderReclamacoesChart = (data) => (
     <div style={s.chartCard}>
       <ResponsiveContainer width="100%" height={Math.max(200, data.length * 32)}>
-        <BarChart data={data} layout="vertical" margin={{ top: 0, right: 20, left: 140, bottom: 0 }}>
+        <BarChart data={data} layout="vertical" margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#2a2f3e" />
           <XAxis type="number" tick={chartText} axisLine={{ stroke: '#2a2f3e' }} />
-          <YAxis type="category" dataKey="nome" tick={{ ...chartText, textAnchor: 'start', dx: -130 }} axisLine={{ stroke: '#2a2f3e' }} width={140} />
+          <YAxis type="category" dataKey="nome" tick={{ ...chartText, textAnchor: 'end' }} axisLine={{ stroke: '#2a2f3e' }} width={130} />
           <Tooltip contentStyle={{ background: '#1e2230', border: '1px solid #2a2f3e', borderRadius: 4, fontSize: '0.75rem' }} labelStyle={{ color: '#f0c040' }} itemStyle={{ color: '#e8eaf0' }} formatter={(v, n) => [v, n === 'resolvidas' ? 'Resolvidas' : n === 'pendentes' ? 'Pendentes' : n]} />
           <Legend wrapperStyle={{ fontSize: '0.7rem', color: '#e8eaf0' }} />
           <Bar dataKey="resolvidas" name="Resolvidas" stackId="a" fill="#3de8a0" />
