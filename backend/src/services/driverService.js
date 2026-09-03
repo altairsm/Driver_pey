@@ -476,6 +476,13 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
 
     let pixEstado = null;
     if (temAutoAprovado) {
+      const { rows: listaPagoAuto } = await pool.query(`
+        SELECT pago FROM lista_entregas WHERE "Número" = $1
+      `, [listaNumero]);
+      if (listaPagoAuto[0]?.pago) {
+        return { success: false, motivo: 'Esta lista já foi paga' };
+      }
+
       const valorLiquido = valorSolicitado * (1 - taxaAplicada / 100);
       const webhookResult = await enviarWebhookAdiantamento({
         matricula,

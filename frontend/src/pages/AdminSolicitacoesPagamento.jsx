@@ -169,7 +169,7 @@ export default function AdminSolicitacoesPagamento() {
                     </td>
                     <td style={s.td}>{formatDt(solic.criado_em)}</td>
                     <td style={s.td}>
-                      {solic.status === 'pendente' || solic.status === 'pre_aprovado' ? (
+                      {solic.status === 'pendente' ? (
                         <div style={{ display: 'flex', gap: 6 }}>
                           <button style={s.btnAprovar} onClick={() => handleAprovar(solic.id)}>
                             Aprovar
@@ -188,7 +188,9 @@ export default function AdminSolicitacoesPagamento() {
                         </button>
                       ) : (
                         <span style={{ color: '#6b7280', fontSize: '0.75rem' }}>
-                          {solic.aprovado_em ? `Aprovado: ${formatDt(solic.aprovado_em)}` : solic.recusado_em ? `Recusado: ${formatDt(solic.recusado_em)}` : '—'}
+                          {solic.status === 'pre_aprovado'
+                            ? `Pagamento automático${solic.pix_estado ? ` (${solic.pix_estado})` : ''}`
+                            : solic.aprovado_em ? `Aprovado: ${formatDt(solic.aprovado_em)}` : solic.recusado_em ? `Recusado: ${formatDt(solic.recusado_em)}` : '—'}
                         </span>
                       )}
                     </td>

@@ -52,11 +52,19 @@ export async function aprovarSolicitacao(id) {
   if (sol.length === 0) return { success: false, motivo: 'Solicitação não encontrada' };
   if (sol[0].status === 'aprovado') return { success: false, motivo: 'Solicitação já foi aprovada' };
   if (sol[0].status === 'recusado') return { success: false, motivo: 'Solicitação já foi recusada' };
+  if (sol[0].status === 'pre_aprovado') return { success: false, motivo: 'Solicitação pré-aprovada já foi paga automaticamente' };
 
   const { rows: motorista } = await pool.query(`
     SELECT nome_completo FROM matriculos_jad WHERE "OperadorMatricula" = $1
   `, [sol[0].matricula]);
   const valorLiquido = Number(sol[0].valor_solicitado) * (1 - (Number(sol[0].taxa_aplicada) || 0) / 100);
+
+  const { rows: listaPago } = await pool.query(`
+    SELECT pago FROM lista_entregas WHERE "Número" = $1
+  `, [sol[0].lista_numero]);
+  if (listaPago[0]?.pago) {
+    return { success: false, motivo: 'Esta lista já foi paga' };
+  }
 
   const webhookResult = await enviarWebhookAdiantamento({
     matricula: sol[0].matricula,
@@ -149,6 +157,13 @@ export async function reverificarSolicitacao(id) {
     SELECT nome_completo FROM matriculos_jad WHERE "OperadorMatricula" = $1
   `, [sol[0].matricula]);
   const valorLiquido = Number(sol[0].valor_solicitado) * (1 - (Number(sol[0].taxa_aplicada) || 0) / 100);
+
+  const { rows: listaPagoRev } = await pool.query(`
+    SELECT pago FROM lista_entregas WHERE "Número" = $1
+  `, [sol[0].lista_numero]);
+  if (listaPagoRev[0]?.pago) {
+    return { success: false, motivo: 'Esta lista já foi paga' };
+  }
 
   const webhookResult = await enviarWebhookAdiantamento({
     matricula: sol[0].matricula,
