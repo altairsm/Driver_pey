@@ -19,7 +19,7 @@ if (commit === 'DEV') {
 let version = process.env.VERSION || '';
 if (!version) {
   try {
-    version = execSync('git describe --tags --abbrev=0 2>/dev/null || true', { encoding: 'utf8', cwd: join(__dirname, '..', '..') }).trim();
+    version = execSync('git describe --tags --abbrev=0', { encoding: 'utf8', cwd: join(__dirname, '..', '..') }).trim();
   } catch {
     version = '';
   }
