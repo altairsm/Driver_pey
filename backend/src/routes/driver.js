@@ -153,8 +153,8 @@ router.get('/dados', async (req, res) => {
 
 router.put('/dados', async (req, res) => {
   try {
-    const { cnpj_mei, telefone, pix_tipo } = req.body;
-    const result = await atualizarDriverDados(req.user.matricula, { cnpj_mei, telefone, pix_tipo });
+    const { cnpj_mei, telefone, pix_tipo, pix_chave } = req.body;
+    const result = await atualizarDriverDados(req.user.matricula, { cnpj_mei, telefone, pix_tipo, pix_chave });
     res.json(result);
   } catch (err) {
     console.error(err);

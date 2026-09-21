@@ -101,9 +101,8 @@ export async function calcularPagamentos(inicio, fim) {
         eb.nome_entrega,
         COUNT(CASE WHEN COALESCE(eb.pago_raw, false) = false AND cb."NCTE" IS NULL THEN 1 END) AS total_ctes,
         COUNT(DISTINCT CASE WHEN COALESCE(eb.pago_raw, false) = false AND cb."NCTE" IS NULL THEN eb.lista END) AS total_listas,
-        SUM(CASE WHEN COALESCE(eb.pago_raw, false) = false AND cb."NCTE" IS NULL THEN eb.peso_cte ELSE 0 END) AS peso_total,
-        SUM(CASE WHEN COALESCE(eb.pago_raw, false) = false AND cb."NCTE" IS NULL THEN eb.valor_peso ELSE 0 END) AS total_quinzena,
-        SUM(CASE WHEN COALESCE(eb.pago_raw, false) = false THEN eb.valor_faturamento ELSE 0 END) AS total_faturamento,
+        SUM(CASE WHEN cb."NCTE" IS NULL THEN eb.valor_peso ELSE 0 END) AS total_quinzena,
+        SUM(eb.valor_faturamento) AS total_faturamento,
         COALESCE(SUM(CASE WHEN cb."NCTE" IS NULL THEN bd.bonus ELSE 0 END), 0)::numeric(10,2) AS total_bonus_d0,
         BOOL_AND(COALESCE(eb.pago_raw, false)) AS pago
       FROM entregas_base eb
@@ -130,7 +129,6 @@ export async function calcularPagamentos(inicio, fim) {
       m.pgto,
       COALESCE(rm.total_ctes, 0)   AS total_ctes,
       COALESCE(rm.total_listas, 0) AS total_listas,
-      COALESCE(rm.peso_total, 0)   AS peso_total,
       COALESCE(rm.total_quinzena - COALESCE(mu.total_multa, 0), 0)::numeric(10,2) AS total_quinzena,
       COALESCE(rm.total_bonus_d0, 0)::numeric(10,2) AS total_bonus_d0,
       COALESCE(rm.total_faturamento, 0)::numeric(10,2) AS receita_total,
@@ -391,6 +389,8 @@ export async function listarMotoristas() {
       cpf,
       telefone,
       pgto,
+      pix_tipo,
+      pix_chave,
       auto_aprovado,
       bonus_d0_motorista,
       bonus_d0_valor
@@ -485,21 +485,21 @@ export async function getListasPendentes(matricula, inicio, fim) {
 }
 
 export async function criarMotorista(dados) {
-  const { matricula, nome_completo, cpf, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor } = dados;
+  const { matricula, nome_completo, cpf, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor, pix_tipo, pix_chave } = dados;
   await pool.query(`
-    INSERT INTO matriculos_jad ("OperadorMatricula", nome_completo, cpf, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-  `, [matricula, nome_completo, cpf, telefone || null, pgto || null, auto_aprovado === true, bonus_d0_motorista === true, bonus_d0_valor || 0]);
+    INSERT INTO matriculos_jad ("OperadorMatricula", nome_completo, cpf, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor, pix_tipo, pix_chave)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+  `, [matricula, nome_completo, cpf, telefone || null, pgto || null, auto_aprovado === true, bonus_d0_motorista === true, bonus_d0_valor || 0, pix_tipo || null, pix_chave || null]);
   return { matricula, nome_completo, cpf, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor };
 }
 
 export async function atualizarMotorista(matricula, dados) {
-  const { nome_completo, cpf, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor } = dados;
+  const { nome_completo, cpf, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor, pix_tipo, pix_chave } = dados;
   const result = await pool.query(`
     UPDATE matriculos_jad
-    SET nome_completo = $1, cpf = $2, telefone = $3, pgto = $4, auto_aprovado = $5, bonus_d0_motorista = $6, bonus_d0_valor = $7
-    WHERE "OperadorMatricula" = $8
-  `, [nome_completo, cpf, telefone || null, pgto || null, auto_aprovado === true, bonus_d0_motorista === true, bonus_d0_valor || 0, matricula]);
+    SET nome_completo = $1, cpf = $2, telefone = $3, pgto = $4, auto_aprovado = $5, bonus_d0_motorista = $6, bonus_d0_valor = $7, pix_tipo = $8, pix_chave = $9
+    WHERE "OperadorMatricula" = $10
+  `, [nome_completo, cpf, telefone || null, pgto || null, auto_aprovado === true, bonus_d0_motorista === true, bonus_d0_valor || 0, pix_tipo || null, pix_chave || null, matricula]);
   return result.rowCount > 0;
 }
 

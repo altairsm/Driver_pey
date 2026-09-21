@@ -25,6 +25,7 @@ export default function MeusDados() {
   const [cnpj, setCnpj] = useState('');
   const [telefone, setTelefone] = useState('');
   const [pixTipo, setPixTipo] = useState('CPF');
+  const [pixChave, setPixChave] = useState('');
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [msg, setMsg] = useState('');
@@ -37,6 +38,7 @@ export default function MeusDados() {
         setTelefone(d.telefone || '');
         setCnpj(d.cnpj_mei || '');
         setPixTipo(d.pix_tipo || 'CPF');
+        setPixChave(d.pix_chave || '');
       } catch {
         setMsg('Erro ao carregar dados');
       }
@@ -54,12 +56,14 @@ export default function MeusDados() {
         cnpj_mei: cnpjClean || null,
         telefone: telefone || null,
         pix_tipo: pixTipo,
+        pix_chave: pixChave || null,
       });
       const updated = await getDriverDados();
       setDados(updated);
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       user.cnpj_mei = updated.cnpj_mei;
       user.pix_tipo = updated.pix_tipo;
+      user.pix_chave = updated.pix_chave;
       user.telefone = updated.telefone;
       localStorage.setItem('user', JSON.stringify(user));
       setMsg('Dados salvos com sucesso!');
@@ -146,7 +150,18 @@ export default function MeusDados() {
             <select style={s.select} value={pixTipo} onChange={e => setPixTipo(e.target.value)}>
               <option value="CPF">CPF</option>
               <option value="CNPJ">CNPJ</option>
+              <option value="E-MAIL">E-MAIL</option>
+              <option value="TELEFONE">TELEFONE</option>
             </select>
+          </div>
+          <div style={s.field}>
+            <label style={s.label}>Chave PIX</label>
+            <input
+              style={s.input}
+              value={pixChave}
+              onChange={e => setPixChave(e.target.value)}
+              placeholder="Chave PIX para recebimento"
+            />
           </div>
 
           {msg && <div style={msg.includes('sucesso') ? s.msg : s.msgErro}>{msg}</div>}

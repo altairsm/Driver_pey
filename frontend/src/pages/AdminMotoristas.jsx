@@ -8,7 +8,7 @@ export default function AdminMotoristas() {
   const [error, setError] = useState('');
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState(null);
-  const [form, setForm] = useState({ matricula: '', nome_completo: '', cpf: '', telefone: '', auto_aprovado: false, bonus_d0_motorista: false, bonus_d0_valor: 0 });
+  const [form, setForm] = useState({ matricula: '', nome_completo: '', cpf: '', telefone: '', auto_aprovado: false, bonus_d0_motorista: false, bonus_d0_valor: 0, pix_tipo: 'CPF', pix_chave: '' });
   const [salvando, setSalvando] = useState(false);
 
   const carregar = async () => {
@@ -22,7 +22,7 @@ export default function AdminMotoristas() {
 
   const abrirNovo = () => {
     setEditando(null);
-    setForm({ matricula: '', nome_completo: '', cpf: '', telefone: '', auto_aprovado: false, bonus_d0_motorista: false, bonus_d0_valor: 0 });
+    setForm({ matricula: '', nome_completo: '', cpf: '', telefone: '', auto_aprovado: false, bonus_d0_motorista: false, bonus_d0_valor: 0, pix_tipo: 'CPF', pix_chave: '' });
     setError('');
     setModalAberto(true);
   };
@@ -37,6 +37,8 @@ export default function AdminMotoristas() {
       auto_aprovado: m.auto_aprovado === true,
       bonus_d0_motorista: m.bonus_d0_motorista === true,
       bonus_d0_valor: m.bonus_d0_valor || 0,
+      pix_tipo: m.pix_tipo || 'CPF',
+      pix_chave: m.pix_chave || '',
     });
     setError('');
     setModalAberto(true);
@@ -185,6 +187,20 @@ export default function AdminMotoristas() {
                   <label style={s.label}>Telefone</label>
                   <input style={s.input} name="telefone" value={form.telefone}
                     onChange={(e) => setForm({...form, telefone: e.target.value.replace(/\D/g, '')})} />
+                </div>
+                <div style={s.field}>
+                  <label style={s.label}>Tipo de Chave PIX</label>
+                  <select style={s.select} name="pix_tipo" value={form.pix_tipo} onChange={handleChange}>
+                    <option value="CPF">CPF</option>
+                    <option value="CNPJ">CNPJ</option>
+                    <option value="E-MAIL">E-MAIL</option>
+                    <option value="TELEFONE">TELEFONE</option>
+                  </select>
+                </div>
+                <div style={s.field}>
+                  <label style={s.label}>Chave PIX</label>
+                  <input style={s.input} name="pix_chave" value={form.pix_chave}
+                    onChange={handleChange} placeholder="Chave PIX para recebimento" />
                 </div>
                 <div style={s.field}>
                   <label style={{ ...s.label, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>

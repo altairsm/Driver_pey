@@ -4,7 +4,7 @@ import { getConfig } from './configuracaoService.js';
 export async function getDriverData(matricula) {
   const result = await pool.query(`
     SELECT "OperadorMatricula"::bigint AS matricula, nome_completo, cpf, telefone,
-           leu_regras, cnpj_mei, pix_tipo
+           leu_regras, cnpj_mei, pix_tipo, pix_chave
     FROM matriculos_jad
     WHERE "OperadorMatricula"::bigint = $1
   `, [matricula]);
@@ -531,12 +531,12 @@ export async function getDriverDados(matricula) {
 }
 
 export async function atualizarDriverDados(matricula, dados) {
-  const { cnpj_mei, telefone, pix_tipo } = dados;
+  const { cnpj_mei, telefone, pix_tipo, pix_chave } = dados;
   await pool.query(`
     UPDATE matriculos_jad
-    SET cnpj_mei = $1, telefone = $2, pix_tipo = $3
-    WHERE "OperadorMatricula"::bigint = $4
-  `, [cnpj_mei || null, telefone || null, pix_tipo, matricula]);
+    SET cnpj_mei = $1, telefone = $2, pix_tipo = $3, pix_chave = $4
+    WHERE "OperadorMatricula"::bigint = $5
+  `, [cnpj_mei || null, telefone || null, pix_tipo, pix_chave || null, matricula]);
   return { success: true };
 }
 

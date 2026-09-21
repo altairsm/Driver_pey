@@ -681,6 +681,7 @@ export async function runMigrations() {
     }
     await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS cnpj_mei VARCHAR(18)');
     await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS pix_tipo VARCHAR(3) DEFAULT \'CPF\'');
+    await pool.query('ALTER TABLE matriculos_jad ALTER COLUMN pix_tipo TYPE VARCHAR(20)');
     await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS auto_aprovado BOOLEAN DEFAULT false');
     await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS bonus_d0_motorista BOOLEAN DEFAULT false');
     await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS bonus_d0_valor NUMERIC(10,2) DEFAULT 0');
