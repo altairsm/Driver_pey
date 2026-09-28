@@ -360,6 +360,7 @@ export default function AdminPagamentos() {
                                     <th style={styles.innerTh}>CT-es</th>
                                     <th style={styles.innerTh}>Rota</th>
                                     <th style={styles.innerTh}>Valor Total</th>
+                                    <th style={styles.innerTh}>Pago</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -379,6 +380,17 @@ export default function AdminPagamentos() {
                                       </td>
                                       <td style={{ ...styles.innerTd, color: '#3de8a0', fontWeight: 600 }}>
                                         {formatBRL(l.valor_total)}
+                                      </td>
+                                      <td style={styles.innerTd}>
+                                        <span
+                                          style={{
+                                            ...styles.pagoTag,
+                                            background: l.pago ? 'rgba(61,232,160,.15)' : 'rgba(107,114,128,.15)',
+                                            color: l.pago ? '#3de8a0' : '#6b7280',
+                                          }}
+                                        >
+                                          {l.pago ? 'Pago' : 'Pendente'}
+                                        </span>
                                       </td>
                                     </tr>
                                   ))}
@@ -592,6 +604,13 @@ const styles = {
     borderBottom: '1px solid #1e2230',
   },
   rotaTag: {
+    display: 'inline-block',
+    padding: '1px 6px',
+    fontSize: '0.6rem',
+    borderRadius: 3,
+    fontWeight: 500,
+  },
+  pagoTag: {
     display: 'inline-block',
     padding: '1px 6px',
     fontSize: '0.6rem',
