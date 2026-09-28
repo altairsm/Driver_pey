@@ -28,7 +28,7 @@ export async function listarSolicitacoes(status = null) {
       sp.ultimo_webhook_em,
       sp.pix_enviado_em
     FROM solicitacoes_pagamento sp
-    JOIN matriculas_jad m ON m."OperadorMatricula"::bigint = sp.matricula
+    JOIN matriculos_jad m ON m."OperadorMatricula"::bigint = sp.matricula
     ${where}
     ORDER BY sp.criado_em DESC
   `, params);
@@ -121,7 +121,7 @@ async function executarEnvio(id, { preAprovado, aprovadoPor }) {
   }
 
   const { rows: motorista } = await pool.query(`
-    SELECT nome_completo FROM matriculas_jad WHERE "OperadorMatricula" = $1
+    SELECT nome_completo FROM matriculos_jad WHERE "OperadorMatricula" = $1
   `, [s.matricula]);
 
   if (await listaJaPaga(s.lista_numero)) {

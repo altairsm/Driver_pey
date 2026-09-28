@@ -41,7 +41,7 @@ router.post('/pagamentos-reverificar/:id', async (req, res) => {
     const { rows: pg } = await pool.query(`
       SELECT pq.*, m.nome_completo
       FROM pagamentos_quinzena pq
-      JOIN matriculas_jad m ON m."OperadorMatricula"::bigint = pq.matricula
+      JOIN matriculos_jad m ON m."OperadorMatricula"::bigint = pq.matricula
       WHERE pq.id = $1
     `, [req.params.id]);
     if (pg.length === 0) return res.status(404).json({ error: 'Pagamento não encontrado' });
