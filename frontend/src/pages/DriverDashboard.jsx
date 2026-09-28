@@ -262,6 +262,7 @@ export default function DriverDashboard() {
   const handleSolicitarPagamento = async (lista, valor) => {
     setSolicitando((prev) => ({ ...prev, [lista]: true }));
     setMsgSolicitacao('');
+    let duracaoMsg = 5000;
     try {
       const result = await solicitarPagamento(lista, valor);
       if (result.success) {
@@ -269,14 +270,16 @@ export default function DriverDashboard() {
           ? `✅ Lista #${lista}: Solicitada com sucesso — adiantamento integral, sem taxa!`
           : `✅ Lista #${lista}: ${result.motivo}`);
       } else {
+        duracaoMsg = 9000;
         setMsgSolicitacao(`❌ Lista #${lista}: ${result.motivo}`);
       }
     } catch (err) {
+      duracaoMsg = 9000;
       setMsgSolicitacao(`❌ Lista #${lista}: ${err.response?.data?.error || err.message}`);
     } finally {
       setSolicitando((prev) => ({ ...prev, [lista]: false }));
     }
-    setTimeout(() => setMsgSolicitacao(''), 5000);
+    setTimeout(() => setMsgSolicitacao(''), duracaoMsg);
   };
 
   const soEntregasQ = eficiencia.filter(e => e.evento === 'entrega');
@@ -787,7 +790,13 @@ export default function DriverDashboard() {
                     if (emSuspensao) motivos.push('Quinzena em processamento');
                     if (t.status !== 'Finalizado') motivos.push('Lista não finalizada');
                     if (t.pago) motivos.push('Já paga');
-                    if (temSolicitacao) motivos.push(solicitacaoStatus === 'pendente' ? 'Adiantamento pendente' : 'Adiantamento aprovado');
+                    if (temSolicitacao) {
+                      if (solicitacaoStatus === 'pendente') motivos.push('Adiantamento pendente');
+                      else if (solicitacaoStatus === 'erro_webhook') motivos.push('Adiantamento em aberto — falha no envio do Pix');
+                      else if (solicitacaoStatus === 'processando_pix' || solicitacaoStatus === 'pre_aprovado') motivos.push('Adiantamento em processamento');
+                      else if (solicitacaoStatus === 'pix_rejeitado') motivos.push('Adiantamento rejeitado pelo Pix');
+                      else motivos.push('Adiantamento aprovado');
+                    }
                     if (reclamacoesDesatualizadas) motivos.push('Reclamações em análise');
 
                     return (
@@ -802,10 +811,15 @@ export default function DriverDashboard() {
                             <span style={s.badgeStatus(statusColor)}>{status}</span>
                             {solicitacaoStatus && (
                               <span style={{
-                                ...s.badgeStatus(solicitacaoStatus === 'aprovado' ? '#3de8a0' : '#ff9f40'),
+                                ...s.badgeStatus(
+                                  solicitacaoStatus === 'aprovado' ? '#3de8a0'
+                                  : solicitacaoStatus === 'erro_webhook' ? '#f97316'
+                                  : solicitacaoStatus === 'recusado' || solicitacaoStatus === 'pix_rejeitado' ? '#ff5a5a'
+                                  : '#ff9f40'
+                                ),
                                 fontSize: '0.5rem'
                               }}>
-                                ADIANT. {solicitacaoStatus.toUpperCase()}
+                                ADIANT. {solicitacaoStatus === 'erro_webhook' ? 'EM ABERTO' : solicitacaoStatus.toUpperCase()}
                               </span>
                             )}
                           </div>

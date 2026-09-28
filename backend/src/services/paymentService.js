@@ -1,4 +1,5 @@
 import { pool } from '../db/index.js';
+import { enviarWebhookDriverPix, decidirStatus, chaveEstavel } from './webhookService.js';
 
 export async function calcularPagamentos(inicio, fim) {
   const query = `
@@ -154,6 +155,44 @@ export async function calcularPagamentos(inicio, fim) {
 export async function confirmarPagamento(matricula, periodo, pagamento) {
   const { inicio, fim } = periodo;
 
+  const { rows: [pagamentoExistente] } = await pool.query(`
+    SELECT id, status, pix_estado, pix_enviado_em
+    FROM pagamentos_quinzena
+    WHERE matricula = $1 AND quinzena_inicio = $2::date AND quinzena_fim = $3::date
+  `, [matricula, inicio, fim]);
+
+  if (pagamentoExistente) {
+    if (pagamentoExistente.status === 'confirmado') {
+      return {
+        success: false,
+        status: 'confirmado',
+        motivo: 'Este pagamento já foi confirmado via Pix',
+        pix_estado: pagamentoExistente.pix_estado,
+        total_pagar: 0,
+      };
+    }
+    if (pagamentoExistente.pix_enviado_em && pagamentoExistente.status !== 'erro_webhook') {
+      return {
+        success: false,
+        status: pagamentoExistente.status,
+        motivo: pagamentoExistente.status === 'processando'
+          ? 'Pix já enviado e em processamento — use "Reverificar" para consultar o resultado'
+          : 'Pix já enviado para esta quinzena — use "Reverificar" para consultar o resultado',
+        pix_estado: pagamentoExistente.pix_estado,
+        total_pagar: 0,
+      };
+    }
+  }
+
+  await pool.query(`
+    INSERT INTO pagamentos_quinzena (matricula, quinzena_inicio, quinzena_fim, total_pagar, pix_enviado_em)
+    VALUES ($1, $2::date, $3::date, 0, CURRENT_TIMESTAMP)
+    ON CONFLICT (matricula, quinzena_inicio, quinzena_fim) DO UPDATE
+      SET pix_enviado_em = CURRENT_TIMESTAMP,
+          webhook_tentativas = COALESCE(pagamentos_quinzena.webhook_tentativas, 0) + 1,
+          ultimo_webhook_em = CURRENT_TIMESTAMP
+  `, [matricula, inicio, fim]);
+
   const { rows: [driver] } = await pool.query(
     `SELECT nome_completo FROM matriculos_jad WHERE "OperadorMatricula" = $1`,
     [matricula]
@@ -297,41 +336,40 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
     data_pagamento: new Date().toISOString().slice(0, 10),
   };
 
-  let webhookResult = { ok: false, status: 0, data: null };
-  try {
-    const res = await fetch('https://webhook.sactudo.com.br/webhook/Driver_Pix', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const text = await res.text();
-    let data = null;
-    try { data = JSON.parse(text); } catch {}
-    webhookResult = { ok: res.ok, status: res.status, data };
-  } catch (err) {
-    console.error('Webhook error:', err.message);
-  }
+  const webhook = await enviarWebhookDriverPix({
+    tipo: 'pagamento',
+    entidade: 'pagamento',
+    idempotency_key: chaveEstavel('pagamento', 'quinzenal', `${matricula}-${inicio}-${fim}`),
+    payload,
+  });
 
-  const webhookData = Array.isArray(webhookResult.data) ? webhookResult.data[0] : webhookResult.data;
-  const pixEstado = webhookData?.estado || null;
-  const pixEndToEndId = webhookData?.endToEndId || null;
-  const pixHorario = webhookData?.horario || null;
-  const pixOrigem = webhookData?.origem || null;
-  const pixDestino = webhookData?.destino || null;
+  const pixEstado = webhook.estado;
+  const pixEndToEndId = webhook.data?.endToEndId || null;
+  const pixHorario = webhook.data?.horario || null;
+  const pixOrigem = webhook.data?.origem || null;
+  const pixDestino = webhook.data?.destino || null;
+  const decisao = decidirStatus({ ok: webhook.ok, estado: pixEstado });
+  const statusQuinzena = decisao.status === 'aprovado' ? 'confirmado'
+                      : decisao.status === 'processando_pix' ? 'processando'
+                      : decisao.status === 'erro_webhook' ? 'erro_webhook'
+                      : 'rejeitado';
 
   await pool.query(`
     INSERT INTO pagamentos_quinzena
       (matricula, quinzena_inicio, quinzena_fim, total_entregas,
        total_quinzena, total_bonus_d0, total_multa, total_adiantado,
        total_cobrancas, total_pagar, pix_end_to_end_id, pix_estado,
-       pix_horario, pix_origem, pix_destino, status, confirmado_em)
+       pix_horario, pix_origem, pix_destino, status, confirmado_em,
+       webhook_http_status, webhook_erro)
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,($12)::varchar(30),$13,$14,$15,$16,
-            CASE WHEN ($12)::varchar(30) = 'FINALIZADO' THEN CURRENT_TIMESTAMP ELSE NULL END)
+            CASE WHEN ($12)::varchar(30) = 'FINALIZADO' THEN CURRENT_TIMESTAMP ELSE NULL END,
+            $17, $18)
     ON CONFLICT (matricula, quinzena_inicio, quinzena_fim) DO UPDATE SET
       total_entregas = $4, total_quinzena = $5, total_bonus_d0 = $6,
       total_multa = $7, total_adiantado = $8, total_cobrancas = $9,
       total_pagar = $10, pix_end_to_end_id = $11, pix_estado = ($12)::varchar(30),
       pix_horario = $13, pix_origem = $14, pix_destino = $15, status = $16,
+      webhook_http_status = $17, webhook_erro = $18,
       confirmado_em = CASE WHEN ($12)::varchar(30) = 'FINALIZADO' THEN CURRENT_TIMESTAMP ELSE pagamentos_quinzena.confirmado_em END
   `, [matricula, inicio, fim, entregas?.total_entregas || 0,
       total_quinzena, total_bonus_d0, total_multa, total_adiantado,
@@ -339,7 +377,9 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
       pixEndToEndId, pixEstado, pixHorario,
       pixOrigem || null,
       pixDestino || null,
-      pixEstado === 'FINALIZADO' ? 'confirmado' : pixEstado === 'EM_PROCESSAMENTO' ? 'processando' : 'rejeitado']);
+      statusQuinzena,
+      webhook.httpStatus ?? null,
+      webhook.erro ?? null]);
 
   if (pixEstado === 'FINALIZADO') {
     for (const cob of cobrancasAtivas) {
@@ -374,8 +414,13 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
   }
 
   return {
-    success: pixEstado === 'FINALIZADO' || pixEstado === 'EM_PROCESSAMENTO',
+    success: decisao.sucesso,
+    status: statusQuinzena,
+    motivo: decisao.mensagem,
     pix_estado: pixEstado,
+    pix_end_to_end_id: pixEndToEndId,
+    webhook_erro: webhook.erro ?? null,
+    webhook_http_status: webhook.httpStatus ?? null,
     total_pagar: total_pagar < 0 ? 0 : total_pagar,
   };
 }

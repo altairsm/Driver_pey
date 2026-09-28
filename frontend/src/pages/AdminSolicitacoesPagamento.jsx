@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getSolicitacoes, aprovarSolicitacao, recusarSolicitacao, reverificarSolicitacao } from '../services/api';
+import { getSolicitacoes, aprovarSolicitacao, recusarSolicitacao, reverificarSolicitacao, reenviarSolicitacao } from '../services/api';
 import Topbar from '../components/Topbar';
 
 export default function AdminSolicitacoesPagamento() {
@@ -25,26 +25,34 @@ export default function AdminSolicitacoesPagamento() {
 
   useEffect(() => { carregar(); }, []);
 
+  const mostrarResultado = (result) => {
+    if (result?.status === 'erro_webhook') {
+      setError(`Falha no webhook do Pix (${result.webhook_erro || 'sem resposta'}). A solicitação segue em aberto — use "Reenviar" ou "Recusar".`);
+    } else if (result?.pix_estado === 'EM_PROCESSAMENTO' || result?.status === 'processando_pix') {
+      setError('Pix em processamento — aguarde a confirmação.');
+    } else if (result?.status === 'pix_rejeitado' || result?.pix_estado === 'REJEITADO') {
+      setError('Pagamento rejeitado pelo Pix. Pode reenviar ou recusar a solicitação.');
+    } else if (result?.success) {
+      setError('');
+    }
+  };
+
   const handleAprovar = async (id) => {
     try {
       const result = await aprovarSolicitacao(id);
-      if (result.pix_estado === 'EM_PROCESSAMENTO') {
-        setError(`Pagamento em processamento (Pix: ${result.pix_estado}). Aguardando confirmação.`);
-      } else if (!result.success && result.pix_estado === 'REJEITADO') {
-        setError(`Pagamento rejeitado pelo Pix.`);
-      }
+      mostrarResultado(result);
       carregar(filtro);
     } catch (err) {
-      setError('Erro ao aprovar solicitação');
+      setError(err.response?.data?.error || err.response?.data?.motivo || 'Erro ao aprovar solicitação');
     }
   };
 
   const handleRecusar = async (id) => {
     try {
       const result = await recusarSolicitacao(id);
-      if (result.success) carregar(filtro);
+      if (result.success) { setError(''); carregar(filtro); }
     } catch (err) {
-      setError('Erro ao recusar solicitação');
+      setError(err.response?.data?.error || err.response?.data?.motivo || 'Erro ao recusar solicitação');
     }
   };
 
@@ -52,16 +60,23 @@ export default function AdminSolicitacoesPagamento() {
     setReverificando(prev => ({ ...prev, [id]: true }));
     try {
       const result = await reverificarSolicitacao(id);
-      if (result.pix_estado === 'FINALIZADO') {
-        setError('');
-      } else if (result.pix_estado === 'EM_PROCESSAMENTO') {
-        setError('Pagamento ainda em processamento.');
-      } else {
-        setError('Pagamento rejeitado pelo Pix.');
-      }
+      mostrarResultado(result);
       carregar(filtro);
     } catch (err) {
-      setError('Erro ao reverificar pagamento');
+      setError(err.response?.data?.error || err.response?.data?.motivo || 'Erro ao reverificar pagamento');
+    } finally {
+      setReverificando(prev => ({ ...prev, [id]: false }));
+    }
+  };
+
+  const handleReenviar = async (id) => {
+    setReverificando(prev => ({ ...prev, [id]: true }));
+    try {
+      const result = await reenviarSolicitacao(id);
+      mostrarResultado(result);
+      carregar(filtro);
+    } catch (err) {
+      setError(err.response?.data?.error || err.response?.data?.motivo || 'Erro ao reenviar solicitação');
     } finally {
       setReverificando(prev => ({ ...prev, [id]: false }));
     }
@@ -76,6 +91,7 @@ export default function AdminSolicitacoesPagamento() {
     if (s === 'pre_aprovado') return '#00bcd4';
     if (s === 'processando_pix') return '#ff9f40';
     if (s === 'pix_rejeitado') return '#ff5a5a';
+    if (s === 'erro_webhook') return '#f97316';
     return '#ff9f40';
   };
 
@@ -110,6 +126,10 @@ export default function AdminSolicitacoesPagamento() {
             onClick={() => carregar('processando_pix')}
           >Processando Pix</span>
           <span
+            style={{ ...s.filterBtn, background: filtro === 'erro_webhook' ? '#f97316' : '#1e2230', color: filtro === 'erro_webhook' ? '#0d0f14' : '#6b7280' }}
+            onClick={() => carregar('erro_webhook')}
+          >Erro de Webhook</span>
+          <span
             style={{ ...s.filterBtn, background: filtro === 'aprovado' ? '#3de8a0' : '#1e2230', color: filtro === 'aprovado' ? '#0d0f14' : '#6b7280' }}
             onClick={() => carregar('aprovado')}
           >Aprovadas</span>
@@ -139,6 +159,7 @@ export default function AdminSolicitacoesPagamento() {
                   <th style={s.th}>Status</th>
                   <th style={s.th}>Pix</th>
                   <th style={s.th}>End-to-End</th>
+                  <th style={s.th}>Webhook</th>
                   <th style={s.th}>Criado</th>
                   <th style={s.th}>Ação</th>
                 </tr>
@@ -167,6 +188,13 @@ export default function AdminSolicitacoesPagamento() {
                     <td style={{ ...s.td, fontSize: '0.65rem', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {solic.pix_end_to_end_id || '—'}
                     </td>
+                    <td style={{ ...s.td, fontSize: '0.65rem', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', color: solic.webhook_erro ? '#f97316' : '#6b7280' }}>
+                      {solic.webhook_erro
+                        ? `${solic.webhook_erro}${solic.webhook_http_status ? ` (HTTP ${solic.webhook_http_status})` : ''} · ${solic.webhook_tentativas || 0}ª tentativa`
+                        : solic.webhook_tentativas
+                          ? `${solic.webhook_tentativas} envio(s) · ${formatDt(solic.ultimo_webhook_em)}`
+                          : '—'}
+                    </td>
                     <td style={s.td}>{formatDt(solic.criado_em)}</td>
                     <td style={s.td}>
                       {solic.status === 'pendente' ? (
@@ -178,19 +206,51 @@ export default function AdminSolicitacoesPagamento() {
                             Recusar
                           </button>
                         </div>
+                      ) : solic.status === 'erro_webhook' ? (
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button
+                            style={{ ...s.btnAprovar, background: '#3a2a1a', borderColor: '#f97316', color: '#f97316' }}
+                            onClick={() => handleReenviar(solic.id)}
+                            disabled={reverificando[solic.id]}
+                          >
+                            {reverificando[solic.id] ? '...' : 'Reenviar'}
+                          </button>
+                          <button style={s.btnRecusar} onClick={() => handleRecusar(solic.id)}>
+                            Recusar
+                          </button>
+                        </div>
                       ) : solic.status === 'processando_pix' ? (
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button
+                            style={{ ...s.btnAprovar, background: '#3a2a1a', borderColor: '#ff9f40', color: '#ff9f40' }}
+                            onClick={() => handleReverificar(solic.id)}
+                            disabled={reverificando[solic.id]}
+                          >
+                            {reverificando[solic.id] ? '...' : 'Reverificar'}
+                          </button>
+                          <button style={s.btnRecusar} onClick={() => handleRecusar(solic.id)}>
+                            Recusar
+                          </button>
+                        </div>
+                      ) : solic.status === 'pix_rejeitado' ? (
                         <button
-                          style={{ ...s.btnAprovar, background: '#3a2a1a', borderColor: '#ff9f40', color: '#ff9f40' }}
+                          style={{ ...s.btnAprovar, background: '#3a2a1a', borderColor: '#ff5a5a', color: '#ff5a5a' }}
+                          onClick={() => handleReenviar(solic.id)}
+                          disabled={reverificando[solic.id]}
+                        >
+                          {reverificando[solic.id] ? '...' : 'Reenviar'}
+                        </button>
+                      ) : solic.status === 'pre_aprovado' ? (
+                        <button
+                          style={{ ...s.btnAprovar, background: '#12262a', borderColor: '#00bcd4', color: '#00bcd4' }}
                           onClick={() => handleReverificar(solic.id)}
                           disabled={reverificando[solic.id]}
                         >
-                          {reverificando[solic.id] ? '...' : 'Reverificar'}
+                          {reverificando[solic.id] ? '...' : 'Conferir'}
                         </button>
                       ) : (
                         <span style={{ color: '#6b7280', fontSize: '0.75rem' }}>
-                          {solic.status === 'pre_aprovado'
-                            ? `Pagamento automático${solic.pix_estado ? ` (${solic.pix_estado})` : ''}`
-                            : solic.aprovado_em ? `Aprovado: ${formatDt(solic.aprovado_em)}` : solic.recusado_em ? `Recusado: ${formatDt(solic.recusado_em)}` : '—'}
+                          {solic.aprovado_em ? `Aprovado: ${formatDt(solic.aprovado_em)}` : solic.recusado_em ? `Recusado: ${formatDt(solic.recusado_em)}` : '—'}
                         </span>
                       )}
                     </td>

@@ -432,6 +432,11 @@ export async function reverificarSolicitacao(id) {
   return data;
 }
 
+export async function reenviarSolicitacao(id) {
+  const { data } = await api.post(`/admin/solicitacoes/${id}/reenviar`);
+  return data;
+}
+
 export async function getPagamentosHistorico() {
   const { data } = await api.get('/admin/pagamentos-historico');
   return data;

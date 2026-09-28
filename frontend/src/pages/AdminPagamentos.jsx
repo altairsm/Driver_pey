@@ -111,11 +111,20 @@ export default function AdminPagamentos() {
         total_adiantado: Number(motorista?.total_adiantado) || 0,
         total_pagar: Number(motorista?.total_pagar) || 0,
       };
-      await confirmarPagamento(matricula, qzAtual.inicio.slice(0, 10), qzAtual.fim.slice(0, 10), pagamento);
+      const result = await confirmarPagamento(matricula, qzAtual.inicio.slice(0, 10), qzAtual.fim.slice(0, 10), pagamento);
       const data = await getResumo(qzAtual.inicio.slice(0, 10), qzAtual.fim.slice(0, 10));
       setResumo(data);
+      if (result?.status === 'erro_webhook') {
+        setError(`Falha no webhook do Pix (${result.webhook_erro || 'sem resposta'}). Pagamento NÃO foi efetuado — reenvie em "Histórico de Pagamentos".`);
+      } else if (result?.status === 'rejeitado') {
+        setError('Pagamento rejeitado pelo Pix. Reenvie em "Histórico de Pagamentos".');
+      } else if (result?.status === 'processando') {
+        setError('Pix enviado e em processamento — confira em "Histórico de Pagamentos".');
+      } else {
+        setError('');
+      }
     } catch (err) {
-      setError('Erro ao confirmar pagamento');
+      setError(err.response?.data?.error || 'Erro ao confirmar pagamento');
     } finally {
       setConfirmando(null);
     }

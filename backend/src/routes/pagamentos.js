@@ -1,24 +1,8 @@
 import { Router } from 'express';
 import { pool } from '../db/index.js';
+import { enviarWebhookDriverPix, decidirStatus, chaveEstavel } from '../services/webhookService.js';
 
 const router = Router();
-
-async function enviarWebhookAdiantamento(payload) {
-  try {
-    const res = await fetch('https://webhook.sactudo.com.br/webhook/Driver_Pix', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tipo: 'pagamento', ...payload }),
-    });
-    const text = await res.text();
-    let data = null;
-    try { data = JSON.parse(text); } catch {}
-    return { ok: res.ok, status: res.status, data };
-  } catch (err) {
-    console.error('Webhook pagamento error:', err.message);
-    return { ok: false, status: 0, data: null, error: err.message };
-  }
-}
 
 router.get('/pagamentos-historico', async (req, res) => {
   try {
@@ -42,7 +26,7 @@ router.get('/pagamentos-pendentes', async (req, res) => {
       SELECT pq.*, m.nome_completo
       FROM pagamentos_quinzena pq
       JOIN matriculos_jad m ON m."OperadorMatricula"::bigint = pq.matricula
-      WHERE pq.status = 'processando'
+      WHERE pq.status IN ('processando', 'erro_webhook', 'rejeitado')
       ORDER BY pq.criado_em DESC
     `);
     res.json(rows);
@@ -57,11 +41,15 @@ router.post('/pagamentos-reverificar/:id', async (req, res) => {
     const { rows: pg } = await pool.query(`
       SELECT pq.*, m.nome_completo
       FROM pagamentos_quinzena pq
-      JOIN matriculos_jad m ON m."OperadorMatricula"::bigint = pq.matricula
+      JOIN matriculas_jad m ON m."OperadorMatricula"::bigint = pq.matricula
       WHERE pq.id = $1
     `, [req.params.id]);
     if (pg.length === 0) return res.status(404).json({ error: 'Pagamento não encontrado' });
-    if (pg[0].status !== 'processando') return res.status(400).json({ error: 'Só é possível reverificar pagamentos em processamento' });
+    if (pg[0].status === 'confirmado') return res.status(400).json({ error: 'Este pagamento já foi confirmado via Pix' });
+    const rev = pg[0].status;
+    if (rev !== 'processando' && rev !== 'erro_webhook' && rev !== 'rejeitado') {
+      return res.status(400).json({ error: 'Só é possível reverificar/reenviar pagamentos em processamento, com erro de webhook ou rejeitados' });
+    }
 
     const p = pg[0];
     const payload = {
@@ -79,28 +67,51 @@ router.post('/pagamentos-reverificar/:id', async (req, res) => {
       data_pagamento: new Date().toISOString().slice(0, 10),
     };
 
-    const webhookResult = await enviarWebhookAdiantamento(payload);
-    const webhookData = Array.isArray(webhookResult.data) ? webhookResult.data[0] : webhookResult.data;
-    const pixEstado = webhookData?.estado || null;
-    const pixEndToEndId = webhookData?.endToEndId || null;
-    const pixHorario = webhookData?.horario || null;
-    const pixOrigem = webhookData?.origem || null;
-    const pixDestino = webhookData?.destino || null;
+    await pool.query(`
+      UPDATE pagamentos_quinzena
+      SET pix_enviado_em = CURRENT_TIMESTAMP,
+          webhook_tentativas = COALESCE(webhook_tentativas, 0) + 1,
+          ultimo_webhook_em = CURRENT_TIMESTAMP
+      WHERE id = $1
+    `, [p.id]);
 
-    const novoStatus = pixEstado === 'FINALIZADO' ? 'confirmado'
-                     : pixEstado === 'EM_PROCESSAMENTO' ? 'processando'
+    const resultadoIncerto = rev !== 'rejeitado';
+
+    const webhook = await enviarWebhookDriverPix({
+      tipo: 'pagamento',
+      entidade: 'pagamento',
+      entidade_id: Number(p.id),
+      idempotency_key: resultadoIncerto
+        ? chaveEstavel('pagamento', 'quinzenal', `${p.matricula}-${p.quinzena_inicio}-${p.quinzena_fim}`)
+        : undefined,
+      payload,
+    });
+
+    const pixEstado = webhook.estado;
+    const pixEndToEndId = webhook.data?.endToEndId || null;
+    const pixHorario = webhook.data?.horario || null;
+    const pixOrigem = webhook.data?.origem || null;
+    const pixDestino = webhook.data?.destino || null;
+    const decisao = decidirStatus({ ok: webhook.ok, estado: pixEstado });
+    const novoStatus = decisao.status === 'aprovado' ? 'confirmado'
+                     : decisao.status === 'processando_pix' ? 'processando'
+                     : decisao.status === 'erro_webhook' ? 'erro_webhook'
                      : 'rejeitado';
 
     await pool.query(`
       UPDATE pagamentos_quinzena
       SET pix_end_to_end_id = $1, pix_estado = ($2)::varchar(30), pix_horario = $3,
           pix_origem = $4, pix_destino = $5, status = ($6)::varchar(20),
+          webhook_http_status = $7, webhook_erro = $8,
           confirmado_em = CASE WHEN ($6)::varchar(20) = 'confirmado' THEN CURRENT_TIMESTAMP ELSE confirmado_em END
-      WHERE id = $7
+      WHERE id = $9
     `, [pixEndToEndId, pixEstado, pixHorario,
         pixOrigem || null,
         pixDestino || null,
-        novoStatus, p.id]);
+        novoStatus,
+        webhook.httpStatus ?? null,
+        webhook.erro ?? null,
+        p.id]);
 
     if (pixEstado === 'FINALIZADO') {
       const { rows: cobrancasAtivas } = await pool.query(`
@@ -142,11 +153,24 @@ router.post('/pagamentos-reverificar/:id', async (req, res) => {
       `, [p.matricula, p.quinzena_inicio, p.quinzena_fim]);
     }
 
-    const msg = pixEstado === 'FINALIZADO' ? 'Pagamento confirmado via Pix'
-              : pixEstado === 'EM_PROCESSAMENTO' ? 'Pagamento ainda em processamento'
-              : 'Pagamento rejeitado pelo Pix';
+    if (!decisao.sucesso) {
+      return res.status(400).json({
+        error: decisao.mensagem,
+        success: false,
+        status: novoStatus,
+        pix_estado: pixEstado,
+        webhook_erro: webhook.erro ?? null,
+        webhook_http_status: webhook.httpStatus ?? null,
+      });
+    }
 
-    res.json({ success: true, motivo: msg, pix_estado: pixEstado, pix_end_to_end_id: pixEndToEndId });
+    res.json({
+      success: true,
+      motivo: decisao.mensagem,
+      status: novoStatus,
+      pix_estado: pixEstado,
+      pix_end_to_end_id: pixEndToEndId,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erro ao reverificar pagamento' });

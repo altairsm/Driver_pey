@@ -13,10 +13,11 @@ export default function AdminPagamentosHistorico() {
     setLoading(true);
     setError('');
     try {
-      const data = filtro === 'processando'
+      const usaPendentes = filtro === 'processando' || filtro === 'erro_webhook';
+      const data = usaPendentes
         ? await getPagamentosPendentes()
         : await getPagamentosHistorico();
-      setPagamentos(data);
+      setPagamentos(filtro ? data.filter(p => p.status === filtro) : data);
     } catch (err) {
       setError('Erro ao carregar pagamentos');
     } finally {
@@ -30,16 +31,19 @@ export default function AdminPagamentosHistorico() {
     setReverificando(prev => ({ ...prev, [id]: true }));
     try {
       const result = await reverificarPagamento(id);
-      if (result.pix_estado === 'FINALIZADO') {
-        setError('');
-      } else if (result.pix_estado === 'EM_PROCESSAMENTO') {
+      if (result?.status === 'erro_webhook') {
+        setError(`Falha no webhook do Pix (${result.webhook_erro || 'sem resposta'}). O pagamento segue em aberto — use "Reenviar".`);
+      } else if (result?.status === 'rejeitado') {
+        setError('Pagamento rejeitado pelo Pix. Pode reenviar.');
+      } else if (result?.pix_estado === 'EM_PROCESSAMENTO' || result?.status === 'processando') {
         setError('Pagamento ainda em processamento.');
       } else {
-        setError('Pagamento rejeitado pelo Pix.');
+        setError('');
       }
       carregar();
     } catch (err) {
-      setError('Erro ao reverificar pagamento');
+      setError(err.response?.data?.error || 'Erro ao reverificar pagamento');
+      carregar();
     } finally {
       setReverificando(prev => ({ ...prev, [id]: false }));
     }
@@ -53,6 +57,7 @@ export default function AdminPagamentosHistorico() {
     if (st === 'confirmado') return '#3de8a0';
     if (st === 'processando') return '#ff9f40';
     if (st === 'rejeitado') return '#ff5a5a';
+    if (st === 'erro_webhook') return '#f97316';
     return '#6b7280';
   };
 
@@ -75,6 +80,10 @@ export default function AdminPagamentosHistorico() {
             style={{ ...s.filterBtn, background: filtro === 'processando' ? '#ff9f40' : '#1e2230', color: filtro === 'processando' ? '#0d0f14' : '#6b7280' }}
             onClick={() => setFiltro('processando')}
           >Pendentes</span>
+          <span
+            style={{ ...s.filterBtn, background: filtro === 'erro_webhook' ? '#f97316' : '#1e2230', color: filtro === 'erro_webhook' ? '#0d0f14' : '#6b7280' }}
+            onClick={() => setFiltro('erro_webhook')}
+          >Erro de Webhook</span>
           <span
             style={{ ...s.filterBtn, background: filtro === 'rejeitado' ? '#ff5a5a' : '#1e2230', color: filtro === 'rejeitado' ? '#0d0f14' : '#6b7280' }}
             onClick={() => setFiltro('rejeitado')}
@@ -131,7 +140,26 @@ export default function AdminPagamentosHistorico() {
                     <td style={s.td}>{formatDt(pg.criado_em)}</td>
                     <td style={s.td}>{pg.confirmado_em ? formatDt(pg.confirmado_em) : '—'}</td>
                     <td style={s.td}>
-                      {pg.status === 'processando' ? (
+                      {pg.status === 'confirmado' ? (
+                        <span style={{ color: '#3de8a0', fontSize: '0.75rem' }}>Confirmado</span>
+                      ) : pg.status === 'erro_webhook' ? (
+                        <button
+                          style={{ ...s.btnReverificar, background: '#3a2410', borderColor: '#f97316', color: '#f97316' }}
+                          onClick={() => handleReverificar(pg.id)}
+                          disabled={reverificando[pg.id]}
+                          title={pg.webhook_erro || 'Falha ao contatar o webhook do Pix'}
+                        >
+                          {reverificando[pg.id] ? '...' : 'Reenviar'}
+                        </button>
+                      ) : pg.status === 'rejeitado' ? (
+                        <button
+                          style={{ ...s.btnReverificar, background: '#3a1a1a', borderColor: '#ff5a5a', color: '#ff5a5a' }}
+                          onClick={() => handleReverificar(pg.id)}
+                          disabled={reverificando[pg.id]}
+                        >
+                          {reverificando[pg.id] ? '...' : 'Reenviar'}
+                        </button>
+                      ) : pg.status === 'processando' ? (
                         <button
                           style={{ ...s.btnReverificar }}
                           onClick={() => handleReverificar(pg.id)}
@@ -139,10 +167,6 @@ export default function AdminPagamentosHistorico() {
                         >
                           {reverificando[pg.id] ? '...' : 'Reverificar'}
                         </button>
-                      ) : pg.status === 'confirmado' ? (
-                        <span style={{ color: '#3de8a0', fontSize: '0.75rem' }}>Confirmado</span>
-                      ) : pg.status === 'rejeitado' ? (
-                        <span style={{ color: '#ff5a5a', fontSize: '0.75rem' }}>Rejeitado</span>
                       ) : '—'}
                     </td>
                   </tr>

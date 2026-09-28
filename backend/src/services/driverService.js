@@ -1,5 +1,6 @@
 import { pool } from '../db/index.js';
 import { getConfig } from './configuracaoService.js';
+import { enviarWebhookDriverPix, decidirStatus, chaveEstavel } from './webhookService.js';
 
 export async function getDriverData(matricula) {
   const result = await pool.query(`
@@ -87,7 +88,13 @@ export async function getDriverTrips(matricula, inicio = null, fim = null) {
       ) AS tem_reclamacao_aberta,
       (SELECT sp.status FROM solicitacoes_pagamento sp
        WHERE sp.matricula = $1 AND sp.lista_numero = CAST(REPLACE(re."Lista", '"', '') AS BIGINT)
-       LIMIT 1) AS solicitacao_status
+       LIMIT 1) AS solicitacao_status,
+      (SELECT sp.pix_estado FROM solicitacoes_pagamento sp
+       WHERE sp.matricula = $1 AND sp.lista_numero = CAST(REPLACE(re."Lista", '"', '') AS BIGINT)
+       LIMIT 1) AS solicitacao_pix_estado,
+      (SELECT sp.webhook_erro FROM solicitacoes_pagamento sp
+       WHERE sp.matricula = $1 AND sp.lista_numero = CAST(REPLACE(re."Lista", '"', '') AS BIGINT)
+       LIMIT 1) AS solicitacao_webhook_erro
     FROM relatorioentrega_export re
     LEFT JOIN lista_entregas le ON le."Número"::text = re."Lista"
     WHERE re."OperadorMatricula"::bigint = $1
@@ -321,21 +328,8 @@ function calcDiasAteFechamento(dataBaixa) {
   return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 }
 
-async function enviarWebhookAdiantamento(payload) {
-  try {
-    const res = await fetch('https://webhook.sactudo.com.br/webhook/Driver_Pix', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tipo: 'adiantamento', ...payload }),
-    });
-    const text = await res.text();
-    let data = null;
-    try { data = JSON.parse(text); } catch {}
-    return { ok: res.ok, status: res.status, data };
-  } catch (err) {
-    console.error('Webhook adiantamento error:', err.message);
-    return { ok: false, status: 0, data: null, error: err.message };
-  }
+function normalizarStatusSolicitacao(st) {
+  return String(st || '').trim().toLowerCase();
 }
 
 export async function solicitarPagamento(matricula, listaNumero, valorSolicitado) {
@@ -363,12 +357,15 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
   `, [matricula, listaNumero]);
 
   if (solicitacaoExistente.length > 0) {
-    const st = solicitacaoExistente[0].status;
+    const st = normalizarStatusSolicitacao(solicitacaoExistente[0].status);
     if (st === 'aprovado') {
       return { success: false, motivo: 'Esta lista já teve o adiantamento aprovado' };
     }
     if (st === 'pendente') {
       return { success: false, motivo: 'Já existe uma solicitação pendente para esta lista' };
+    }
+    if (st === 'erro_webhook') {
+      return { success: false, motivo: 'O Pix desta lista está com falha de envio e em aberto — aguarde o administrador reenviar' };
     }
   }
 
@@ -469,12 +466,15 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
 
   try {
     const status = temAutoAprovado ? 'pre_aprovado' : 'pendente';
-    await pool.query(`
+    const { rows: inserted } = await pool.query(`
       INSERT INTO solicitacoes_pagamento (matricula, lista_numero, valor_solicitado, taxa_aplicada, status)
       VALUES ($1, $2, $3, $4, $5)
+      RETURNING id
     `, [matricula, listaNumero, valorSolicitado, taxaAplicada, status]);
+    const solicitacaoId = inserted[0].id;
 
     let pixEstado = null;
+    let pixErro = null;
     if (temAutoAprovado) {
       const { rows: listaPagoAuto } = await pool.query(`
         SELECT pago FROM lista_entregas WHERE "Número" = $1
@@ -483,37 +483,69 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
         return { success: false, motivo: 'Esta lista já foi paga' };
       }
 
+      await pool.query(`
+        UPDATE solicitacoes_pagamento
+        SET pix_enviado_em = CURRENT_TIMESTAMP,
+            webhook_tentativas = COALESCE(webhook_tentativas, 0) + 1,
+            ultimo_webhook_em = CURRENT_TIMESTAMP
+        WHERE id = $1
+      `, [solicitacaoId]);
+
       const valorLiquido = valorSolicitado * (1 - taxaAplicada / 100);
-      const webhookResult = await enviarWebhookAdiantamento({
-        matricula,
-        nome: motorista[0].nome_completo || '',
-        lista_numero: listaNumero,
-        valor_solicitado: Number(valorSolicitado),
-        taxa_aplicada: Number(taxaAplicada),
-        valor_liquido: Number(valorLiquido),
-        data_pagamento: new Date().toISOString().slice(0, 10),
-        pre_aprovado: true,
-        aprovado_por: 'auto',
+      const webhook = await enviarWebhookDriverPix({
+        tipo: 'adiantamento',
+        entidade: 'solicitacao',
+        entidade_id: Number(solicitacaoId),
+        idempotency_key: chaveEstavel('adiantamento', 'solicitacao', solicitacaoId),
+        payload: {
+          matricula,
+          nome: motorista[0].nome_completo || '',
+          lista_numero: listaNumero,
+          valor_solicitado: Number(valorSolicitado),
+          taxa_aplicada: Number(taxaAplicada),
+          valor_liquido: Number(valorLiquido),
+          data_pagamento: new Date().toISOString().slice(0, 10),
+          pre_aprovado: true,
+          aprovado_por: 'auto',
+        },
       });
 
-      const webhookData = Array.isArray(webhookResult.data) ? webhookResult.data[0] : webhookResult.data;
-      pixEstado = webhookData?.estado || null;
-      const pixEndToEndId = webhookData?.endToEndId || null;
-      const pixHorario = webhookData?.horario || null;
+      const pixEndToEndId = webhook.data?.endToEndId || null;
+      const pixHorario = webhook.data?.horario || null;
+      pixEstado = webhook.estado;
+      pixErro = webhook.erro;
 
-      const novoStatus = pixEstado === 'FINALIZADO' ? 'aprovado' : 'pre_aprovado';
+      const decisao = decidirStatus({ ok: webhook.ok, estado: pixEstado });
+      const statusFinal = decisao.status === 'aprovado' ? 'aprovado'
+                       : decisao.status === 'erro_webhook' ? 'erro_webhook'
+                       : decisao.status === 'processando_pix' ? 'pre_aprovado'
+                       : 'pix_rejeitado';
+
       await pool.query(`
         UPDATE solicitacoes_pagamento
         SET status = $1,
             pix_end_to_end_id = $2,
             pix_estado = $3,
             pix_horario = $4,
+            webhook_http_status = $5,
+            webhook_erro = $6,
             aprovado_em = CASE WHEN $1 = 'aprovado' THEN CURRENT_TIMESTAMP ELSE aprovado_em END
-        WHERE matricula = $5 AND lista_numero = $6
-      `, [novoStatus, pixEndToEndId, pixEstado, pixHorario, matricula, listaNumero]);
+        WHERE id = $7
+      `, [statusFinal, pixEndToEndId, pixEstado, pixHorario,
+          webhook.httpStatus ?? null, pixErro ?? null, solicitacaoId]);
 
-      if (pixEstado === 'FINALIZADO') {
+      if (statusFinal === 'aprovado') {
         await pool.query(`UPDATE lista_entregas SET pago = true WHERE "Número" = $1`, [listaNumero]);
+      }
+
+      if (decisao.status === 'erro_webhook') {
+        return {
+          success: false,
+          motivo: 'Não foi possível enviar o Pix ao banco agora. Sua solicitação ficou em aberto — o administrador pode reenviar.',
+          status: 'erro_webhook',
+          webhook_erro: pixErro,
+          beneficio_sem_taxa: todosEntreguesD0,
+        };
       }
     }
 

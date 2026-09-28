@@ -760,6 +760,14 @@ export async function runMigrations() {
     await pool.query('ALTER TABLE solicitacoes_pagamento ADD COLUMN IF NOT EXISTS pix_horario TIMESTAMP');
     console.log('  solicitacoes_pagamento pix columns added');
 
+    // ── Step 9: Webhook error tracking (falha de rede/HTTP/JSON) ──
+    await pool.query('ALTER TABLE solicitacoes_pagamento ADD COLUMN IF NOT EXISTS webhook_http_status INTEGER');
+    await pool.query('ALTER TABLE solicitacoes_pagamento ADD COLUMN IF NOT EXISTS webhook_erro TEXT');
+    await pool.query('ALTER TABLE solicitacoes_pagamento ADD COLUMN IF NOT EXISTS webhook_tentativas INTEGER DEFAULT 0');
+    await pool.query('ALTER TABLE solicitacoes_pagamento ADD COLUMN IF NOT EXISTS ultimo_webhook_em TIMESTAMP');
+    await pool.query('ALTER TABLE solicitacoes_pagamento ADD COLUMN IF NOT EXISTS pix_enviado_em TIMESTAMP');
+    console.log('  solicitacoes_pagamento webhook error columns added');
+
     await pool.query(`CREATE TABLE IF NOT EXISTS pagamentos_quinzena (
       id SERIAL PRIMARY KEY,
       matricula BIGINT NOT NULL,
@@ -782,7 +790,29 @@ export async function runMigrations() {
       confirmado_em TIMESTAMP,
       UNIQUE (matricula, quinzena_inicio, quinzena_fim)
     )`);
+    await pool.query('ALTER TABLE pagamentos_quinzena ADD COLUMN IF NOT EXISTS webhook_http_status INTEGER');
+    await pool.query('ALTER TABLE pagamentos_quinzena ADD COLUMN IF NOT EXISTS webhook_erro TEXT');
+    await pool.query('ALTER TABLE pagamentos_quinzena ADD COLUMN IF NOT EXISTS webhook_tentativas INTEGER DEFAULT 0');
+    await pool.query('ALTER TABLE pagamentos_quinzena ADD COLUMN IF NOT EXISTS ultimo_webhook_em TIMESTAMP');
+    await pool.query('ALTER TABLE pagamentos_quinzena ADD COLUMN IF NOT EXISTS pix_enviado_em TIMESTAMP');
     console.log('  -> pagamentos_quinzena');
+
+    // ── Log de auditoria de chamadas ao webhook Driver_Pix ──
+    await pool.query(`CREATE TABLE IF NOT EXISTS webhook_log (
+      id SERIAL PRIMARY KEY,
+      tipo VARCHAR(20) NOT NULL,
+      entidade VARCHAR(20),
+      entidade_id INTEGER,
+      idempotency_key VARCHAR(80),
+      payload JSONB,
+      resposta JSONB,
+      http_status INTEGER,
+      ok BOOLEAN DEFAULT false,
+      erro TEXT,
+      criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_webhook_log_entidade ON webhook_log (entidade, entidade_id)');
+    console.log('  -> webhook_log');
   } catch (err) {
     console.error('Migration error:', err);
     throw err;
