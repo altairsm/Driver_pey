@@ -100,8 +100,8 @@ export async function calcularPagamentos(inicio, fim) {
       SELECT
         eb.matricula,
         eb.nome_entrega,
-        COUNT(CASE WHEN COALESCE(eb.pago_raw, false) = false AND cb."NCTE" IS NULL THEN 1 END) AS total_ctes,
-        COUNT(DISTINCT CASE WHEN COALESCE(eb.pago_raw, false) = false AND cb."NCTE" IS NULL THEN eb.lista END) AS total_listas,
+        COUNT(CASE WHEN cb."NCTE" IS NULL THEN 1 END) AS total_ctes,
+        COUNT(DISTINCT CASE WHEN cb."NCTE" IS NULL THEN eb.lista END) AS total_listas,
         SUM(CASE WHEN cb."NCTE" IS NULL THEN eb.valor_peso ELSE 0 END) AS total_quinzena,
         SUM(eb.valor_faturamento) AS total_faturamento,
         COALESCE(SUM(CASE WHEN cb."NCTE" IS NULL THEN bd.bonus ELSE 0 END), 0)::numeric(10,2) AS total_bonus_d0,
@@ -152,52 +152,20 @@ export async function calcularPagamentos(inicio, fim) {
   return result.rows;
 }
 
-export async function confirmarPagamento(matricula, periodo, pagamento) {
-  const { inicio, fim } = periodo;
+// Regra de pagamento da quinzena (função pura, sem I/O).
+// total_pagar = total_quinzena + total_bonus_d0 - total_multa - total_adiantado
+// total_quinzena é a produção INTEGRAL das listas (sem filtrar listas já pagas):
+// o adiantamento é descontado UMA única vez, via total_adiantado.
+export function calcularTotalPagar({ total_quinzena, total_bonus_d0, total_multa, total_adiantado }) {
+  const bruto = Number(total_quinzena || 0)
+    + Number(total_bonus_d0 || 0)
+    - Number(total_multa || 0)
+    - Number(total_adiantado || 0);
+  return bruto < 0 ? 0 : bruto;
+}
 
-  const { rows: [pagamentoExistente] } = await pool.query(`
-    SELECT id, status, pix_estado, pix_enviado_em
-    FROM pagamentos_quinzena
-    WHERE matricula = $1 AND quinzena_inicio = $2::date AND quinzena_fim = $3::date
-  `, [matricula, inicio, fim]);
-
-  if (pagamentoExistente) {
-    if (pagamentoExistente.status === 'confirmado') {
-      return {
-        success: false,
-        status: 'confirmado',
-        motivo: 'Este pagamento já foi confirmado via Pix',
-        pix_estado: pagamentoExistente.pix_estado,
-        total_pagar: 0,
-      };
-    }
-    if (pagamentoExistente.pix_enviado_em && pagamentoExistente.status !== 'erro_webhook') {
-      return {
-        success: false,
-        status: pagamentoExistente.status,
-        motivo: pagamentoExistente.status === 'processando'
-          ? 'Pix já enviado e em processamento — use "Reverificar" para consultar o resultado'
-          : 'Pix já enviado para esta quinzena — use "Reverificar" para consultar o resultado',
-        pix_estado: pagamentoExistente.pix_estado,
-        total_pagar: 0,
-      };
-    }
-  }
-
-  await pool.query(`
-    INSERT INTO pagamentos_quinzena (matricula, quinzena_inicio, quinzena_fim, total_pagar, pix_enviado_em)
-    VALUES ($1, $2::date, $3::date, 0, CURRENT_TIMESTAMP)
-    ON CONFLICT (matricula, quinzena_inicio, quinzena_fim) DO UPDATE
-      SET pix_enviado_em = CURRENT_TIMESTAMP,
-          webhook_tentativas = COALESCE(pagamentos_quinzena.webhook_tentativas, 0) + 1,
-          ultimo_webhook_em = CURRENT_TIMESTAMP
-  `, [matricula, inicio, fim]);
-
-  const { rows: [driver] } = await pool.query(
-    `SELECT nome_completo FROM matriculos_jad WHERE "OperadorMatricula" = $1`,
-    [matricula]
-  );
-
+// Cálculo de referência da quinzena (fonte única da verdade).
+export async function calcularValoresQuinzena(matricula, inicio, fim) {
   const { rows: [entregas] } = await pool.query(`
     SELECT COUNT(DISTINCT (re."NCTE", re."Lista"))::int AS total_entregas
     FROM relatorioentrega_export re
@@ -205,7 +173,6 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
     WHERE re."OperadorMatricula"::bigint = $1
       AND LOWER(re."Evento") = 'entrega'
       AND le.status = 'Finalizado'
-      AND (le.pago IS NULL OR le.pago = false)
       AND le."Data Baixa"::date BETWEEN $2 AND $3
       AND NOT EXISTS (
         SELECT 1 FROM acareacaojad a
@@ -229,7 +196,6 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
       WHERE re."OperadorMatricula"::bigint = $1
         AND LOWER(re."Evento") = 'entrega'
         AND le.status = 'Finalizado'
-        AND (le.pago IS NULL OR le.pago = false)
         AND le."Data Baixa"::date BETWEEN $2 AND $3
         AND NOT EXISTS (
           SELECT 1 FROM acareacaojad a
@@ -281,7 +247,6 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
       WHERE re."OperadorMatricula"::bigint = $1
         AND LOWER(re."Evento") = 'entrega'
         AND le.status = 'Finalizado'
-        AND (le.pago IS NULL OR le.pago = false)
         AND le."Data Baixa"::date BETWEEN $2 AND $3
         AND re."Data"::date = le."Data Emissão"
         AND (CASE WHEN mj.bonus_d0_motorista = true THEN mj.bonus_d0_valor ELSE COALESCE(br.bonus_d0, 0) END) > 0
@@ -298,7 +263,7 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
   const total_multa = parseFloat(multaRow?.total_multa) || 0;
   const total_adiantado = parseFloat(adiantadoRow?.total_adiantado) || 0;
   const total_bonus_d0 = parseFloat(bonusRow?.total_bonus_d0) || 0;
-  let total_pagar = total_quinzena + total_bonus_d0 - total_multa - total_adiantado;
+  let total_pagar = calcularTotalPagar({ total_quinzena, total_bonus_d0, total_multa, total_adiantado });
 
   const { rows: cobrancasAtivas } = await pool.query(`
     SELECT id, valor_total, valor_restante, parcelas, parcelas_pagas
@@ -308,6 +273,7 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
   `, [matricula]);
 
   let total_cobrancas = 0;
+  const deducoes = [];
   for (const cob of cobrancasAtivas) {
     const parcelasRestantes = cob.parcelas - cob.parcelas_pagas;
     const deducao = Math.min(
@@ -318,7 +284,109 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
     if (deducao <= 0) continue;
     total_cobrancas += deducao;
     total_pagar -= deducao;
+    deducoes.push({ id: cob.id, deducao });
   }
+
+  return {
+    total_entregas: entregas?.total_entregas || 0,
+    total_quinzena,
+    total_bonus_d0,
+    total_multa,
+    total_adiantado,
+    total_cobrancas,
+    deducoes,
+    total_pagar: total_pagar < 0 ? 0 : total_pagar,
+  };
+}
+
+// Efetiva a quitação: baixa as parcelas de cobrança e marca as listas da quinzena como pagas.
+// Idempotente (só mexe no que ainda não foi quitado). Executar somente quando o Pix FINALIZAR.
+export async function registrarQuitacaoQuinzena({ matricula, inicio, fim, deducoes = [] }) {
+  for (const { id, deducao } of deducoes) {
+    await pool.query(`
+      UPDATE cobrancas
+      SET valor_restante = ROUND((valor_restante - $1)::numeric, 2),
+          parcelas_pagas = parcelas_pagas + 1,
+          ativo = CASE WHEN ROUND((valor_restante - $1)::numeric, 2) <= 0 THEN false ELSE ativo END
+      WHERE id = $2
+    `, [deducao, id]);
+  }
+
+  await pool.query(`
+    UPDATE lista_entregas le
+    SET pago = true
+    FROM relatorioentrega_export re
+    WHERE le."Número"::text = re."Lista"
+      AND re."OperadorMatricula"::bigint = $1
+      AND LOWER(re."Evento") = 'entrega'
+      AND le.status = 'Finalizado'
+      AND (le.pago IS NULL OR le.pago = false)
+      AND le."Data Baixa"::date BETWEEN $2 AND $3
+  `, [matricula, inicio, fim]);
+}
+
+export async function confirmarPagamento(matricula, periodo, pagamento) {
+  const { inicio, fim } = periodo;
+
+  const { rows: [pagamentoExistente] } = await pool.query(`
+    SELECT id, status, pix_estado, pix_enviado_em
+    FROM pagamentos_quinzena
+    WHERE matricula = $1 AND quinzena_inicio = $2::date AND quinzena_fim = $3::date
+  `, [matricula, inicio, fim]);
+
+  if (pagamentoExistente) {
+    if (pagamentoExistente.status === 'confirmado') {
+      return {
+        success: false,
+        status: 'confirmado',
+        motivo: 'Este pagamento já foi confirmado via Pix',
+        pix_estado: pagamentoExistente.pix_estado,
+        total_pagar: 0,
+      };
+    }
+    if (pagamentoExistente.pix_enviado_em && pagamentoExistente.status !== 'erro_webhook') {
+      return {
+        success: false,
+        status: pagamentoExistente.status,
+        motivo: pagamentoExistente.status === 'processando'
+          ? 'Pix já enviado e em processamento — use "Reverificar" para consultar o resultado'
+          : 'Pix já enviado para esta quinzena — use "Reverificar" para consultar o resultado',
+        pix_estado: pagamentoExistente.pix_estado,
+        total_pagar: 0,
+      };
+    }
+  }
+
+  const {
+    total_entregas, total_quinzena, total_bonus_d0,
+    total_multa, total_adiantado, total_cobrancas, deducoes, total_pagar,
+  } = await calcularValoresQuinzena(matricula, inicio, fim);
+
+  // Não há o que transferir: evita disparar um Pix de R$ 0,00 no n8n.
+  if (total_pagar <= 0) {
+    return {
+      success: false,
+      status: 'sem_valor',
+      motivo: total_adiantado > total_quinzena + total_bonus_d0
+        ? `Sem valor a pagar: adiantamentos (R$ ${total_adiantado.toFixed(2)}) ultrapassam a produção da quinzena (R$ ${total_quinzena.toFixed(2)})`
+        : 'Sem valor a pagar nesta quinzena',
+      total_pagar: 0,
+    };
+  }
+
+  await pool.query(`
+    INSERT INTO pagamentos_quinzena (matricula, quinzena_inicio, quinzena_fim, total_pagar, pix_enviado_em)
+    VALUES ($1, $2::date, $3::date, 0, CURRENT_TIMESTAMP)
+    ON CONFLICT (matricula, quinzena_inicio, quinzena_fim) DO UPDATE
+      SET pix_enviado_em = CURRENT_TIMESTAMP,
+          webhook_tentativas = COALESCE(pagamentos_quinzena.webhook_tentativas, 0) + 1,
+          ultimo_webhook_em = CURRENT_TIMESTAMP
+  `, [matricula, inicio, fim]);
+
+  const { rows: [driver] } = await pool.query(
+    `SELECT nome_completo FROM matriculos_jad WHERE "OperadorMatricula" = $1`,
+    [matricula]
+  );
 
   const payload = {
     tipo: 'pagamento',
@@ -326,8 +394,8 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
     nome: driver?.nome_completo || '',
     quinzena_inicio: inicio,
     quinzena_fim: fim,
-    total_entregas: entregas?.total_entregas || 0,
-    total_pagar: total_pagar < 0 ? 0 : total_pagar,
+    total_entregas,
+    total_pagar,
     total_quinzena,
     total_bonus_d0,
     total_multa,
@@ -371,9 +439,9 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
       pix_horario = $13, pix_origem = $14, pix_destino = $15, status = $16,
       webhook_http_status = $17, webhook_erro = $18,
       confirmado_em = CASE WHEN ($12)::varchar(30) = 'FINALIZADO' THEN CURRENT_TIMESTAMP ELSE pagamentos_quinzena.confirmado_em END
-  `, [matricula, inicio, fim, entregas?.total_entregas || 0,
+  `, [matricula, inicio, fim, total_entregas,
       total_quinzena, total_bonus_d0, total_multa, total_adiantado,
-      total_cobrancas, total_pagar < 0 ? 0 : total_pagar,
+      total_cobrancas, total_pagar,
       pixEndToEndId, pixEstado, pixHorario,
       pixOrigem || null,
       pixDestino || null,
@@ -382,35 +450,7 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
       webhook.erro ?? null]);
 
   if (pixEstado === 'FINALIZADO') {
-    for (const cob of cobrancasAtivas) {
-      const parcelasRestantes = cob.parcelas - cob.parcelas_pagas;
-      const deducao = Math.min(
-        cob.valor_restante / Math.max(parcelasRestantes, 1),
-        cob.valor_restante,
-        Math.max(total_pagar + total_cobrancas, 0)
-      );
-      if (deducao <= 0) continue;
-      await pool.query(`
-        UPDATE cobrancas
-        SET valor_restante = ROUND((valor_restante - $1)::numeric, 2),
-            parcelas_pagas = parcelas_pagas + 1,
-            ativo = CASE WHEN ROUND((valor_restante - $1)::numeric, 2) <= 0 THEN false ELSE ativo END
-        WHERE id = $2
-      `, [deducao, cob.id]);
-    }
-
-    const query = `
-      UPDATE lista_entregas le
-      SET pago = true
-      FROM relatorioentrega_export re
-      WHERE le."Número"::text = re."Lista"
-        AND re."OperadorMatricula"::bigint = $1
-        AND LOWER(re."Evento") = 'entrega'
-        AND le.status = 'Finalizado'
-        AND (le.pago IS NULL OR le.pago = false)
-        AND le."Data Baixa"::date BETWEEN $2 AND $3
-    `;
-    await pool.query(query, [matricula, inicio, fim]);
+    await registrarQuitacaoQuinzena({ matricula, inicio, fim, deducoes });
   }
 
   return {

@@ -158,7 +158,6 @@ export default function AdminSolicitacoesPagamento() {
                   <th style={s.th}>Líquido</th>
                   <th style={s.th}>Status</th>
                   <th style={s.th}>Pix</th>
-                  <th style={s.th}>End-to-End</th>
                   <th style={s.th}>Webhook</th>
                   <th style={s.th}>Criado</th>
                   <th style={s.th}>Ação</th>
@@ -184,9 +183,6 @@ export default function AdminSolicitacoesPagamento() {
                           {solic.pix_estado}
                         </span>
                       ) : '—'}
-                    </td>
-                    <td style={{ ...s.td, fontSize: '0.65rem', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {solic.pix_end_to_end_id || '—'}
                     </td>
                     <td style={{ ...s.td, fontSize: '0.65rem', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', color: solic.webhook_erro ? '#f97316' : '#6b7280' }}>
                       {solic.webhook_erro

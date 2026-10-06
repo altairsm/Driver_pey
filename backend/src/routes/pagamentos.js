@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { pool } from '../db/index.js';
 import { enviarWebhookDriverPix, decidirStatus, chaveEstavel } from '../services/webhookService.js';
+import { calcularValoresQuinzena, registrarQuitacaoQuinzena } from '../services/paymentService.js';
 
 const router = Router();
 
@@ -52,18 +53,37 @@ router.post('/pagamentos-reverificar/:id', async (req, res) => {
     }
 
     const p = pg[0];
+
+    // Recalcula pela mesma fórmula do "Confirmar" (fonte única da verdade).
+    // Valores gravados podem estar defasados (ex.: regra de cálculo mudou depois).
+    const {
+      total_entregas, total_quinzena, total_bonus_d0,
+      total_multa, total_adiantado, total_cobrancas, deducoes, total_pagar,
+    } = await calcularValoresQuinzena(p.matricula, p.quinzena_inicio, p.quinzena_fim);
+
+    if (total_pagar <= 0) {
+      return res.status(400).json({
+        error: total_adiantado > total_quinzena + total_bonus_d0
+          ? `Sem valor a pagar: adiantamentos (R$ ${Number(total_adiantado).toFixed(2)}) ultrapassam a produção da quinzena (R$ ${Number(total_quinzena).toFixed(2)})`
+          : 'Sem valor a pagar nesta quinzena',
+        success: false,
+        status: 'sem_valor',
+        total_pagar: 0,
+      });
+    }
+
     const payload = {
       matricula: Number(p.matricula),
       nome: p.nome_completo || '',
       quinzena_inicio: p.quinzena_inicio,
       quinzena_fim: p.quinzena_fim,
-      total_entregas: p.total_entregas,
-      total_pagar: Number(p.total_pagar),
-      total_quinzena: Number(p.total_quinzena),
-      total_bonus_d0: Number(p.total_bonus_d0),
-      total_multa: Number(p.total_multa),
-      total_adiantado: Number(p.total_adiantado),
-      total_cobrancas: Number(p.total_cobrancas),
+      total_entregas,
+      total_pagar,
+      total_quinzena,
+      total_bonus_d0,
+      total_multa,
+      total_adiantado,
+      total_cobrancas,
       data_pagamento: new Date().toISOString().slice(0, 10),
     };
 
@@ -102,6 +122,9 @@ router.post('/pagamentos-reverificar/:id', async (req, res) => {
       UPDATE pagamentos_quinzena
       SET pix_end_to_end_id = $1, pix_estado = ($2)::varchar(30), pix_horario = $3,
           pix_origem = $4, pix_destino = $5, status = ($6)::varchar(20),
+          total_entregas = $10, total_quinzena = $11, total_bonus_d0 = $12,
+          total_multa = $13, total_adiantado = $14, total_cobrancas = $15,
+          total_pagar = $16,
           webhook_http_status = $7, webhook_erro = $8,
           confirmado_em = CASE WHEN ($6)::varchar(20) = 'confirmado' THEN CURRENT_TIMESTAMP ELSE confirmado_em END
       WHERE id = $9
@@ -111,46 +134,22 @@ router.post('/pagamentos-reverificar/:id', async (req, res) => {
         novoStatus,
         webhook.httpStatus ?? null,
         webhook.erro ?? null,
-        p.id]);
+        p.id,
+        total_entregas,
+        total_quinzena,
+        total_bonus_d0,
+        total_multa,
+        total_adiantado,
+        total_cobrancas,
+        total_pagar]);
 
     if (pixEstado === 'FINALIZADO') {
-      const { rows: cobrancasAtivas } = await pool.query(`
-        SELECT id, valor_total, valor_restante, parcelas, parcelas_pagas
-        FROM cobrancas
-        WHERE matricula = $1 AND ativo = true
-        ORDER BY criado_em ASC
-      `, [p.matricula]);
-
-      let total_cobrancas = 0;
-      for (const cob of cobrancasAtivas) {
-        const parcelasRestantes = cob.parcelas - cob.parcelas_pagas;
-        const deducao = Math.min(
-          cob.valor_restante / Math.max(parcelasRestantes, 1),
-          cob.valor_restante,
-          Math.max(Number(p.total_pagar) + total_cobrancas, 0)
-        );
-        if (deducao <= 0) continue;
-        total_cobrancas += deducao;
-        await pool.query(`
-          UPDATE cobrancas
-          SET valor_restante = ROUND((valor_restante - $1)::numeric, 2),
-              parcelas_pagas = parcelas_pagas + 1,
-              ativo = CASE WHEN ROUND((valor_restante - $1)::numeric, 2) <= 0 THEN false ELSE ativo END
-          WHERE id = $2
-        `, [deducao, cob.id]);
-      }
-
-      await pool.query(`
-        UPDATE lista_entregas le
-        SET pago = true
-        FROM relatorioentrega_export re
-        WHERE le."Número"::text = re."Lista"
-          AND re."OperadorMatricula"::bigint = $1
-          AND LOWER(re."Evento") = 'entrega'
-          AND le.status = 'Finalizado'
-          AND (le.pago IS NULL OR le.pago = false)
-          AND le."Data Baixa"::date BETWEEN $2 AND $3
-      `, [p.matricula, p.quinzena_inicio, p.quinzena_fim]);
+      await registrarQuitacaoQuinzena({
+        matricula: p.matricula,
+        inicio: p.quinzena_inicio,
+        fim: p.quinzena_fim,
+        deducoes,
+      });
     }
 
     if (!decisao.sucesso) {
