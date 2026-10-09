@@ -198,6 +198,16 @@ export default function AdminSolicitacoesPagamento() {
                           <button style={s.btnAprovar} onClick={() => handleAprovar(solic.id)}>
                             Aprovar
                           </button>
+                          {solic.pix_enviado_em && (
+                            <button
+                              style={{ ...s.btnAprovar, background: '#3a2a1a', borderColor: '#ff9f40', color: '#ff9f40' }}
+                              onClick={() => handleReverificar(solic.id)}
+                              disabled={reverificando[solic.id]}
+                              title="Pix já foi disparado. Use Conferir para recuperar o resultado do log sem enviar um novo Pix."
+                            >
+                              {reverificando[solic.id] ? '...' : 'Conferir'}
+                            </button>
+                          )}
                           <button style={s.btnRecusar} onClick={() => handleRecusar(solic.id)}>
                             Recusar
                           </button>

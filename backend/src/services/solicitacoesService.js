@@ -4,6 +4,33 @@ import { enviarWebhookDriverPix, decidirStatus, chaveEstavel } from './webhookSe
 const STATUS_FINAIS = ['aprovado', 'recusado'];
 const STATUS_REENVIOS = ['processando_pix', 'pix_rejeitado', 'erro_webhook'];
 
+// Recupera do log de auditoria o resultado do ÚLTIMO Pix disparado para a solicitação.
+// Existe porque o resultado do Pix é gravado no webhook_log ANTES de ser aplicado em
+// solicitacoes_pagamento: se a gravação falhar (ex.: erro de SQL), o Pix já saiu e só
+// o log tem a resposta. Usado para reconciliar sem precisar reenviar (evita PIX duplicado).
+async function resultadoRegistradoNoLog(id) {
+  const { rows } = await pool.query(`
+    SELECT http_status, ok, erro,
+      CASE
+        WHEN jsonb_typeof(resposta) = 'array' THEN resposta->0->>'estado'
+        WHEN jsonb_typeof(resposta) = 'object' THEN resposta->>'estado'
+      END AS estado,
+      CASE
+        WHEN jsonb_typeof(resposta) = 'array' THEN resposta->0->>'endToEndId'
+        WHEN jsonb_typeof(resposta) = 'object' THEN resposta->>'endToEndId'
+      END AS end_to_end_id,
+      CASE
+        WHEN jsonb_typeof(resposta) = 'array' THEN resposta->0->>'horario'
+        WHEN jsonb_typeof(resposta) = 'object' THEN resposta->>'horario'
+      END AS horario
+    FROM webhook_log
+    WHERE entidade = 'solicitacao' AND entidade_id = $1
+    ORDER BY id DESC
+    LIMIT 1
+  `, [id]);
+  return rows[0] || null;
+}
+
 export async function listarSolicitacoes(status = null) {
   const where = status ? `WHERE sp.status = $1` : ``;
   const params = status ? [status] : [];
@@ -52,7 +79,7 @@ async function listaJaPaga(listaNumero) {
   return rows[0]?.pago === true;
 }
 
-async function registrarResultado(id, sol, webhook) {
+async function registrarResultado(id, sol, webhook, opcoes = {}) {
   const pixEstado = webhook.ok ? webhook.estado : null;
   const pixEndToEndId = webhook.data?.endToEndId || null;
   const pixHorario = webhook.data?.horario || null;
@@ -64,8 +91,8 @@ async function registrarResultado(id, sol, webhook) {
 
     await client.query(`
       UPDATE solicitacoes_pagamento
-      SET status = $1,
-          aprovado_em = CASE WHEN $1 = 'aprovado' THEN CURRENT_TIMESTAMP ELSE aprovado_em END,
+      SET status = $1::varchar(20),
+          aprovado_em = CASE WHEN $1::varchar(20) = 'aprovado' THEN CURRENT_TIMESTAMP ELSE aprovado_em END,
           pix_end_to_end_id = $2,
           pix_estado = $3,
           pix_horario = $4,
@@ -85,12 +112,15 @@ async function registrarResultado(id, sol, webhook) {
 
     return {
       success: decisao.sucesso,
-      motivo: decisao.mensagem,
+      motivo: opcoes.reconciliado
+        ? `${decisao.mensagem} (resultado recuperado do log do webhook — nenhum novo Pix foi enviado)`
+        : decisao.mensagem,
       status: decisao.status,
       pix_estado: pixEstado,
       pix_end_to_end_id: pixEndToEndId,
       webhook_erro: webhook.erro ?? null,
       webhook_http_status: webhook.httpStatus ?? null,
+      reconciliado: opcoes.reconciliado === true,
     };
   } catch (err) {
     await client.query('ROLLBACK');
@@ -128,6 +158,21 @@ async function executarEnvio(id, { preAprovado, aprovadoPor }) {
     return { success: false, motivo: 'Esta lista já foi paga' };
   }
 
+  // O Pix já foi disparado e o resultado não chegou a ser gravado (falha na persistência).
+  // Reconcilia a partir do log de auditoria em vez de disparar um segundo Pix.
+  if (s.pix_enviado_em && !STATUS_REENVIOS.includes(s.status) && s.status !== 'pre_aprovado') {
+    const logged = await resultadoRegistradoNoLog(id);
+    if (logged && logged.estado === 'FINALIZADO') {
+      return registrarResultado(id, s, {
+        ok: logged.ok === true,
+        httpStatus: logged.http_status,
+        estado: logged.estado,
+        data: { endToEndId: logged.end_to_end_id, horario: logged.horario },
+        erro: logged.erro ?? null,
+      }, { reconciliado: true });
+    }
+  }
+
   await marcarPagamentoInFlight(id);
 
   const valorLiquido = Number(s.valor_solicitado) * (1 - (Number(s.taxa_aplicada) || 0) / 100);
@@ -163,9 +208,11 @@ export async function aprovarSolicitacao(id) {
 }
 
 export async function reenviarSolicitacao(id) {
-  const { rows } = await pool.query(`SELECT status FROM solicitacoes_pagamento WHERE id = $1`, [id]);
+  const { rows } = await pool.query(`
+    SELECT status, pix_enviado_em FROM solicitacoes_pagamento WHERE id = $1
+  `, [id]);
   if (rows.length === 0) return { success: false, motivo: 'Solicitação não encontrada' };
-  if (!STATUS_REENVIOS.includes(rows[0].status)) {
+  if (!STATUS_REENVIOS.includes(rows[0].status) && !(rows[0].status === 'pendente' && rows[0].pix_enviado_em)) {
     return { success: false, motivo: 'Somente solicitações com falha de webhook, em processamento ou rejeitadas podem ser reenviadas' };
   }
   return executarEnvio(id, { preAprovado: false, aprovadoPor: 'admin_reenvio' });
@@ -203,10 +250,13 @@ export async function recusarSolicitacao(id) {
 }
 
 export async function reverificarSolicitacao(id) {
-  const { rows } = await pool.query(`SELECT status FROM solicitacoes_pagamento WHERE id = $1`, [id]);
+  const { rows } = await pool.query(`
+    SELECT status, pix_enviado_em FROM solicitacoes_pagamento WHERE id = $1
+  `, [id]);
   if (rows.length === 0) return { success: false, motivo: 'Solicitação não encontrada' };
   const st = rows[0].status;
-  if (st !== 'processando_pix' && st !== 'erro_webhook' && st !== 'pre_aprovado') {
+  const jaDisparadoSemRegistro = st === 'pendente' && rows[0].pix_enviado_em;
+  if (st !== 'processando_pix' && st !== 'erro_webhook' && st !== 'pre_aprovado' && !jaDisparadoSemRegistro) {
     return { success: false, motivo: 'Só é possível reverificar pagamentos em processamento ou com falha de webhook' };
   }
   return executarEnvio(id, { preAprovado: false, aprovadoPor: 'admin_reverificar' });

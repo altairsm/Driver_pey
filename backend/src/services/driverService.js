@@ -523,13 +523,13 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
 
       await pool.query(`
         UPDATE solicitacoes_pagamento
-        SET status = $1,
+        SET status = $1::varchar(20),
             pix_end_to_end_id = $2,
             pix_estado = $3,
             pix_horario = $4,
             webhook_http_status = $5,
             webhook_erro = $6,
-            aprovado_em = CASE WHEN $1 = 'aprovado' THEN CURRENT_TIMESTAMP ELSE aprovado_em END
+            aprovado_em = CASE WHEN $1::varchar(20) = 'aprovado' THEN CURRENT_TIMESTAMP ELSE aprovado_em END
         WHERE id = $7
       `, [statusFinal, pixEndToEndId, pixEstado, pixHorario,
           webhook.httpStatus ?? null, pixErro ?? null, solicitacaoId]);
