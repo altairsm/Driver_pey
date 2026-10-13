@@ -813,6 +813,72 @@ export async function runMigrations() {
     )`);
     await pool.query('CREATE INDEX IF NOT EXISTS idx_webhook_log_entidade ON webhook_log (entidade, entidade_id)');
     console.log('  -> webhook_log');
+
+    // ── NFS-e Nacional: exigir nota fiscal antes de pagar (adiantamento e/or quinzena) ──
+    await pool.query('ALTER TABLE configuracoes ADD COLUMN IF NOT EXISTS exigir_nfse_adiantamento BOOLEAN NOT NULL DEFAULT false');
+    await pool.query('ALTER TABLE configuracoes ADD COLUMN IF NOT EXISTS exigir_nfse_quinzena BOOLEAN NOT NULL DEFAULT false');
+    await pool.query(`ALTER TABLE configuracoes ADD COLUMN IF NOT EXISTS nfse_cnpj_tomador VARCHAR(18) DEFAULT '40413463000108'`);
+    await pool.query('ALTER TABLE configuracoes ADD COLUMN IF NOT EXISTS nfse_tolerancia_dias INTEGER NOT NULL DEFAULT 5');
+    await pool.query('ALTER TABLE configuracoes ADD COLUMN IF NOT EXISTS nfse_tolerancia_valor NUMERIC(10,2) NOT NULL DEFAULT 0.00');
+    await pool.query(`ALTER TABLE configuracoes ADD COLUMN IF NOT EXISTS nfse_ambiente VARCHAR(20) NOT NULL DEFAULT 'producao_restrita'`);
+    console.log('  -> configuracoes (exigir_nfse_*, nfse_*)');
+
+    // Notas fiscais apresentadas pelos motoristas (validadas contra a API do nfse.gov.br).
+    await pool.query(`CREATE TABLE IF NOT EXISTS notas_fiscais (
+      id SERIAL PRIMARY KEY,
+      matricula BIGINT NOT NULL,
+      tipo VARCHAR(20) NOT NULL,
+      solicitacao_id INTEGER,
+      quinzena_inicio DATE,
+      quinzena_fim DATE,
+      chave_acesso VARCHAR(50) NOT NULL,
+      valor_nf NUMERIC(10,2),
+      data_emissao DATE,
+      cpf_prestador VARCHAR(14),
+      cnpj_prestador VARCHAR(18),
+      cnpj_tomador VARCHAR(18),
+      situacao VARCHAR(40),
+      status_validacao VARCHAR(20) NOT NULL DEFAULT 'pendente',
+      motivo TEXT,
+      liberado_por VARCHAR(50),
+      liberado_em TIMESTAMP,
+      justificativa TEXT,
+      xml TEXT,
+      consultado_em TIMESTAMP,
+      criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    await pool.query('ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS xml TEXT');
+    await pool.query('ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS liberado_por VARCHAR(50)');
+    await pool.query('ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS liberado_em TIMESTAMP');
+    await pool.query('ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS justificativa TEXT');
+
+    await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS uq_notas_fiscais_chave ON notas_fiscais (chave_acesso)');
+    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS uq_notas_fiscais_adiantamento
+      ON notas_fiscais (solicitacao_id) WHERE tipo = 'adiantamento' AND solicitacao_id IS NOT NULL`);
+    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS uq_notas_fiscais_quinzena
+      ON notas_fiscais (matricula, quinzena_inicio, quinzena_fim) WHERE tipo = 'quinzena'`);
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_notas_fiscais_matricula ON notas_fiscais (matricula, tipo)');
+    console.log('  -> notas_fiscais');
+
+    // Referência da NF validada em cada pagamento (evita JOIN no gating e deixa o histórico legível).
+    await pool.query('ALTER TABLE solicitacoes_pagamento ADD COLUMN IF NOT EXISTS nfse_chave VARCHAR(50)');
+    await pool.query('ALTER TABLE solicitacoes_pagamento ADD COLUMN IF NOT EXISTS nfse_status VARCHAR(20)');
+    await pool.query('ALTER TABLE pagamentos_quinzena ADD COLUMN IF NOT EXISTS nfse_chave VARCHAR(50)');
+    await pool.query('ALTER TABLE pagamentos_quinzena ADD COLUMN IF NOT EXISTS nfse_status VARCHAR(20)');
+    console.log('  -> nfse_chave/nfse_status em solicitacoes_pagamento e pagamentos_quinzena');
+
+    // Certificado A1 (pfx) + senha, criptografados em repouso. Nunca gravado em log.
+    await pool.query(`CREATE TABLE IF NOT EXISTS credenciais_nfse (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      cnpj_titular VARCHAR(18),
+      arquivo_criptografado TEXT NOT NULL,
+      senha_criptografada TEXT NOT NULL,
+      criado_por VARCHAR(50),
+      criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      atualizado_em TIMESTAMP
+    )`);
+    console.log('  -> credenciais_nfse');
   } catch (err) {
     console.error('Migration error:', err);
     throw err;

@@ -1,6 +1,7 @@
 import { pool } from '../db/index.js';
 import { getConfig } from './configuracaoService.js';
 import { enviarWebhookDriverPix, decidirStatus, chaveEstavel } from './webhookService.js';
+import { validarEregistrar, notaAtende, mensagemParaMotorista } from './nfseService.js';
 
 export async function getDriverData(matricula) {
   const result = await pool.query(`
@@ -332,7 +333,7 @@ function normalizarStatusSolicitacao(st) {
   return String(st || '').trim().toLowerCase();
 }
 
-export async function solicitarPagamento(matricula, listaNumero, valorSolicitado) {
+export async function solicitarPagamento(matricula, listaNumero, valorSolicitado, chaveNfse = null) {
   const config = await getConfig();
 
   const { rows: lista } = await pool.query(`
@@ -464,14 +465,56 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
   `, [matricula]);
   const temAutoAprovado = motorista.length > 0 && motorista[0].auto_aprovado === true;
 
+  // ── NFse obrigatória para adiantamento? ──
+  // A nota é validada ANTES de criar a solicitação, para que uma NF inválida
+  // nunca chegue perto de disparar um Pix.
+  let nfStatus = null;
+  let nfChave = null;
+  if (config.exigir_nfse_adiantamento) {
+    if (!chaveNfse || String(chaveNfse).replace(/\D/g, '').length !== 50) {
+      return {
+        success: false,
+        motivo: 'Este pagamento exige NFS-e: informe a chave de acesso (50 dígitos) da nota emitida para a transportadora.',
+        nf_pendente: true,
+      };
+    }
+    const val = await validarEregistrar({
+      matricula,
+      tipo: 'adiantamento',
+      solicitacaoId: null,
+      chave: chaveNfse,
+      valorEsperado: valorSolicitado,
+      dataReferencia: new Date(),
+      config,
+    });
+    if (!val.ok) {
+      return {
+        success: false,
+        motivo: mensagemParaMotorista(val),
+        nf_pendente: true,
+        nf_motivo: val.motivo,
+        nf_infra: val.infra === true,
+      };
+    }
+    nfStatus = val.status;
+    nfChave = val.chave;
+  }
+
   try {
     const status = temAutoAprovado ? 'pre_aprovado' : 'pendente';
     const { rows: inserted } = await pool.query(`
-      INSERT INTO solicitacoes_pagamento (matricula, lista_numero, valor_solicitado, taxa_aplicada, status)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO solicitacoes_pagamento (matricula, lista_numero, valor_solicitado, taxa_aplicada, status, nfse_chave, nfse_status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING id
-    `, [matricula, listaNumero, valorSolicitado, taxaAplicada, status]);
+    `, [matricula, listaNumero, valorSolicitado, taxaAplicada, status, nfChave, nfStatus]);
     const solicitacaoId = inserted[0].id;
+
+    // Reaproveita a NF validada: vincula a nota já registrada à solicitação.
+    if (nfChave) {
+      await pool.query(`
+        UPDATE notas_fiscais SET solicitacao_id = $1 WHERE chave_acesso = $2 AND solicitacao_id IS NULL
+      `, [solicitacaoId, nfChave]);
+    }
 
     let pixEstado = null;
     let pixErro = null;
@@ -653,5 +696,158 @@ export async function getBonusD0(matricula, inicio, fim) {
     total_entregas: totalEntregas,
     total_bonus: totalBonus,
     valor_unitario_medio: Number(valorUnitarioMedio.toFixed(2)),
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NFS-e do motorista
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Quinzenas fechadas (a partir do dia 16 ou do dia 01) em que a NF do saldo
+// ainda não foi apresentada. É o que o app consulta a cada entrada para alertar.
+export async function getPendenciasNfse(matricula) {
+  const config = await getConfig();
+
+  if (!config.exigir_nfse_adiantamento && !config.exigir_nfse_quinzena) {
+    return { exigido: false, pendencias: [] };
+  }
+
+  const { rows: pendencias } = await pool.query(`
+    SELECT
+      mj.matricula,
+      mj.quinzena_inicio,
+      mj.quinzena_fim,
+      (SELECT nf.id FROM notas_fiscais nf
+        WHERE nf.tipo = 'quinzena' AND nf.matricula = mj.matricula
+          AND nf.quinzena_inicio = mj.quinzena_inicio AND nf.quinzena_fim = mj.quinzena_fim
+      ) AS nota_id,
+      (SELECT nf.status_validacao FROM notas_fiscais nf
+        WHERE nf.tipo = 'quinzena' AND nf.matricula = mj.matricula
+          AND nf.quinzena_inicio = mj.quinzena_inicio AND nf.quinzena_fim = mj.quinzena_fim
+      ) AS nota_status,
+      (SELECT nf.chave_acesso FROM notas_fiscais nf
+        WHERE nf.tipo = 'quinzena' AND nf.matricula = mj.matricula
+          AND nf.quinzena_inicio = mj.quinzena_inicio AND nf.quinzena_fim = mj.quinzena_fim
+      ) AS nota_chave,
+      (SELECT nf.motivo FROM notas_fiscais nf
+        WHERE nf.tipo = 'quinzena' AND nf.matricula = mj.matricula
+          AND nf.quinzena_inicio = mj.quinzena_inicio AND nf.quinzena_fim = mj.quinzena_fim
+      ) AS nota_motivo,
+      (SELECT pq.status FROM pagamentos_quinzena pq
+        WHERE pq.matricula = mj.matricula
+          AND pq.quinzena_inicio = mj.quinzena_inicio AND pq.quinzena_fim = mj.quinzena_fim
+      ) AS pagamento_status
+    FROM (
+      SELECT $1::bigint AS matricula, q.inicio AS quinzena_inicio, q.fim AS quinzena_fim
+      FROM (
+        SELECT
+          CASE WHEN EXTRACT(DAY FROM le."Data Baixa"::date) <= 15
+            THEN date_trunc('month', le."Data Baixa"::date)::date
+            ELSE (date_trunc('month', le."Data Baixa"::date) + INTERVAL '15 days')::date
+          END AS inicio,
+          CASE WHEN EXTRACT(DAY FROM le."Data Baixa"::date) <= 15
+            THEN (date_trunc('month', le."Data Baixa"::date) + INTERVAL '14 days')::date
+            ELSE (date_trunc('month', le."Data Baixa"::date) + INTERVAL '1 month' - INTERVAL '1 day')::date
+          END AS fim
+        FROM lista_entregas le
+        JOIN relatorioentrega_export re ON re."Lista" = le."Número"::text
+        WHERE re."OperadorMatricula"::bigint = $1
+          AND le.status = 'Finalizado'
+          AND le."Data Baixa" IS NOT NULL
+        GROUP BY 1, 2
+      ) q
+      -- A quinzena só é exigível depois de fechada (dia 16 ou dia 01).
+      WHERE q.fim < CURRENT_DATE
+    ) mj
+    ORDER BY mj.quinzena_fim DESC
+    LIMIT 3
+  `, [matricula]);
+
+  const lista = pendencias
+    .filter((p) => !['confirmado'].includes(p.pagamento_status))
+    .map((p) => ({
+      matricula: Number(p.matricula),
+      quinzena_inicio: p.quinzena_inicio,
+      quinzena_fim: p.quinzena_fim,
+      nota_id: p.nota_id,
+      nota_status: p.nota_status,
+      nota_chave: p.nota_chave,
+      nota_motivo: p.nota_motivo,
+      atendida: notaAtende({ status_validacao: p.nota_status }),
+    }))
+    .filter((p) => !p.atendida);
+
+  return {
+    exigido: true,
+    exigir_adiantamento: config.exigir_nfse_adiantamento === true,
+    exigir_quinzena: config.exigir_nfse_quinzena === true,
+    cnpj_tomador: config.nfse_cnpj_tomador,
+    pendencias: lista,
+  };
+}
+
+// Motorista apresenta a chave de acesso da NFS-e do saldo da quinzena.
+export async function enviarNfseQuinzena(matricula, { quinzenaInicio, quinzenaFim, chave }) {
+  const config = await getConfig();
+
+  if (!config.exigir_nfse_quinzena) {
+    return { success: false, motivo: 'Este sistema não está exigindo NFS-e para o pagamento da quinzena.' };
+  }
+
+  if (!quinzenaInicio || !quinzenaFim) {
+    return { success: false, motivo: 'Informe o período da quinzena.' };
+  }
+
+  const chaveLimpa = String(chave || '').replace(/\D/g, '');
+  if (chaveLimpa.length !== 50) {
+    return { success: false, motivo: 'A chave de acesso da NFS-e tem 50 dígitos.' };
+  }
+
+  const { rows: iguais } = await pool.query(
+    `SELECT 1 FROM notas_fiscais WHERE chave_acesso = $1 AND matricula <> $2::bigint`,
+    [chaveLimpa, matricula]
+  );
+  if (iguais.length > 0) {
+    return { success: false, motivo: 'Esta NFS-e já foi apresentada por outro motorista.' };
+  }
+
+  // O valor esperado é o saldo líquido que será pago naquela quinzena.
+  const { calcularValoresQuinzena } = await import('./paymentService.js');
+  const valores = await calcularValoresQuinzena(matricula, quinzenaInicio, quinzenaFim);
+
+  if (valores.total_pagar <= 0) {
+    return {
+      success: false,
+      motivo: 'Esta quinzena não tem valor a pagar, portanto não cabe emitir NFS-e.',
+    };
+  }
+
+  const resultado = await validarEregistrar({
+    matricula,
+    tipo: 'quinzena',
+    quinzenaInicio,
+    quinzenaFim,
+    chave: chaveLimpa,
+    valorEsperado: valores.total_pagar,
+    dataReferencia: new Date(),
+    config,
+  });
+
+  if (!resultado.ok) {
+    return {
+      success: false,
+      status: resultado.status,
+      motivo: mensagemParaMotorista(resultado),
+      nf_motivo: resultado.motivo,
+      nf_infra: resultado.infra === true,
+    };
+  }
+
+  return {
+    success: true,
+    status: resultado.status,
+    chave: resultado.chave,
+    valor_esperado: Number(valores.total_pagar),
+    motivo: 'NFS-e validada com sucesso. O pagamento da quinzena está liberado.',
   };
 }

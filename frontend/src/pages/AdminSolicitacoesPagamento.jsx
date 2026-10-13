@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getSolicitacoes, aprovarSolicitacao, recusarSolicitacao, reverificarSolicitacao, reenviarSolicitacao } from '../services/api';
+import { getSolicitacoes, aprovarSolicitacao, recusarSolicitacao, reverificarSolicitacao, reenviarSolicitacao, getNfseSolicitacoes } from '../services/api';
 import Topbar from '../components/Topbar';
 
 export default function AdminSolicitacoesPagamento() {
@@ -8,6 +8,7 @@ export default function AdminSolicitacoesPagamento() {
   const [error, setError] = useState('');
   const [filtro, setFiltro] = useState('');
   const [reverificando, setReverificando] = useState({});
+  const [nfMap, setNfMap] = useState({});
 
   const carregar = async (status) => {
     setLoading(true);
@@ -16,6 +17,13 @@ export default function AdminSolicitacoesPagamento() {
       const data = await getSolicitacoes(status || undefined);
       setSolicitacoes(data);
       setFiltro(status || '');
+      // Status da NFS-e de cada solicitação (exibido na coluna NF).
+      const ids = data.map((x) => x.id);
+      if (ids.length > 0) {
+        getNfseSolicitacoes(ids).then(setNfMap).catch(() => {});
+      } else {
+        setNfMap({});
+      }
     } catch (err) {
       setError('Erro ao carregar solicitações');
     } finally {
@@ -158,6 +166,7 @@ export default function AdminSolicitacoesPagamento() {
                   <th style={s.th}>Líquido</th>
                   <th style={s.th}>Status</th>
                   <th style={s.th}>Pix</th>
+                  <th style={s.th}>NF</th>
                   <th style={s.th}>Webhook</th>
                   <th style={s.th}>Criado</th>
                   <th style={s.th}>Ação</th>
@@ -183,6 +192,25 @@ export default function AdminSolicitacoesPagamento() {
                           {solic.pix_estado}
                         </span>
                       ) : '—'}
+                    </td>
+                    <td style={s.td}>
+                      {(() => {
+                        const nf = nfMap[solic.id];
+                        if (!nf) return <span style={{ color: '#6b7280' }}>—</span>;
+                        const cor = nf.status_validacao === 'valida' ? '#3de8a0'
+                          : nf.status_validacao === 'liberada_admin' ? '#f0c040'
+                          : nf.status_validacao === 'nao_encontrada' ? '#ff9f40'
+                          : '#ff5a5a';
+                        const rot = nf.status_validacao === 'valida' ? 'VÁLIDA'
+                          : nf.status_validacao === 'liberada_admin' ? 'LIBERADA'
+                          : nf.status_validacao === 'nao_encontrada' ? 'NÃO ENC.'
+                          : 'INVÁLIDA';
+                        return (
+                          <span style={{ ...s.badge, background: `${cor}22`, color: cor }} title={nf.motivo || ''}>
+                            {rot}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td style={{ ...s.td, fontSize: '0.65rem', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', color: solic.webhook_erro ? '#f97316' : '#6b7280' }}>
                       {solic.webhook_erro

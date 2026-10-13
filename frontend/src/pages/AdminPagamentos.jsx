@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { getResumo, confirmarPagamento, getAdminQuinzenas, getConfig, getListasPendentesMotorista, createDespesa } from '../services/api';
+import { getResumo, confirmarPagamento, getAdminQuinzenas, getConfig, getListasPendentesMotorista, createDespesa, getNfseQuinzena, liberarNotaNfse } from '../services/api';
 import Topbar from '../components/Topbar';
 
 function formatQuinzena(inicio, fim) {
@@ -32,6 +32,45 @@ export default function AdminPagamentos() {
   const [listasData, setListasData] = useState({});
   const [listasLoading, setListasLoading] = useState({});
   const [msgDespesa, setMsgDespesa] = useState('');
+  const [nfMap, setNfMap] = useState({});
+  const [liberandoNf, setLiberandoNf] = useState(false);
+
+  const exigeNfQuinzena = config?.exigir_nfse_quinzena === true;
+
+  const nfDoMotorista = (matricula) => nfMap[String(matricula)] || null;
+
+  const nfOk = (matricula) => {
+    if (!exigeNfQuinzena) return true;
+    const nf = nfDoMotorista(matricula);
+    return nf && (nf.status_validacao === 'valida' || nf.status_validacao === 'liberada_admin');
+  };
+
+  const handleLiberarNf = async (matricula) => {
+    const nf = nfDoMotorista(matricula);
+    const justificativa = window.prompt(
+      `Liberar pagamento sem NFS-e válida?\n\nMotorista: ${matricula}\n` +
+      (nf?.motivo ? `Motivo da recusa: ${nf.motivo}\n\n` : 'Nenhuma nota apresentada.\n\n') +
+      'Justificativa (obrigatória):'
+    );
+    if (!justificativa || justificativa.trim().length < 5) return;
+    setLiberandoNf(true);
+    try {
+      // Se não há nota registrada, localiza-se pelo motorista/quinzena para liberar a pendência.
+      if (nf?.id) {
+        await liberarNotaNfse(nf.id, justificativa.trim());
+      } else {
+        window.alert('Este motorista ainda não apresentou nenhuma NFS-e para esta quinzena. Não há nota para liberar — o pagamento segue bloqueado até a nota válida ser apresentada.');
+        return;
+      }
+      const qz = quinzenas[qzIdx];
+      const mapa = await getNfseQuinzena(qz.inicio.slice(0, 10), qz.fim.slice(0, 10));
+      setNfMap(mapa);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Erro ao liberar a nota');
+    } finally {
+      setLiberandoNf(false);
+    }
+  };
 
   const motoristasOrdenados = useMemo(() => {
     if (!resumo?.motoristas) return [];
@@ -81,6 +120,14 @@ export default function AdminPagamentos() {
     init();
   }, [fetchResumo]);
 
+  // Status da NFS-e de cada motorista na quinzena selecionada.
+  useEffect(() => {
+    if (!qzAtual) return;
+    getNfseQuinzena(qzAtual.inicio.slice(0, 10), qzAtual.fim.slice(0, 10))
+      .then(setNfMap)
+      .catch(() => {});
+  }, [qzAtual]);
+
   const handlePrev = async () => {
     if (qzIdx < quinzenas.length - 1) {
       const newIdx = qzIdx + 1;
@@ -120,6 +167,8 @@ export default function AdminPagamentos() {
         setError('Pagamento rejeitado pelo Pix. Reenvie em "Histórico de Pagamentos".');
       } else if (result?.status === 'processando') {
         setError('Pix enviado e em processamento — confira em "Histórico de Pagamentos".');
+      } else if (result?.status === 'sem_nf') {
+        setError(`Pagamento bloqueado: ${result.motivo || 'NFS-e não validada.'}`);
       } else {
         setError('');
       }
@@ -270,6 +319,7 @@ export default function AdminPagamentos() {
                     <th style={styles.th}>Multa</th>
                     <th style={styles.th}>Margem</th>
                     <th style={styles.th}>Listas</th>
+                    <th style={styles.th}>NF</th>
                     <th style={styles.th}>Ação</th>
                   </tr>
                 </thead>
@@ -324,6 +374,16 @@ export default function AdminPagamentos() {
                         </div>
                       </td>
                       <td style={styles.td}>
+                        {exigeNfQuinzena ? (() => {
+                          const nf = nfDoMotorista(m.matricula);
+                          if (!nf) return <span style={{ color: '#ff9f40', fontSize: '0.72rem', fontWeight: 600 }}>PENDENTE</span>;
+                          if (nf.status_validacao === 'valida') return <span style={{ color: '#3de8a0', fontSize: '0.72rem', fontWeight: 600 }}>VÁLIDA</span>;
+                          if (nf.status_validacao === 'liberada_admin') return <span style={{ color: '#f0c040', fontSize: '0.72rem', fontWeight: 600 }}>LIBERADA</span>;
+                          if (nf.status_validacao === 'nao_encontrada') return <span style={{ color: '#ff9f40', fontSize: '0.72rem', fontWeight: 600 }}>NÃO ENC.</span>;
+                          return <span style={{ color: '#ff5a5a', fontSize: '0.72rem', fontWeight: 600 }} title={nf.motivo || ''}>INVÁLIDA</span>;
+                        })() : <span style={{ color: '#6b7280' }}>—</span>}
+                      </td>
+                      <td style={styles.td}>
                         {m.pgto === false || m.pgto === 'false' || m.pgto === 'FALSE' ? (
                           <span style={{ color: '#ff5a5a', fontWeight: 600, fontSize: '0.78rem' }}>
                             Bloqueado
@@ -332,6 +392,21 @@ export default function AdminPagamentos() {
                           <span style={{ color: '#3de8a0', fontWeight: 600, fontSize: '0.78rem' }}>
                             Pago
                           </span>
+                        ) : exigeNfQuinzena && !nfOk(m.matricula) ? (
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            <span style={{ color: '#ff9f40', fontWeight: 600, fontSize: '0.72rem', alignSelf: 'center' }}>
+                              NF pendente
+                            </span>
+                            {nfDoMotorista(m.matricula)?.id && (
+                              <button
+                                style={{ ...styles.pendenteBtn, background: '#2a2a1a', borderColor: '#f0c040', color: '#f0c040', fontSize: '0.68rem' }}
+                                onClick={() => handleLiberarNf(m.matricula)}
+                                disabled={liberandoNf}
+                              >
+                                Liberar
+                              </button>
+                            )}
+                          </div>
                         ) : (
                           <button
                             onClick={() => handleConfirmar(m.matricula)}
@@ -345,7 +420,7 @@ export default function AdminPagamentos() {
                     </tr>
                     {expandido[m.matricula] && (
                       <tr key={`${i}-exp`}>
-                        <td colSpan={10} style={{ padding: 0, border: 'none' }}>
+                        <td colSpan={11} style={{ padding: 0, border: 'none' }}>
                           <div style={styles.expandedWrap}>
                             {listasLoading[m.matricula] ? (
                               <div style={styles.expandedLoading}>Carregando...</div>

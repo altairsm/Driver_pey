@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDriverDashboard, getDriverTrips, getDriverMe, getDriverTripsFaixas, getQuinzenas, getProdutividade, getEficiencia, getEficiencia30dias, getReclamacoes, getCobrancasDriver, solicitarPagamento, getUltimaImportacaoReclamacoes, getConfig, getTaxasAdiantamento, getBonusD0 } from '../services/api';
+import { getDriverDashboard, getDriverTrips, getDriverMe, getDriverTripsFaixas, getQuinzenas, getProdutividade, getEficiencia, getEficiencia30dias, getReclamacoes, getCobrancasDriver, solicitarPagamento, getUltimaImportacaoReclamacoes, getConfig, getTaxasAdiantamento, getBonusD0, getPendenciasNfse, enviarNfseQuinzena } from '../services/api';
 import { sendFcmTokenWithRetry } from '../services/notificationService';
 import { LocalNotifications } from '@capacitor/local-notifications';
 
@@ -105,7 +105,16 @@ export default function DriverDashboard() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
 
+  // NFS-e
+  const [nfse, setNfse] = useState({ exigido: false, pendencias: [] });
+  const [chavesNf, setChavesNf] = useState({});
+  const [enviandoNf, setEnviandoNf] = useState(false);
+  const [msgNf, setMsgNf] = useState('');
+
   const qzAtual = quinzenas[qzIdx] || null;
+
+  // A obrigatoriedade vem das Configurações do sistema (colunas booleanas do Postgres).
+  const exigeNfAdiantamento = config?.exigir_nfse_adiantamento === true;
 
   const fetchQuinzenaData = useCallback(async (inicio, fim) => {
     try {
@@ -159,6 +168,9 @@ export default function DriverDashboard() {
         setQuinzenas(qzs);
         setConfig(cfg);
         setTaxas(tx);
+
+        // Chamado a cada entrada no app: avisa se falta NFS-e de alguma quinzena fechada.
+        getPendenciasNfse().then(setNfse).catch(() => {});
 
         sendFcmTokenWithRetry(5, 2000);
 
@@ -264,7 +276,8 @@ export default function DriverDashboard() {
     setMsgSolicitacao('');
     let duracaoMsg = 5000;
     try {
-      const result = await solicitarPagamento(lista, valor);
+      const chave = exigeNfAdiantamento ? (chavesNf[lista] || '').replace(/\D/g, '') : null;
+      const result = await solicitarPagamento(lista, valor, chave);
       if (result.success) {
         setMsgSolicitacao(result.beneficio_sem_taxa
           ? `✅ Lista #${lista}: Solicitada com sucesso — adiantamento integral, sem taxa!`
@@ -275,11 +288,37 @@ export default function DriverDashboard() {
       }
     } catch (err) {
       duracaoMsg = 9000;
-      setMsgSolicitacao(`❌ Lista #${lista}: ${err.response?.data?.error || err.message}`);
+      const data = err.response?.data;
+      setMsgSolicitacao(`❌ Lista #${lista}: ${data?.motivo || data?.error || err.message}`);
     } finally {
       setSolicitando((prev) => ({ ...prev, [lista]: false }));
     }
     setTimeout(() => setMsgSolicitacao(''), duracaoMsg);
+  };
+
+  const handleEnviarNfQuinzena = async (p) => {
+    const chave = (chavesNf[`qz_${p.quinzena_inicio}`] || '').replace(/\D/g, '');
+    if (chave.length !== 50) {
+      setMsgNf('A chave de acesso da NFS-e tem 50 dígitos.');
+      return;
+    }
+    setEnviandoNf(true);
+    setMsgNf('');
+    try {
+      const r = await enviarNfseQuinzena({
+        quinzena_inicio: p.quinzena_inicio,
+        quinzena_fim: p.quinzena_fim,
+        chave,
+      });
+      setMsgNf(`✅ ${r.motivo}`);
+      setChavesNf((prev) => ({ ...prev, [`qz_${p.quinzena_inicio}`]: '' }));
+      getPendenciasNfse().then(setNfse).catch(() => {});
+    } catch (err) {
+      const data = err.response?.data;
+      setMsgNf(`❌ ${data?.motivo || data?.error || 'Erro ao enviar a NFS-e'}`);
+    } finally {
+      setEnviandoNf(false);
+    }
   };
 
   const soEntregasQ = eficiencia.filter(e => e.evento === 'entrega');
@@ -406,6 +445,40 @@ export default function DriverDashboard() {
             <div style={s.kpiDetail}>faixa de peso</div>
           </div>
         </div>
+
+        {/* ── ALERTA NFS-e (mostrado a cada entrada no app) ── */}
+        {nfse?.exigido && nfse.pendencias?.length > 0 && (
+          <div style={s.nfBanner}>
+            <div style={s.nfBannerTitle}>📄 NFS-e pendente</div>
+            {nfse.pendencias.map((p) => (
+              <div key={p.quinzena_inicio} style={s.nfItem}>
+                <div style={s.nfItemLbl}>
+                  Quinzena {formatDate(p.quinzena_inicio)} a {formatDate(p.quinzena_fim)}
+                  {p.nota_status === 'invalida' && (
+                    <span style={s.nfItemStatus}> — nota apresentada recusada: {p.nota_motivo}</span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+                  <input
+                    style={s.nfInput}
+                    placeholder="Chave de acesso da NFS-e (50 dígitos)"
+                    value={chavesNf[`qz_${p.quinzena_inicio}`] || ''}
+                    onChange={(e) => setChavesNf((prev) => ({ ...prev, [`qz_${p.quinzena_inicio}`]: e.target.value.replace(/\D/g, '') }))}
+                    inputMode="numeric"
+                  />
+                  <button
+                    style={{ ...s.nfBtn, opacity: enviandoNf ? 0.5 : 1 }}
+                    disabled={enviandoNf}
+                    onClick={() => handleEnviarNfQuinzena(p)}
+                  >
+                    {enviandoNf ? 'Validando...' : 'Validar NF'}
+                  </button>
+                </div>
+              </div>
+            ))}
+            {msgNf && <div style={s.nfMsg}>{msgNf}</div>}
+          </div>
+        )}
 
         {/* ── TAB BAR ── */}
         <div style={s.tabBar}>
@@ -901,11 +974,24 @@ export default function DriverDashboard() {
                           </div>
                         )}
 
+                        {exigeNfAdiantamento && (
+                          <div style={{ marginTop: 12 }}>
+                            <div style={s.nfItemLbl}>Chave de acesso da NFS-e (obrigatória)</div>
+                            <input
+                              style={s.nfInput}
+                              placeholder="50 dígitos"
+                              value={chavesNf[lista] || ''}
+                              onChange={(e) => setChavesNf((prev) => ({ ...prev, [lista]: e.target.value.replace(/\D/g, '') }))}
+                              inputMode="numeric"
+                            />
+                          </div>
+                        )}
+
                         {/* Botão solicitar */}
                         <button
                           onClick={() => handleSolicitarPagamento(lista, totalValorLista)}
-                          disabled={!elegivel || solicitando[lista]}
-                          title={!elegivel ? motivos.join('; ') : ''}
+                          disabled={!elegivel || solicitando[lista] || (exigeNfAdiantamento && (chavesNf[lista] || '').length !== 50)}
+                          title={!elegivel ? motivos.join('; ') : (exigeNfAdiantamento && (chavesNf[lista] || '').length !== 50 ? 'Informe a chave da NFS-e' : '')}
                           style={{ ...s.btnSolicitar, ...(elegivel ? {} : s.btnSolicitarDisabled), marginTop: 12, width: '100%' }}
                         >
                           {solicitando[lista] ? '...' : reclamacoesDesatualizadas ? 'Adiantamento em análise' : 'Solicitar Pagamento Antecipado'}
@@ -981,9 +1067,17 @@ const s = {
   kpiValue: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '2rem', letterSpacing: '2px', lineHeight: 1 },
   kpiDetail: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.58rem', color: '#6b7280', marginTop: 4 },
 
+  nfBanner: { margin: '16px 16px 0', padding: 14, background: 'rgba(240,192,64,.08)', border: '1px solid #f0c040', borderRadius: 8 },
+  nfBannerTitle: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.72rem', letterSpacing: '1.5px', color: '#f0c040', fontWeight: 600, marginBottom: 10 },
+  nfItem: { marginBottom: 12 },
+  nfItemLbl: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.68rem', color: '#e8eaf0' },
+  nfItemStatus: { color: '#ff9f40' },
+  nfInput: { flex: 1, minWidth: 220, background: '#1e2230', border: '1px solid #2a2f3e', borderRadius: 4, color: '#e8eaf0', padding: '10px 12px', fontSize: '0.78rem', fontFamily: "'IBM Plex Mono', monospace", outline: 'none' },
+  nfBtn: { background: '#1a3a2a', border: '1px solid #3de8a0', color: '#3de8a0', padding: '10px 16px', borderRadius: 4, cursor: 'pointer', fontSize: '0.72rem', fontFamily: "'IBM Plex Mono', monospace", whiteSpace: 'nowrap' },
+  nfMsg: { marginTop: 8, fontSize: '0.75rem', fontFamily: "'IBM Plex Mono', monospace", color: '#e8eaf0' },
+
   // ── Tab bar ──
-  tabBar: { display: 'flex', background: '#161920', borderBottom: '1px solid #2a2f3e', position: 'sticky', top: 52, zIndex: 90, overflowX: 'auto', scrollbarWidth: 'none' },
-  tabBtn: { flex: '1 0 auto', background: 'transparent', border: 'none', color: '#6b7280', padding: '10px 8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, transition: 'color .15s', borderBottom: '2px solid transparent', minWidth: 60 },
+  tabBar: { display: 'flex', background: '#161920', borderBottom: '1px solid #2a2f3e', position: 'sticky', top: 52, zIndex: 90, overflowX: 'auto', scrollbarWidth: 'none' },  tabBtn: { flex: '1 0 auto', background: 'transparent', border: 'none', color: '#6b7280', padding: '10px 8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, transition: 'color .15s', borderBottom: '2px solid transparent', minWidth: 60 },
   tabBtnActive: { color: '#f0c040', borderBottomColor: '#f0c040' },
   tabIcon: { fontSize: '1rem' },
   tabLabel: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.5rem', letterSpacing: '1px', textTransform: 'uppercase', whiteSpace: 'nowrap' },

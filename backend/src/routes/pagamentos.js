@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { pool } from '../db/index.js';
 import { enviarWebhookDriverPix, decidirStatus, chaveEstavel } from '../services/webhookService.js';
 import { calcularValoresQuinzena, registrarQuitacaoQuinzena } from '../services/paymentService.js';
+import { getConfig } from '../services/configuracaoService.js';
+import { notaDaQuinzena, notaAtende } from '../services/nfseService.js';
 
 const router = Router();
 
@@ -70,6 +72,22 @@ router.post('/pagamentos-reverificar/:id', async (req, res) => {
         status: 'sem_valor',
         total_pagar: 0,
       });
+    }
+
+    // Reenviar/reverificar também dispara Pix: a NF do saldo precisa continuar válida.
+    const config = await getConfig();
+    if (config.exigir_nfse_quinzena) {
+      const nota = await notaDaQuinzena(p.matricula, p.quinzena_inicio, p.quinzena_fim);
+      if (!nota || !notaAtende(nota)) {
+        return res.status(400).json({
+          error: !nota
+            ? 'O pagamento exige NFS-e do motorista e a nota do saldo ainda não foi apresentada.'
+            : `NFS-e apresentada não é válida: ${nota.motivo || 'sem detalhes'}. O administrador pode liberar com justificativa.`,
+          success: false,
+          status: 'sem_nf',
+          nf_pendente: true,
+        });
+      }
     }
 
     const payload = {

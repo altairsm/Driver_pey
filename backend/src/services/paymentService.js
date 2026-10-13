@@ -1,5 +1,7 @@
 import { pool } from '../db/index.js';
 import { enviarWebhookDriverPix, decidirStatus, chaveEstavel } from './webhookService.js';
+import { getConfig } from './configuracaoService.js';
+import { notaDaQuinzena, notaAtende } from './nfseService.js';
 
 export async function calcularPagamentos(inicio, fim) {
   const query = `
@@ -372,6 +374,42 @@ export async function confirmarPagamento(matricula, periodo, pagamento) {
         : 'Sem valor a pagar nesta quinzena',
       total_pagar: 0,
     };
+  }
+
+  // ── NFse obrigatória para o saldo da quinzena? ──
+  // A nota do saldo cobre o valor líquido a pagar: os adiantamentos já têm as
+  // próprias notas, que justificam os valores antecipados.
+  const config = await getConfig();
+  if (config.exigir_nfse_quinzena) {
+    const nota = await notaDaQuinzena(matricula, inicio, fim);
+    if (!nota) {
+      return {
+        success: false,
+        status: 'sem_nf',
+        nf_pendente: true,
+        motivo: `O pagamento de R$ ${total_pagar.toFixed(2)} exige NFS-e do motorista. A nota do saldo ainda não foi apresentada.`,
+        total_pagar,
+      };
+    }
+    if (!notaAtende(nota)) {
+      if (nota.status_validacao === 'erro_consulta') {
+        return {
+          success: false,
+          status: 'erro_consulta_nf',
+          nf_pendente: true,
+          motivo: `Falha ao consultar a NFS-e no sistema nacional: ${nota.motivo}. Nenhum Pix foi enviado.`,
+          total_pagar,
+        };
+      }
+      return {
+        success: false,
+        status: 'sem_nf',
+        nf_pendente: true,
+        nf_motivo: nota.motivo,
+        motivo: `NFS-e apresentada não é válida: ${nota.motivo || 'sem detalhes'}. O administrador pode liberar com justificativa.`,
+        total_pagar,
+      };
+    }
   }
 
   await pool.query(`

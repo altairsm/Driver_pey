@@ -73,8 +73,54 @@ export async function getUltimaImportacaoReclamacoes() {
   return data;
 }
 
-export async function solicitarPagamento(lista_numero, valor_solicitado) {
-  const { data } = await api.post('/driver/solicitar-pagamento', { lista_numero, valor_solicitado });
+export async function solicitarPagamento(lista_numero, valor_solicitado, chave_nfse) {
+  const { data } = await api.post('/driver/solicitar-pagamento', { lista_numero, valor_solicitado, chave_nfse });
+  return data;
+}
+
+export async function getPendenciasNfse() {
+  const { data } = await api.get('/driver/nfse/pendencias');
+  return data;
+}
+
+export async function enviarNfseQuinzena({ quinzena_inicio, quinzena_fim, chave }) {
+  const { data } = await api.post('/driver/nfse/quinzena', { quinzena_inicio, quinzena_fim, chave });
+  return data;
+}
+
+// ── NFS-e (admin) ──
+export async function getCredencialNfse() {
+  const { data } = await api.get('/admin/nfse/credencial');
+  return data;
+}
+
+export async function salvarCredencialNfse({ arquivo_base64, senha, cnpj_titular }) {
+  const { data } = await api.post('/admin/nfse/credencial', { arquivo_base64, senha, cnpj_titular });
+  return data;
+}
+
+export async function apagarCredencialNfse() {
+  const { data } = await api.delete('/admin/nfse/credencial');
+  return data;
+}
+
+export async function liberarNotaNfse(id, justificativa) {
+  const { data } = await api.post(`/admin/nfse/notas/${id}/liberar`, { justificativa });
+  return data;
+}
+
+export async function getNotaNfse(id) {
+  const { data } = await api.get(`/admin/nfse/notas/${id}`);
+  return data;
+}
+
+export async function getNfseSolicitacoes(ids) {
+  const { data } = await api.get('/admin/nfse/solicitacoes', { params: { ids: ids.join(',') } });
+  return data;
+}
+
+export async function getNfseQuinzena(inicio, fim) {
+  const { data } = await api.get('/admin/nfse/quinzena', { params: { inicio, fim } });
   return data;
 }
 

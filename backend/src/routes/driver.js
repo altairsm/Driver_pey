@@ -6,7 +6,8 @@ import {
   getQuinzenasDisponiveis, getProdutividade, getEficiencia, getEficiencia30dias, getReclamacoes,
   solicitarPagamento, getUltimaImportacao,
   getDriverDados, atualizarDriverDados, confirmarRegras,
-  getDriverMapaQuinzena, getBonusD0
+  getDriverMapaQuinzena, getBonusD0,
+  getPendenciasNfse, enviarNfseQuinzena,
 } from '../services/driverService.js';
 
 const router = Router();
@@ -125,14 +126,41 @@ router.get('/ultima-importacao', async (req, res) => {
 
 router.post('/solicitar-pagamento', async (req, res) => {
   try {
-    const { lista_numero, valor_solicitado } = req.body;
+    const { lista_numero, valor_solicitado, chave_nfse } = req.body;
     if (!lista_numero || !valor_solicitado) {
       return res.status(400).json({ error: 'lista_numero e valor_solicitado são obrigatórios' });
     }
-    const result = await solicitarPagamento(req.user.matricula, lista_numero, Number(valor_solicitado));
+    const result = await solicitarPagamento(req.user.matricula, lista_numero, Number(valor_solicitado), chave_nfse || null);
     if (!result.success) {
-      return res.status(400).json({ error: result.motivo });
+      return res.status(400).json(result);
     }
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+// ── NFS-e ───────────────────────────────────────────────────────────────────
+// O app chama isto a cada entrada para saber se o motorista precisa emitir nota.
+router.get('/nfse/pendencias', async (req, res) => {
+  try {
+    res.json(await getPendenciasNfse(req.user.matricula));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+router.post('/nfse/quinzena', async (req, res) => {
+  try {
+    const { quinzena_inicio, quinzena_fim, chave } = req.body;
+    const result = await enviarNfseQuinzena(req.user.matricula, {
+      quinzenaInicio: quinzena_inicio,
+      quinzenaFim: quinzena_fim,
+      chave,
+    });
+    if (!result.success) return res.status(400).json(result);
     res.json(result);
   } catch (err) {
     console.error(err);

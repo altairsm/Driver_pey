@@ -20,6 +20,7 @@ import cobrancasRoutes from './routes/cobrancas.js';
 import configuracoesRoutes from './routes/configuracoes.js';
 import taxasAdiantamentoRoutes from './routes/taxasAdiantamento.js';
 import pagamentosRoutes from './routes/pagamentos.js';
+import nfseRoutes from './routes/nfse.js';
 import versaoRoutes, { publicRouter as versaoPublicRouter } from './routes/versao.js';
 import { authenticateToken, requireAdmin } from './middleware/auth.js';
 
@@ -67,6 +68,7 @@ app.use('/', versaoPublicRouter);
 app.use('/driver', driverRoutes);
 app.use('/admin', authenticateToken, requireAdmin);
 app.use('/admin', adminRoutes);
+app.use('/admin', nfseRoutes);
 app.use('/upload', uploadRoutes);
 app.use('/admin', listasRoutes);
 app.use('/admin', tabelasRoutes);

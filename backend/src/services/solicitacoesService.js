@@ -1,5 +1,7 @@
 import { pool } from '../db/index.js';
 import { enviarWebhookDriverPix, decidirStatus, chaveEstavel } from './webhookService.js';
+import { getConfig } from './configuracaoService.js';
+import { notaDoAdiantamento, notaAtende } from './nfseService.js';
 
 const STATUS_FINAIS = ['aprovado', 'recusado'];
 const STATUS_REENVIOS = ['processando_pix', 'pix_rejeitado', 'erro_webhook'];
@@ -156,6 +158,40 @@ async function executarEnvio(id, { preAprovado, aprovadoPor }) {
 
   if (await listaJaPaga(s.lista_numero)) {
     return { success: false, motivo: 'Esta lista já foi paga' };
+  }
+
+  // ── NFse obrigatória para adiantamento? ──
+  // Ponto único de bloqueio: vale para aprovar, reenviar e reverificar, porque
+  // todos esses caminhos terminam disparando o mesmo Pix.
+  const config = await getConfig();
+  if (config.exigir_nfse_adiantamento) {
+    const nota = await notaDoAdiantamento(s.id);
+    if (!nota) {
+      return {
+        success: false,
+        status: 'sem_nf',
+        nf_pendente: true,
+        motivo: 'Pagamento exige NFS-e do motorista. A nota ainda não foi apresentada — solicite ao motorista e use "Validar NF".',
+      };
+    }
+    if (!notaAtende(nota)) {
+      // Falha de infraestrutura não é problema da nota: não sugere liberação manual.
+      if (nota.status_validacao === 'erro_consulta') {
+        return {
+          success: false,
+          status: 'erro_consulta_nf',
+          nf_pendente: true,
+          motivo: `Falha ao consultar a NFS-e no sistema nacional: ${nota.motivo}. Nenhum Pix foi enviado — corrija a configuração do certificado ou tente novamente.`,
+        };
+      }
+      return {
+        success: false,
+        status: 'sem_nf',
+        nf_pendente: true,
+        nf_motivo: nota.motivo,
+        motivo: `NFS-e apresentada não é válida: ${nota.motivo || 'sem detalhes'}. O administrador pode liberar com justificativa.`,
+      };
+    }
   }
 
   // O Pix já foi disparado e o resultado não chegou a ser gravado (falha na persistência).
