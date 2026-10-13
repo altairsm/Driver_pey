@@ -682,6 +682,10 @@ export async function runMigrations() {
     await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS cnpj_mei VARCHAR(18)');
     await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS pix_tipo VARCHAR(3) DEFAULT \'CPF\'');
     await pool.query('ALTER TABLE matriculos_jad ALTER COLUMN pix_tipo TYPE VARCHAR(20)');
+    // pix_chave é usada nos INSERT/UPDATE de criar/atualizar motorista e no SELECT
+    // de /driver/me, mas nunca teve DDL: em banco novo (dev, novo deploy ou DR)
+    // o cadastro de motorista quebrava com 500 por coluna inexistente.
+    await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS pix_chave VARCHAR(140)');
     await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS auto_aprovado BOOLEAN DEFAULT false');
     await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS bonus_d0_motorista BOOLEAN DEFAULT false');
     await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS bonus_d0_valor NUMERIC(10,2) DEFAULT 0');

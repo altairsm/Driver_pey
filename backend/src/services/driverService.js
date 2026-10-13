@@ -2,6 +2,7 @@ import { pool } from '../db/index.js';
 import { getConfig } from './configuracaoService.js';
 import { enviarWebhookDriverPix, decidirStatus, chaveEstavel } from './webhookService.js';
 import { validarEregistrar, notaAtende, mensagemParaMotorista } from './nfseService.js';
+import { normalizaCnpjMei } from './paymentService.js';
 
 export async function getDriverData(matricula) {
   const result = await pool.query(`
@@ -607,11 +608,12 @@ export async function getDriverDados(matricula) {
 
 export async function atualizarDriverDados(matricula, dados) {
   const { cnpj_mei, telefone, pix_tipo, pix_chave } = dados;
+  const cnpjMei = normalizaCnpjMei(cnpj_mei);
   await pool.query(`
     UPDATE matriculos_jad
     SET cnpj_mei = $1, telefone = $2, pix_tipo = $3, pix_chave = $4
     WHERE "OperadorMatricula"::bigint = $5
-  `, [cnpj_mei || null, telefone || null, pix_tipo, pix_chave || null, matricula]);
+  `, [cnpjMei, telefone || null, pix_tipo, pix_chave || null, matricula]);
   return { success: true };
 }
 

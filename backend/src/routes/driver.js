@@ -185,6 +185,9 @@ router.put('/dados', async (req, res) => {
     const result = await atualizarDriverDados(req.user.matricula, { cnpj_mei, telefone, pix_tipo, pix_chave });
     res.json(result);
   } catch (err) {
+    if (err.message?.includes('CNPJ do MEI')) {
+      return res.status(400).json({ error: err.message });
+    }
     console.error(err);
     res.status(500).json({ error: 'Erro interno' });
   }

@@ -2,13 +2,24 @@ import { useState, useEffect } from 'react';
 import { getMotoristas, createMotorista, updateMotorista, deleteMotorista } from '../services/api';
 import Topbar from '../components/Topbar';
 
+const FORM_VAZIO = { matricula: '', nome_completo: '', cpf: '', cnpj_mei: '', telefone: '', auto_aprovado: false, bonus_d0_motorista: false, bonus_d0_valor: 0, pix_tipo: 'CPF', pix_chave: '' };
+
+function formatCNPJ(v) {
+  const d = String(v || '').replace(/\D/g, '').slice(0, 14);
+  if (d.length <= 2) return d;
+  if (d.length <= 5) return `${d.slice(0, 2)}.${d.slice(2)}`;
+  if (d.length <= 8) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`;
+  if (d.length <= 12) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8)}`;
+  return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
+}
+
 export default function AdminMotoristas() {
   const [motoristas, setMotoristas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState(null);
-  const [form, setForm] = useState({ matricula: '', nome_completo: '', cpf: '', telefone: '', auto_aprovado: false, bonus_d0_motorista: false, bonus_d0_valor: 0, pix_tipo: 'CPF', pix_chave: '' });
+  const [form, setForm] = useState(FORM_VAZIO);
   const [salvando, setSalvando] = useState(false);
 
   const carregar = async () => {
@@ -22,7 +33,7 @@ export default function AdminMotoristas() {
 
   const abrirNovo = () => {
     setEditando(null);
-    setForm({ matricula: '', nome_completo: '', cpf: '', telefone: '', auto_aprovado: false, bonus_d0_motorista: false, bonus_d0_valor: 0, pix_tipo: 'CPF', pix_chave: '' });
+    setForm({ ...FORM_VAZIO });
     setError('');
     setModalAberto(true);
   };
@@ -33,6 +44,7 @@ export default function AdminMotoristas() {
       matricula: m.matricula || m.OperadorMatricula || '',
       nome_completo: m.nome_completo || '',
       cpf: m.cpf || '',
+      cnpj_mei: m.cnpj_mei || '',
       telefone: m.telefone || '',
       auto_aprovado: m.auto_aprovado === true,
       bonus_d0_motorista: m.bonus_d0_motorista === true,
@@ -133,6 +145,7 @@ export default function AdminMotoristas() {
                     <th style={s.th}>Matrícula</th>
                     <th style={s.th}>Nome</th>
                     <th style={s.th}>CPF</th>
+                    <th style={s.th}>CNPJ MEI</th>
                     <th style={s.th}>Telefone</th>
                     <th style={s.th}>Ações</th>
                   </tr></thead>
@@ -142,6 +155,7 @@ export default function AdminMotoristas() {
                         <td style={s.td}>{m.matricula || m.OperadorMatricula}</td>
                         <td style={s.td}>{m.nome_completo}</td>
                         <td style={s.td}>{m.cpf}</td>
+                        <td style={s.td}>{m.cnpj_mei ? formatCNPJ(m.cnpj_mei) : <span style={{ color: '#ff9f40' }}>pendente</span>}</td>
                         <td style={s.td}>{m.telefone || '—'}</td>
                         <td style={{ ...s.td, whiteSpace: 'nowrap' }}>
                           <button style={s.btnSm('#ffc107', '#0d0f14')} onClick={() => abrirEditar(m)}>Editar</button>
@@ -182,6 +196,15 @@ export default function AdminMotoristas() {
                   <input style={s.input} name="cpf" value={form.cpf}
                     onChange={(e) => setForm({...form, cpf: e.target.value.replace(/\D/g, '').substring(0, 11)})}
                     maxLength={11} required />
+                </div>
+                <div style={s.field}>
+                  <label style={s.label}>CNPJ do MEI</label>
+                  <input style={s.input} name="cnpj_mei" value={form.cnpj_mei}
+                    onChange={(e) => setForm({ ...form, cnpj_mei: formatCNPJ(e.target.value) })}
+                    placeholder="Opcional — XX.XXX.XXX/XXXX-XX" />
+                  <div style={{ fontSize: '0.65rem', color: '#6b7280', marginTop: 2 }}>
+                    Motoristas sem MEI podem ficar sem este campo; o app avisa o motorista até ele ser informado.
+                  </div>
                 </div>
                 <div style={s.field}>
                   <label style={s.label}>Telefone</label>

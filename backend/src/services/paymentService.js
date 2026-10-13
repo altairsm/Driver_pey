@@ -510,6 +510,7 @@ export async function listarMotoristas() {
       "OperadorMatricula"::bigint AS "OperadorMatricula",
       nome_completo,
       cpf,
+      cnpj_mei,
       telefone,
       pgto,
       pix_tipo,
@@ -607,22 +608,35 @@ export async function getListasPendentes(matricula, inicio, fim) {
   return result.rows;
 }
 
+// CNPJ do MEI é opcional (nem todo motorista é MEI). Aceita 14 dígitos com ou
+// sem máscara e devolve null quando vazio.
+export function normalizaCnpjMei(valor) {
+  const digitos = String(valor ?? '').replace(/\D/g, '');
+  if (digitos === '') return null;
+  if (digitos.length !== 14) {
+    throw new Error('CNPJ do MEI deve ter 14 dígitos');
+  }
+  return digitos;
+}
+
 export async function criarMotorista(dados) {
-  const { matricula, nome_completo, cpf, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor, pix_tipo, pix_chave } = dados;
+  const { matricula, nome_completo, cpf, cnpj_mei, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor, pix_tipo, pix_chave } = dados;
+  const cnpjMei = normalizaCnpjMei(cnpj_mei);
   await pool.query(`
-    INSERT INTO matriculos_jad ("OperadorMatricula", nome_completo, cpf, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor, pix_tipo, pix_chave)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-  `, [matricula, nome_completo, cpf, telefone || null, pgto || null, auto_aprovado === true, bonus_d0_motorista === true, bonus_d0_valor || 0, pix_tipo || null, pix_chave || null]);
-  return { matricula, nome_completo, cpf, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor };
+    INSERT INTO matriculos_jad ("OperadorMatricula", nome_completo, cpf, cnpj_mei, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor, pix_tipo, pix_chave)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+  `, [matricula, nome_completo, cpf, cnpjMei, telefone || null, pgto || null, auto_aprovado === true, bonus_d0_motorista === true, bonus_d0_valor || 0, pix_tipo || null, pix_chave || null]);
+  return { matricula, nome_completo, cpf, cnpj_mei: cnpjMei, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor };
 }
 
 export async function atualizarMotorista(matricula, dados) {
-  const { nome_completo, cpf, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor, pix_tipo, pix_chave } = dados;
+  const { nome_completo, cpf, cnpj_mei, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor, pix_tipo, pix_chave } = dados;
+  const cnpjMei = normalizaCnpjMei(cnpj_mei);
   const result = await pool.query(`
     UPDATE matriculos_jad
-    SET nome_completo = $1, cpf = $2, telefone = $3, pgto = $4, auto_aprovado = $5, bonus_d0_motorista = $6, bonus_d0_valor = $7, pix_tipo = $8, pix_chave = $9
-    WHERE "OperadorMatricula" = $10
-  `, [nome_completo, cpf, telefone || null, pgto || null, auto_aprovado === true, bonus_d0_motorista === true, bonus_d0_valor || 0, pix_tipo || null, pix_chave || null, matricula]);
+    SET nome_completo = $1, cpf = $2, cnpj_mei = $3, telefone = $4, pgto = $5, auto_aprovado = $6, bonus_d0_motorista = $7, bonus_d0_valor = $8, pix_tipo = $9, pix_chave = $10
+    WHERE "OperadorMatricula" = $11
+  `, [nome_completo, cpf, cnpjMei, telefone || null, pgto || null, auto_aprovado === true, bonus_d0_motorista === true, bonus_d0_valor || 0, pix_tipo || null, pix_chave || null, matricula]);
   return result.rowCount > 0;
 }
 

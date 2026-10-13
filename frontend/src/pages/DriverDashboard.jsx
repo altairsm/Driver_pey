@@ -446,6 +446,23 @@ export default function DriverDashboard() {
           </div>
         </div>
 
+        {/* ── PENDENCIA DE CADASTRO (CNPJ do MEI) ──
+            Aparece a cada entrada no app enquanto o campo estiver vazio e some
+            sozinho assim que o motorista preencher em Meus Dados. */}
+        {driver && !driver.cnpj_mei && (
+          <div style={s.cnpjBanner}>
+            <div style={s.cnpjBannerTitle}>⚠️ CADASTRO INCOMPLETO</div>
+            <div style={s.cnpjBannerText}>
+              Você ainda não informou o CNPJ do seu MEI. Ele é usado para conferir se a nota
+              fiscal foi emitida em seu nome. Sem ele, a validação da NFS-e só conseguirá
+              conferir pelo CPF.
+            </div>
+            <button style={s.cnpjBannerBtn} onClick={() => navigate('/driver/meus-dados')}>
+              Informar CNPJ
+            </button>
+          </div>
+        )}
+
         {/* ── ALERTA NFS-e (mostrado a cada entrada no app) ── */}
         {nfse?.exigido && nfse.pendencias?.length > 0 && (
           <div style={s.nfBanner}>
@@ -1075,6 +1092,11 @@ const s = {
   nfInput: { flex: 1, minWidth: 220, background: '#1e2230', border: '1px solid #2a2f3e', borderRadius: 4, color: '#e8eaf0', padding: '10px 12px', fontSize: '0.78rem', fontFamily: "'IBM Plex Mono', monospace", outline: 'none' },
   nfBtn: { background: '#1a3a2a', border: '1px solid #3de8a0', color: '#3de8a0', padding: '10px 16px', borderRadius: 4, cursor: 'pointer', fontSize: '0.72rem', fontFamily: "'IBM Plex Mono', monospace", whiteSpace: 'nowrap' },
   nfMsg: { marginTop: 8, fontSize: '0.75rem', fontFamily: "'IBM Plex Mono', monospace", color: '#e8eaf0' },
+
+  cnpjBanner: { margin: '16px 16px 0', padding: 14, background: 'rgba(255,159,64,.08)', border: '1px solid #ff9f40', borderRadius: 8 },
+  cnpjBannerTitle: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.72rem', letterSpacing: '1.5px', color: '#ff9f40', fontWeight: 600, marginBottom: 6 },
+  cnpjBannerText: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.68rem', color: '#e8eaf0', lineHeight: 1.6 },
+  cnpjBannerBtn: { marginTop: 10, background: '#3a2a1a', border: '1px solid #ff9f40', color: '#ff9f40', padding: '10px 16px', borderRadius: 4, cursor: 'pointer', fontSize: '0.72rem', fontFamily: "'IBM Plex Mono', monospace" },
 
   // ── Tab bar ──
   tabBar: { display: 'flex', background: '#161920', borderBottom: '1px solid #2a2f3e', position: 'sticky', top: 52, zIndex: 90, overflowX: 'auto', scrollbarWidth: 'none' },  tabBtn: { flex: '1 0 auto', background: 'transparent', border: 'none', color: '#6b7280', padding: '10px 8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, transition: 'color .15s', borderBottom: '2px solid transparent', minWidth: 60 },
