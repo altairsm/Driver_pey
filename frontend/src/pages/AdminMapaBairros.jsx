@@ -4,7 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
-import { getBairrosRotasMapa, getCepsMapa, getEstatisticasMapa, geocodificarBairros, geocodificarCeps } from '../services/api';
+import { getBairrosRotasMapa, getCepsMapa, getEstatisticasMapa, geocodificarBairros, geocodificarCeps, atualizarLocalizacaoCep } from '../services/api';
 import Topbar from '../components/Topbar';
 
 const CORES_TABELA = {
@@ -28,6 +28,10 @@ export default function AdminMapaBairros() {
   const [rotaDropdownAberto, setRotaDropdownAberto] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
   const [msg, setMsg] = useState('');
+  // Edição de geolocalização por arrasto (só no modo CEPs)
+  const [modoEdicao, setModoEdicao] = useState(false);
+  const [pendente, setPendente] = useState(null); // { id, cep, lat, lng, latOriginal, lngOriginal }
+  const [salvandoPos, setSalvandoPos] = useState(false);
 
   const dadosAtivos = modo === 'bairros' ? bairros : ceps;
   const rotasDisponiveis = [...new Set(dadosAtivos.map(d => d.rota).filter(Boolean))].sort();
@@ -102,45 +106,97 @@ export default function AdminMapaBairros() {
       filtered = filtered.filter(d => rotasSelecionadas.includes(d.rota));
     }
 
+    // Em modo edição com o conjunto inteiro, milhares de alfinetes pesam o navegador.
+    if (modo === 'ceps' && modoEdicao && !filtroBairro && ceps.length > 400) {
+      setMsg('Use o filtro para reduzir a lista antes de editar — arrastar milhares de pontos de uma vez deixa o mapa lento.');
+    }
+
     if (filtered.length === 0) return;
 
     if (modo === 'ceps') {
-      const cluster = L.markerClusterGroup({
-        chunkedLoading: true,
-        maxClusterRadius: 50,
-        spiderfyOnMaxZoom: true,
-        showCoverageOnHover: false,
-      });
-      filtered.forEach(d => {
-        if (!d.lat || !d.lng) return;
-        const cor = CORES_TABELA[d.nome_tabela] || { fill: '#6b7280' };
-        const marker = L.circleMarker([d.lat, d.lng], {
-          radius: 6,
-          fillColor: cor.fill,
-          color: '#fff',
-          weight: 1,
-          opacity: 0.9,
-          fillOpacity: 0.7,
+      if (modoEdicao) {
+        // Modo edição: alfinetes arrastáveis, sem cluster, com o CEP no rótulo.
+        const group = L.featureGroup([]);
+        filtered.forEach(d => {
+          if (!d.lat || !d.lng) return;
+          const cor = CORES_TABELA[d.nome_tabela] || { fill: '#6b7280' };
+          const icon = L.divIcon({
+            className: '',
+            html: `<div style="
+              width:16px;height:16px;border-radius:50%;
+              background:${cor.fill};border:2px solid #fff;
+              box-shadow:0 0 0 1px rgba(0,0,0,.6), 0 2px 6px rgba(0,0,0,.5);
+              display:flex;align-items:center;justify-content:center;"></div>`,
+            iconSize: [16, 16],
+            iconAnchor: [8, 8],
+          });
+          const marker = L.marker([d.lat, d.lng], { icon, draggable: true });
+          marker.bindPopup(`
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem;">
+              <strong>CEP: ${d.cep}</strong><br/>
+              Bairro: ${d.bairro || '-'}<br/>
+              Rota: ${d.rota || '-'}<br/>
+              Lat: ${Number(d.lat).toFixed(6)} · Lng: ${Number(d.lng).toFixed(6)}<br/>
+              <em style="color:#888;">Arraste o círculo para corrigir</em>
+            </div>
+          `);
+          marker.on('dragend', () => {
+            const pos = marker.getLatLng();
+            setPendente({
+              id: d.id,
+              cep: d.cep,
+              lat: pos.lat,
+              lng: pos.lng,
+              latOriginal: Number(d.lat),
+              lngOriginal: Number(d.lng),
+            });
+          });
+          group.addLayer(marker);
         });
-        marker.bindPopup(`
-          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem;">
-            <strong>CEP: ${d.cep}</strong><br/>
-            Bairro: ${d.bairro || '-'}<br/>
-            Rota: ${d.rota || '-'}<br/>
-            Tabela: ${d.nome_tabela || '-'}
-          </div>
-        `);
-        cluster.addLayer(marker);
-      });
-      map.addLayer(cluster);
-      markersRef.current = cluster;
+        map.addLayer(group);
+        markersRef.current = group;
 
-      if (filtered.length <= 200) {
-        const group = L.featureGroup(filtered
-          .filter(d => d.lat && d.lng)
-          .map(d => L.circleMarker([d.lat, d.lng])));
         if (group.getLayers().length > 0) {
-          map.fitBounds(group.getBounds().pad(0.1));
+          map.fitBounds(group.getBounds().pad(0.15));
+        }
+      } else {
+        const cluster = L.markerClusterGroup({
+          chunkedLoading: true,
+          maxClusterRadius: 50,
+          spiderfyOnMaxZoom: true,
+          showCoverageOnHover: false,
+        });
+        filtered.forEach(d => {
+          if (!d.lat || !d.lng) return;
+          const cor = CORES_TABELA[d.nome_tabela] || { fill: '#6b7280' };
+          const marker = L.circleMarker([d.lat, d.lng], {
+            radius: 6,
+            fillColor: cor.fill,
+            color: '#fff',
+            weight: 1,
+            opacity: 0.9,
+            fillOpacity: 0.7,
+          });
+          marker.bindPopup(`
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem;">
+              <strong>CEP: ${d.cep}</strong><br/>
+              Bairro: ${d.bairro || '-'}<br/>
+              Rota: ${d.rota || '-'}<br/>
+              Tabela: ${d.nome_tabela || '-'}
+            </div>
+          `);
+          cluster.addLayer(marker);
+        });
+        map.addLayer(cluster);
+        markersRef.current = cluster;
+
+        if (filtered.length <= 200) {
+          const group = L.featureGroup(filtered
+            .filter(d => d.lat && d.lng)
+            .map(d => L.circleMarker([d.lat, d.lng])));
+          if (group.getLayers().length > 0) {
+            map.fitBounds(group.getBounds().pad(0.1));
+          }
         }
       }
     } else {
@@ -172,7 +228,7 @@ export default function AdminMapaBairros() {
         map.fitBounds(group.getBounds().pad(0.1));
       }
     }
-  }, [bairros, ceps, modo, filtroBairro, rotasSelecionadas]);
+  }, [bairros, ceps, modo, modoEdicao, filtroBairro, rotasSelecionadas]);
 
   const handleGeocodificar = async () => {
     setGeocoding(true);
@@ -191,6 +247,40 @@ export default function AdminMapaBairros() {
       setMsg('Erro ao geocodificar');
     }
     setGeocoding(false);
+  };
+
+  const cancelarPosicao = () => {
+    // Reverte o estado local para a posição original, o que redesenha o marcador.
+    if (pendente) {
+      setCeps(prev => prev.map(c => c.id === pendente.id
+        ? { ...c, lat: pendente.latOriginal, lng: pendente.lngOriginal }
+        : c));
+    }
+    setPendente(null);
+  };
+
+  const salvarPosicao = async () => {
+    if (!pendente) return;
+    setSalvandoPos(true);
+    setMsg('');
+    try {
+      await atualizarLocalizacaoCep(pendente.id, pendente.lat, pendente.lng);
+      setCeps(prev => prev.map(c => c.id === pendente.id
+        ? { ...c, lat: pendente.lat, lng: pendente.lng, geocode_source: 'manual' }
+        : c));
+      setMsg(`Localização do CEP ${pendente.cep} corrigida.`);
+      setPendente(null);
+    } catch (err) {
+      setMsg(err.response?.data?.error || 'Erro ao salvar a localização');
+      cancelarPosicao();
+    } finally {
+      setSalvandoPos(false);
+    }
+  };
+
+  const toggleModoEdicao = () => {
+    setPendente(null);
+    setModoEdicao(prev => !prev);
   };
 
   const toggleRota = (rota) => {
@@ -291,11 +381,38 @@ export default function AdminMapaBairros() {
               ? 'Geocodificando...'
               : modo === 'bairros' ? 'Geocodificar Bairros' : 'Geocodificar CEPs'}
           </button>
+          {modo === 'ceps' && (
+            <button
+              onClick={toggleModoEdicao}
+              style={modoEdicao ? s.btnAtivo : s.btnSecundario}
+            >
+              {modoEdicao ? '✓ Editing location' : '✎ Edit location'}
+            </button>
+          )}
         </div>
       </div>
       {msg && <div style={s.msg}>{msg}</div>}
       <div style={s.mapWrapper}>
         <div ref={mapRef} style={s.map} />
+        {pendente && (
+          <div style={s.confirmBar}>
+            <div style={s.confirmText}>
+              Save the new location of CEP <strong>{pendente.cep}</strong>?
+              <br />
+              <span style={{ color: '#6b7280' }}>
+                {pendente.lat.toFixed(6)}, {pendente.lng.toFixed(6)} (was {pendente.latOriginal.toFixed(6)}, {pendente.lngOriginal.toFixed(6)})
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button style={s.btnSmCancelar} onClick={cancelarPosicao} disabled={salvandoPos}>
+                Cancel
+              </button>
+              <button style={s.btnSmSalvar} onClick={salvarPosicao} disabled={salvandoPos}>
+                {salvandoPos ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        )}
         <div style={s.legend}>
           <div style={s.legendTitle}>Tabelas</div>
           {tabelas.map(t => {
@@ -350,7 +467,37 @@ const s = {
     padding: '8px 16px', fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600,
     fontSize: '0.7rem', letterSpacing: '1px', cursor: 'pointer', whiteSpace: 'nowrap',
   },
-  msg: {
+  btnSecundario: {
+    background: '#1e2230', color: '#f0c040', border: '1px solid #f0c040', borderRadius: 4,
+    padding: '8px 16px', fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600,
+    fontSize: '0.7rem', letterSpacing: '1px', cursor: 'pointer', whiteSpace: 'nowrap',
+  },
+  btnAtivo: {
+    background: '#f0c040', color: '#0d0f14', border: '1px solid #f0c040', borderRadius: 4,
+    padding: '8px 16px', fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600,
+    fontSize: '0.7rem', letterSpacing: '1px', cursor: 'pointer', whiteSpace: 'nowrap',
+  },
+  confirmBar: {
+    position: 'absolute', bottom: 16, left: 16, right: 16, zIndex: 1000,
+    background: 'rgba(22,25,32,0.96)', border: '1px solid #f0c040',
+    borderRadius: 6, padding: '12px 16px', display: 'flex',
+    alignItems: 'center', justifyContent: 'space-between',
+    gap: 12, flexWrap: 'wrap',
+  },
+  confirmText: {
+    fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem', color: '#e8eaf0', lineHeight: 1.6,
+  },
+  btnSmCancelar: {
+    background: 'transparent', color: '#6b7280', border: '1px solid #2a2f3e', borderRadius: 4,
+    padding: '8px 16px', cursor: 'pointer', fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: '0.7rem', letterSpacing: '1px',
+  },
+  btnSmSalvar: {
+    background: '#3de8a0', color: '#0d0f14', border: 'none', borderRadius: 4,
+    padding: '8px 16px', cursor: 'pointer', fontWeight: 600,
+    fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.7rem', letterSpacing: '1px',
+  },
+    msg: {
     margin: '0 32px 12px', padding: '8px 16px', background: '#1e2230',
     border: '1px solid #2a2f3e', borderRadius: 4, fontSize: '0.75rem',
     fontFamily: "'IBM Plex Mono', monospace", color: '#5ab4ff',

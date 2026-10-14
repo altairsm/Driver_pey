@@ -642,6 +642,11 @@ export async function geocodificarCeps(limite = 50) {
   return data;
 }
 
+export async function atualizarLocalizacaoCep(id, lat, lng) {
+  const { data } = await api.put(`/admin/ceps/${id}/localizacao`, { lat, lng });
+  return data;
+}
+
 export async function checkVersao(versao) {
   const { data } = await api.get('/driver/check-versao', { params: { versao } });
   return data;

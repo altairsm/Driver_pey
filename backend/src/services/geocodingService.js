@@ -111,10 +111,38 @@ export async function getEstatisticasMapa() {
   };
 }
 
+// Correção manual da posição de um CEP, arrastando o marcador no mapa.
+// geocode_source = 'manual' marca o ponto como já resolvido: nem a
+// geocodificação em lote nem o fallback de bairro podem sobrescrevê-lo.
+export async function atualizarLocalizacaoCep(id, lat, lng) {
+  // Number(null) e Number('') dão 0, que passaria na validação numérica e
+  // gravaria o CEP em (0, 0) — no Golfo da Guiné, não no Brasil.
+  const vazio = (v) => v === null || v === undefined || String(v).trim() === '';
+  if (vazio(lat) || vazio(lng)) {
+    throw new Error('Coordenadas inválidas');
+  }
+  const latNum = Number(lat);
+  const lngNum = Number(lng);
+  if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) {
+    throw new Error('Coordenadas inválidas');
+  }
+  if (latNum < -90 || latNum > 90) throw new Error('Latitude deve estar entre -90 e 90');
+  if (lngNum < -180 || lngNum > 180) throw new Error('Longitude deve estar entre -180 e 180');
+
+  const { rows } = await pool.query(`
+    UPDATE ceps_especificos
+    SET lat = $1, lng = $2, geocode_source = 'manual'
+    WHERE id = $3
+    RETURNING id, cep, bairro, rota, nome_tabela, lat, lng, geocode_source
+  `, [latNum.toFixed(7), lngNum.toFixed(7), id]);
+  return rows[0] || null;
+}
+
 export async function geocodificarCeps(limite = 100) {
   const { rows: ceps } = await pool.query(`
     SELECT cep, bairro FROM ceps_especificos
     WHERE geocode_source IS DISTINCT FROM 'individual'
+      AND geocode_source IS DISTINCT FROM 'manual'
       AND geocode_source IS DISTINCT FROM 'no_coverage'
     LIMIT $1
   `, [limite]);
@@ -126,17 +154,21 @@ export async function geocodificarCeps(limite = 100) {
   const { rows: individuais } = await pool.query(
     "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE geocode_source = 'individual'"
   );
-  const pendentes = total[0].cnt - individuais[0].cnt - semCobertura[0].cnt;
+  const { rows: manuais } = await pool.query(
+    "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE geocode_source = 'manual'"
+  );
+  const pendentes = total[0].cnt - individuais[0].cnt - semCobertura[0].cnt - manuais[0].cnt;
 
   if (ceps.length === 0) {
     return {
       geocoded: 0,
       sem_cobertura: semCobertura[0].cnt,
       individuais: individuais[0].cnt,
+      manuais: manuais[0].cnt,
       total: total[0].cnt,
       pendentes,
       message: pendentes === 0
-        ? `Todos os CEPs processados. ${individuais[0].cnt} com geolocalização individual, ${semCobertura[0].cnt} sem cobertura.`
+        ? `Todos os CEPs processados. ${individuais[0].cnt} com geolocalização individual, ${manuais[0].cnt} corrigidos manualmente, ${semCobertura[0].cnt} sem cobertura.`
         : `${pendentes} CEPs pendentes aguardando.`,
     };
   }
@@ -193,14 +225,18 @@ export async function geocodificarCeps(limite = 100) {
   const { rows: individuais2 } = await pool.query(
     "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE geocode_source = 'individual'"
   );
-  const pendentes2 = total[0].cnt - individuais2[0].cnt - semCobertura2[0].cnt;
+  const { rows: manuais2 } = await pool.query(
+    "SELECT COUNT(*)::int AS cnt FROM ceps_especificos WHERE geocode_source = 'manual'"
+  );
+  const pendentes2 = total[0].cnt - individuais2[0].cnt - semCobertura2[0].cnt - manuais2[0].cnt;
 
   return {
     geocoded,
     sem_cobertura: semCobertura2[0].cnt,
     individuais: individuais2[0].cnt,
+    manuais: manuais2[0].cnt,
     total: total[0].cnt,
     pendentes: pendentes2,
-    message: `${geocoded} geocodificados, ${semCobertura2[0].cnt} sem cobertura, ${pendentes2} pendentes.`,
+    message: `${geocoded} geocodificados, ${manuais2[0].cnt} corrigidos manualmente, ${semCobertura2[0].cnt} sem cobertura, ${pendentes2} pendentes.`,
   };
 }

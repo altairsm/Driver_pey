@@ -17,6 +17,7 @@ import {
 } from '../services/cepsService.js';
 import {
   geocodificarBairros, listarBairrosRotasMapa, listarCepsMapa, getEstatisticasMapa, geocodificarCeps,
+  atualizarLocalizacaoCep,
 } from '../services/geocodingService.js';
 import { parseXLSX } from '../services/xlsxService.js';
 
@@ -213,6 +214,23 @@ router.put('/ceps/:id', async (req, res) => {
   } catch (err) {
     console.error('Erro ao atualizar CEP:', err);
     res.status(500).json({ error: 'Erro ao atualizar CEP' });
+  }
+});
+
+router.put('/ceps/:id/localizacao', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { lat, lng } = req.body;
+    const cep = await atualizarLocalizacaoCep(id, lat, lng);
+    if (!cep) return res.status(404).json({ error: 'CEP não encontrado' });
+    res.json({ success: true, cep });
+  } catch (err) {
+    const mensagem = err.message || '';
+    if (/inválidas|entre -90|entre -180/.test(mensagem)) {
+      return res.status(400).json({ error: mensagem });
+    }
+    console.error('Erro ao atualizar localização do CEP:', err);
+    res.status(500).json({ error: 'Erro ao atualizar localização do CEP' });
   }
 });
 
