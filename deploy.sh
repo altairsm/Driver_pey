@@ -30,7 +30,7 @@ if [ ! -f frontend/.env ]; then
 fi
 
 # 2. Atualizar código
-echo -e "${YELLOW}[1/7] Atualizando código...${NC}"
+echo -e "${YELLOW}[1/8] Atualizando código...${NC}"
 git pull
 git fetch --tags --force
 
@@ -50,13 +50,13 @@ if [ "$VERSION" = "unknown" ]; then
 fi
 
 # 3. Reconstruir containers
-echo -e "${YELLOW}[2/7] Reconstruindo containers...${NC}"
+echo -e "${YELLOW}[2/8] Reconstruindo containers...${NC}"
 docker compose build --no-cache
 docker compose up -d
 
 # 4. Configurar nginx do host se existir
 if [ -f "$CONFIG_FILE" ]; then
-  echo -e "${YELLOW}[3/7] Verificando nginx do host...${NC}"
+  echo -e "${YELLOW}[3/8] Verificando nginx do host...${NC}"
   CLIENT_SIZE=$(grep -c "client_max_body_size" "$CONFIG_FILE" || true)
   if [ "$CLIENT_SIZE" = "0" ]; then
     echo -e "${YELLOW}[!] Adicionando client_max_body_size ao nginx...${NC}"
@@ -66,7 +66,7 @@ if [ -f "$CONFIG_FILE" ]; then
 fi
 
 # 5. Verificar saúde
-echo -e "${YELLOW}[4/7] Verificando saúde...${NC}"
+echo -e "${YELLOW}[4/8] Verificando saúde...${NC}"
 sleep 3
 HEALTH=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/health 2>/dev/null || echo "000")
 if [ "$HEALTH" = "200" ]; then
@@ -77,7 +77,7 @@ fi
 
 # 6. Verificar schema (migration Step 9 + versao_apk.versao).
 # Sem isso, colunas faltando só aparecem como 500 em runtime nas telas de admin.
-echo -e "${YELLOW}[5/7] Verificando schema (colunas do webhook Pix)...${NC}"
+echo -e "${YELLOW}[5/8] Verificando schema (colunas do webhook Pix)...${NC}"
 for attempt in 1 2 3 4 5 6 7 8 9 10; do
   COLS=$(docker exec driver-pey-db psql -U postgres -d jadlog -tAc \
     "SELECT count(*) FROM information_schema.columns
@@ -106,11 +106,25 @@ else
   exit 1
 fi
 
+# Fuso do dia da operacao. As regras de adiantamento (regra 05, taxa e
+# "Aguarde 24h apos a baixa") usam o dia civil do Brasil; o Postgres precisa do
+# mesmo fuso para o CURRENT_DATE do SQL concordar com o calculo em JS.
+echo -e "${YELLOW}[6/8] Verificando fuso da operação...${NC}"
+BE_TZ=$(docker exec driver-pey-backend sh -c 'printenv TZ' 2>/dev/null || echo "")
+DB_TZ=$(docker exec driver-pey-db psql -U postgres -d jadlog -tAc "SHOW TimeZone" 2>/dev/null || echo "")
+if [ "$BE_TZ" = "America/Sao_Paulo" ] && [ "$DB_TZ" = "America/Sao_Paulo" ]; then
+  echo -e "${GREEN}[OK] backend e Postgres em America/Sao_Paulo${NC}"
+else
+  echo -e "${RED}[!] Fuso divergente (backend='${BE_TZ:-vazio}', postgres='${DB_TZ:-vazio}').${NC}"
+  echo -e "${RED}[!] As regras de adiantamento passam a usar o dia UTC. Confira TZ/PGTZ no docker-compose.yml.${NC}"
+  exit 1
+fi
+
 # 7. Persistencia do APK.
 # O backend grava o APK em /app/uploads, que precisa ser o volume nomeado
 # 'apkdata'. Se o volume nao estiver montado nesse caminho, o APK se perde a
 # cada "up -d" e o download passa a responder 404 sem erro visivel.
-echo -e "${YELLOW}[6/7] Verificando persistencia do APK...${NC}"
+echo -e "${YELLOW}[7/8] Verificando persistencia do APK...${NC}"
 if docker exec driver-pey-backend sh -c 'mount | grep -q " /app/uploads "' 2>/dev/null; then
   echo -e "${GREEN}[OK] volume apkdata montado em /app/uploads${NC}"
 else
@@ -142,7 +156,7 @@ else
 fi
 
 # 8. Resumo
-echo -e "${YELLOW}[7/7] Containers rodando:${NC}"
+echo -e "${YELLOW}[8/8] Containers rodando:${NC}"
 docker compose ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
 
 echo -e "${GREEN}=== Deploy concluído ===${NC}"

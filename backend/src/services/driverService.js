@@ -126,7 +126,7 @@ export async function getDriverTrips(matricula, inicio = null, fim = null) {
   for (const t of result.rows) {
     const dataBaixa = t.data_baixa ? new Date(t.data_baixa) : null;
     const suspensao = dataBaixa
-      ? emPeriodoSuspensao(dataBaixa, ctx.config.dias_uteis_pagamento)
+      ? emPeriodoSuspensao(dataBaixa, ctx.config.dias_uteis_pagamento, ctx.hoje)
       : false;
     const avaliacao = avaliarElegibilidade({
       dataBaixa,
@@ -142,7 +142,7 @@ export async function getDriverTrips(matricula, inicio = null, fim = null) {
     t.elegivel = avaliacao.elegivel;
     t.motivos = avaliacao.motivos;
     // Dias até o fechamento da quinzena (para a faixa de taxa exibida).
-    t.dias_ate_fechamento = dataBaixa ? calcDiasAteFechamento(dataBaixa) : MAX_DIAS_TAXA;
+    t.dias_ate_fechamento = dataBaixa ? calcDiasAteFechamento(dataBaixa, ctx.hoje) : MAX_DIAS_TAXA;
   }
 
   return result.rows;
@@ -320,6 +320,24 @@ export async function getUltimaImportacao() {
   return rows[0]?.ultima_importacao || null;
 }
 
+// ── Fuso operacional ─────────────────────────────────────────────────────────
+// "Hoje" para as regras de adiantamento é o dia do calendário do Brasil, não
+// o dia UTC. O container roda com TZ=America/Sao_Paulo (docker-compose) e o
+// Postgres também, para que CURRENT_DATE no SQL e esta função concordem — sem
+// isso, às 21:00 de Brasília o dia já virava no servidor e a janela de
+// suspensão abria 3 horas antes do dia.
+const TZ_OPERACAO = process.env.APP_TIMEZONE || 'America/Sao_Paulo';
+
+// Data civil de um instante, no fuso da operação, como 'YYYY-MM-DD'.
+export function civilDateNoFuso(instante = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ_OPERACAO,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(instante);
+}
+
 // Coluna DATE chega do Postgres como Date em meia-noite local, e string
 // 'YYYY-MM-DD' seria interpretada como UTC. Normalizamos para o dia civil
 // 'YYYY-MM-DD' e só então montamos em UTC: assim a conta não depende de como
@@ -332,6 +350,12 @@ function civilDate(valor) {
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
   return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+// 'YYYY-MM-DD' de uma data ancorada em meia-noite UTC (nossas datas de
+// quinzena). Usa os getters UTC de propósito.
+function isoUTC(d) {
+  return d.toISOString().slice(0, 10);
 }
 
 // Fim da quinzena a que a lista pertence. A 1ª quinzena vai do dia 1 ao 15
@@ -362,36 +386,30 @@ function addDiasUteis(data, n) {
 
 // Regra 05: o adiantamento é bloqueado entre o fim da quinzena da lista e a
 // data de pagamento (N dias úteis depois do fim da quinzena). Fora desse
-// intervalo a lista segue o fluxo normal. Exportada para os testes de virada.
+// intervalo a lista segue o fluxo normal.
+//
+// A comparação é feita entre dias civis ('YYYY-MM-DD') em vez de instantes:
+// assim não existe horário no meio e "hoje" é o dia do calendário do Brasil
+// (ver civilDateNoFuso), não o dia UTC. `hojeRef` recebe um dia civil
+// 'YYYY-MM-DD' e existe para os testes de virada.
 export function emPeriodoSuspensao(dataBaixa, diasUteis, hojeRef = null) {
   const quinzenaFim = calcQuinzenaFim(dataBaixa);
   if (!quinzenaFim) return false;
   const pagamentoDate = addDiasUteis(quinzenaFim, diasUteis);
-  const hoje = hojeRef ? new Date(hojeRef) : new Date();
-  hoje.setUTCHours(0, 0, 0, 0);
-  const qf = new Date(quinzenaFim);
-  qf.setUTCHours(0, 0, 0, 0);
-  const pd = new Date(pagamentoDate);
-  pd.setUTCHours(0, 0, 0, 0);
-  return hoje >= qf && hoje <= pd;
+  const hoje = hojeRef || civilDateNoFuso();
+  // Datas ISO em formato fixo comparam corretamente como string.
+  return hoje >= isoUTC(quinzenaFim) && hoje <= isoUTC(pagamentoDate);
 }
 
-// Mesma data civil (ignora hora e fuso) — base da regra "Aguarde 24h após a
-// última baixa". Trabalha com datas em UTC para não depender do fuso.
-function mesmaDataCivil(a, b) {
-  const ca = civilDate(a);
-  const cb = civilDate(b);
-  return ca !== null && cb !== null && ca === cb;
-}
-
-// Quantos dias faltam (mínimo 1) até o fechamento da quinzena da lista.
-function calcDiasAteFechamento(dataBaixa) {
+// Quantos dias faltam (entre 1 e 14) até o fechamento da quinzena da lista,
+// medidos a partir do dia civil da operação. O teto de 14 é o tamanho da
+// tabela taxas_adiantamento.
+function calcDiasAteFechamento(dataBaixa, hojeRef = null) {
   const fechamento = calcQuinzenaFim(dataBaixa);
   if (!fechamento) return 14;
-  const hoje = new Date();
-  hoje.setUTCHours(0, 0, 0, 0);
-  const diffMs = fechamento.getTime() - hoje.getTime();
-  return Math.max(1, Math.min(14, Math.ceil(diffMs / (1000 * 60 * 60 * 24))));
+  const hoje = hojeRef || civilDateNoFuso();
+  const dias = Math.round((fechamento.getTime() - Date.parse(`${hoje}T00:00:00Z`)) / 86400000);
+  return Math.max(1, Math.min(14, dias));
 }
 
 function normalizarStatusSolicitacao(st) {
@@ -500,7 +518,7 @@ function motivoSolicitacaoExistente(statusSolicitacao) {
 // calculados uma vez (config, eficiência, valor, janela de reclamações) para
 // não repetir consulta. Devolve { elegivel, motivos, em_suspensao }.
 export function avaliarElegibilidade({ dataBaixa, status, pago, solicitacaoStatus, temReclamacao, valorLista, ctx }) {
-  const { config, pct, minimo, motivosReclamacoes, suspensao } = ctx;
+  const { config, pct, minimo, motivosReclamacoes, suspensao, hoje } = ctx;
   const motivos = [];
 
   if (pago) motivos.push('Esta lista já foi paga');
@@ -520,8 +538,10 @@ export function avaliarElegibilidade({ dataBaixa, status, pago, solicitacaoStatu
     motivos.push('Lista não finalizada');
   }
 
-  // Regra 02: a baixa tem de ser de um dia anterior ao de hoje.
-  if (!dataBaixa || mesmaDataCivil(dataBaixa, new Date())) {
+  // Regra 02: a baixa tem de ser de um dia anterior ao de hoje (no fuso da
+  // operação).
+  const baixaCivil = civilDate(dataBaixa);
+  if (!baixaCivil || baixaCivil >= hoje) {
     motivos.push('Aguarde 24h após a última baixa da lista');
   }
 
@@ -538,14 +558,21 @@ export function avaliarElegibilidade({ dataBaixa, status, pago, solicitacaoStatu
 }
 
 // Monta o contexto compartilhado (insumos que não dependem da lista) uma vez
-// por requisição: config, eficiência 30d e a janela de reclamações.
+// por requisição: config, eficiência 30d, a janela de reclamações e o dia civil
+// da operação.
 async function montarContextoAdiantamento(matricula) {
   const config = await getConfig();
   const [eficiencia, motivosReclamacoes] = await Promise.all([
     getEficiencia30d(matricula, config),
     motivosReclamacoesDesatualizadas(),
   ]);
-  return { config, pct: eficiencia.pct, minimo: eficiencia.minimo, motivosReclamacoes };
+  return {
+    config,
+    pct: eficiencia.pct,
+    minimo: eficiencia.minimo,
+    motivosReclamacoes,
+    hoje: civilDateNoFuso(),
+  };
 }
 
 export async function solicitarPagamento(matricula, listaNumero, valorSolicitado, chaveNfse = null) {
@@ -603,7 +630,7 @@ const l = lista[0];
     solicitacaoStatus: solicitacaoExistente[0]?.status,
     temReclamacao: reclamacoes.length > 0,
     valorLista,
-    ctx: { ...ctx, suspensao: dataBaixa ? emPeriodoSuspensao(dataBaixa, config.dias_uteis_pagamento) : false },
+    ctx: { ...ctx, suspensao: dataBaixa ? emPeriodoSuspensao(dataBaixa, config.dias_uteis_pagamento, ctx.hoje) : false },
   });
 
   if (!avaliacao.elegivel) {
@@ -618,7 +645,7 @@ const l = lista[0];
   }
   valorSolicitado = valor;
 
-  const dias = l['Data Baixa'] ? calcDiasAteFechamento(l['Data Baixa']) : MAX_DIAS_TAXA;
+  const dias = l['Data Baixa'] ? calcDiasAteFechamento(l['Data Baixa'], ctx.hoje) : MAX_DIAS_TAXA;
   const { rows: taxaRow } = await pool.query(`
     SELECT taxa FROM taxas_adiantamento WHERE dias_ate_fechamento = $1
   `, [Math.min(dias, MAX_DIAS_TAXA)]);
@@ -727,7 +754,7 @@ const l = lista[0];
           valor_solicitado: Number(valorSolicitado),
           taxa_aplicada: Number(taxaAplicada),
           valor_liquido: Number(valorLiquido),
-          data_pagamento: new Date().toISOString().slice(0, 10),
+          data_pagamento: civilDateNoFuso(),
           pre_aprovado: true,
           aprovado_por: 'auto',
         },
