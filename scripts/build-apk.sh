@@ -15,6 +15,10 @@ echo -e "\n${GREEN}[1/4] Gerando version.json...${NC}"
 cd frontend
 npm run prebuild
 
+# 1.5 Remove APKs antigos para nao empacotar dentro do novo
+echo -e "\n${GREEN}[1.5/4] Limpando APKs antigos...${NC}"
+rm -f public/DriverPix.apk dist/DriverPix.apk
+
 # 2. Build do frontend
 echo -e "\n${GREEN}[2/4] Build Vite...${NC}"
 npm run build

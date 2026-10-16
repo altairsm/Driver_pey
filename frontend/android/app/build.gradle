@@ -1,5 +1,19 @@
 apply plugin: 'com.android.application'
 
+// Credenciais de assinatura vem de android/key.properties, que nao vai para o git.
+// Use key.properties.example como modelo. Se faltar o arquivo, o build de release
+// para aqui com mensagem explicativa em vez de falhar no meio do gradle.
+def keystorePropertiesFile = rootProject.file('key.properties')
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+} else if (gradle.startParameter.taskNames.any { it.toLowerCase().contains('release') }) {
+    throw new GradleException(
+        "key.properties nao encontrado em ${keystorePropertiesFile}. " +
+        "Copie key.properties.example para key.properties e preencha as credenciais do keystore."
+    )
+}
+
 android {
     namespace = "com.driverpey.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -18,10 +32,10 @@ android {
     }
     signingConfigs {
         release {
-            storeFile file('driverpey.keystore')
-            storePassword 'driverpey123'
-            keyAlias 'driverpey'
-            keyPassword 'driverpey123'
+            storeFile file(keystoreProperties['storeFile'])
+            storePassword keystoreProperties['storePassword']
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
         }
     }
     buildTypes {

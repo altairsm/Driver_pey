@@ -1,0 +1,6 @@
+# Copie para key.properties e preencha com as credenciais reais do seu keystore.
+# O key.properties nao vai para o git. O keystore (.keystore/.jks) tambem nao.
+storeFile=driverpey.keystore
+storePassword=SUA_SENHA_DO_KEYSTORE
+keyAlias=driverpey
+keyPassword=SUA_SENHA_DA_CHAVE
