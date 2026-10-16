@@ -18,7 +18,9 @@ export default function DriverRegrasPagamento() {
         }
         const cfg = await getConfig();
         setConfig(cfg);
-      } catch {}
+      } catch {
+        // O conteúdo ainda pode ser confirmado sem a configuração opcional.
+      }
       setLoading(false);
     };
     check();
@@ -43,7 +45,7 @@ export default function DriverRegrasPagamento() {
     container: { minHeight: '100vh', background: '#0d0f14', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', sans-serif" },
     topbar: { background: '#161920', borderBottom: '1px solid #2a2f3e', padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 60 },
     brand: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.5rem', letterSpacing: '3px', color: '#f0c040' },
-    backBtn: { background: 'transparent', border: '1px solid #2a2f3e', color: '#6b7280', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.65rem', letterSpacing: '1px', padding: '6px 12px', cursor: 'pointer', textDecoration: 'none' },
+    backBtn: { background: 'transparent', border: '1px solid #f0c040', color: '#f0c040', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem', letterSpacing: '1px', padding: '8px 14px', borderRadius: 4, cursor: 'pointer', textDecoration: 'none', whiteSpace: 'nowrap' },
     content: { maxWidth: 800, margin: '0 auto', padding: '40px 24px 60px' },
     title: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '2rem', letterSpacing: '3px', color: '#f0c040', marginBottom: 8 },
     sub: { fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.72rem', color: '#b0b4c0', marginBottom: 32, lineHeight: 1.6 },
@@ -66,8 +68,8 @@ export default function DriverRegrasPagamento() {
   return (
     <div style={s.container}>
       <div style={s.topbar}>
-        <div style={s.brand}>DRIVER PIX - INTUITIVA LOG</div>
-        {confirmado && <a href="/driver" style={s.backBtn}>&#8592; Voltar ao Painel</a>}
+        <div style={s.brand}>DRIVER PIX</div>
+        {confirmado && <a href="/driver" style={s.backBtn}>&#8592; Voltar</a>}
       </div>
       <div style={s.content}>
         <h1 style={s.title}>Pagamento Antecipado</h1>
@@ -250,7 +252,7 @@ export default function DriverRegrasPagamento() {
           <div style={s.confirmMsg}>
             ✓ Você já leu e entendeu as regras
             <br /><br />
-            <a href="/driver" style={{ ...s.backBtn, display: 'inline-block' }}>&#8592; Ir para o Painel</a>
+            <a href="/driver" style={{ ...s.backBtn, display: 'inline-block' }}>&#8592; Voltar</a>
           </div>
         ) : (
           <div style={{ textAlign: 'center' }}>
@@ -268,7 +270,7 @@ export default function DriverRegrasPagamento() {
         )}
 
         <div style={{ textAlign: 'center', padding: 20 }}>
-          <a href="/driver" style={{ ...s.backBtn, display: 'inline-block' }}>&#8592; Voltar ao Painel</a>
+          <a href="/driver" style={{ ...s.backBtn, display: 'inline-block' }}>&#8592; Voltar</a>
         </div>
       </div>
       <div style={s.footer}>SISTEMA DE GESTÃO DE MOTORISTAS · DRIVER PIX</div>

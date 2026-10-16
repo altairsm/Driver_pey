@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { getDriverDados, updateDriverDados } from '../services/api';
 
 function formatCNPJ(v) {
@@ -20,7 +19,6 @@ function formatPhone(v) {
 }
 
 export default function MeusDados() {
-  const navigate = useNavigate();
   const [dados, setDados] = useState(null);
   const [cnpj, setCnpj] = useState('');
   const [telefone, setTelefone] = useState('');
@@ -78,7 +76,7 @@ export default function MeusDados() {
     container: { minHeight: '100vh', background: '#0d0f14', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', sans-serif" },
     topbar: { background: '#161920', borderBottom: '1px solid #2a2f3e', padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 60 },
     brand: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.5rem', letterSpacing: '3px', color: '#f0c040' },
-    backBtn: { background: 'transparent', border: '1px solid #2a2f3e', color: '#6b7280', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.65rem', letterSpacing: '1px', padding: '6px 12px', cursor: 'pointer', textDecoration: 'none' },
+    backBtn: { background: 'transparent', border: '1px solid #f0c040', color: '#f0c040', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem', letterSpacing: '1px', padding: '8px 14px', borderRadius: 4, cursor: 'pointer', textDecoration: 'none', whiteSpace: 'nowrap' },
     content: { maxWidth: 600, margin: '0 auto', padding: '40px 24px 60px' },
     title: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '2rem', letterSpacing: '3px', color: '#f0c040', marginBottom: 32 },
     card: { background: '#161920', border: '1px solid #2a2f3e', borderRadius: 6, padding: 24, marginBottom: 16 },
@@ -103,8 +101,8 @@ export default function MeusDados() {
   return (
     <div style={s.container}>
       <div style={s.topbar}>
-        <div style={s.brand}>DRIVER PIX - INTUITIVA LOG</div>
-        <a href="/driver" style={s.backBtn}>&#8592; Voltar ao Painel</a>
+        <div style={s.brand}>DRIVER PIX</div>
+        <a href="/driver" style={s.backBtn}>&#8592; Voltar</a>
       </div>
       <div style={s.content}>
         <h1 style={s.title}>Meus Dados</h1>
