@@ -146,8 +146,9 @@ export default function DriverRegrasPagamento() {
           </div>
           <div style={s.cardBody}>
             Adiantamentos ficam bloqueados entre o <strong style={{ color: '#e8eaf0' }}>último dia da quinzena</strong>
-            (a que a lista pertence) e a <strong style={{ color: '#e8eaf0' }}>data de pagamento</strong>
-            (N dias úteis após o fim da quinzena). Durante esse período a lista segue para pagamento normal.
+            (a que a lista pertence: a 1ª quinzena fecha no dia 15, a 2ª no último dia do mês) e a
+            <strong style={{ color: '#e8eaf0' }}> data de pagamento</strong>
+            ({config?.dias_uteis_pagamento || 'N'} dias úteis após o fim da quinzena). Durante esse período a lista segue para pagamento normal.
           </div>
         </div>
 

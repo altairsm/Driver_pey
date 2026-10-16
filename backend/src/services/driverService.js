@@ -117,6 +117,34 @@ export async function getDriverTrips(matricula, inicio = null, fim = null) {
     ORDER BY MAX(le."Data Emissão") DESC NULLS LAST
   `, [matricula, inicio, fim]);
 
+  // Enriquece cada lista com a elegibilidade calculada no servidor (fonte
+  // única). O painel só renderiza estes campos; ele não recalcula regra
+  // nenhuma, então o botão nunca mente sobre o que o servidor aceita.
+  const ctx = await montarContextoAdiantamento(matricula);
+  const valores = await getValorListas(matricula);
+
+  for (const t of result.rows) {
+    const dataBaixa = t.data_baixa ? new Date(t.data_baixa) : null;
+    const suspensao = dataBaixa
+      ? emPeriodoSuspensao(dataBaixa, ctx.config.dias_uteis_pagamento)
+      : false;
+    const avaliacao = avaliarElegibilidade({
+      dataBaixa,
+      status: t.status,
+      pago: t.pago,
+      solicitacaoStatus: t.solicitacao_status,
+      temReclamacao: t.tem_reclamacao_aberta,
+      valorLista: valores.get(String(t.numero_lista)) ?? 0,
+      ctx: { ...ctx, suspensao },
+    });
+    t.valor_lista = valores.get(String(t.numero_lista)) ?? 0;
+    t.em_suspensao = avaliacao.em_suspensao;
+    t.elegivel = avaliacao.elegivel;
+    t.motivos = avaliacao.motivos;
+    // Dias até o fechamento da quinzena (para a faixa de taxa exibida).
+    t.dias_ate_fechamento = dataBaixa ? calcDiasAteFechamento(dataBaixa) : MAX_DIAS_TAXA;
+  }
+
   return result.rows;
 }
 
@@ -292,11 +320,31 @@ export async function getUltimaImportacao() {
   return rows[0]?.ultima_importacao || null;
 }
 
+// Coluna DATE chega do Postgres como Date em meia-noite local, e string
+// 'YYYY-MM-DD' seria interpretada como UTC. Normalizamos para o dia civil
+// 'YYYY-MM-DD' e só então montamos em UTC: assim a conta não depende de como
+// o valor chegou nem do fuso do processo.
+function civilDate(valor) {
+  if (!valor) return null;
+  if (typeof valor === 'string') return valor.slice(0, 10);
+  const d = new Date(valor);
+  if (Number.isNaN(d.getTime())) return null;
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+// Fim da quinzena a que a lista pertence. A 1ª quinzena vai do dia 1 ao 15
+// (como em getQuinzenasDisponiveis/getQuinzenasAdmin no SQL); a 2ª vai do 16
+// ao último dia do mês. Precisa bater com o SQL: é daqui que saem a janela
+// de suspensão (regra 05) e a faixa de taxa.
 function calcQuinzenaFim(data) {
-  const d = new Date(data);
+  const civil = civilDate(data);
+  if (!civil) return null;
+  const d = new Date(`${civil}T00:00:00Z`);
   const dia = d.getUTCDate();
   if (dia <= 15) {
-    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 14));
+    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 15));
   }
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
 }
@@ -312,10 +360,14 @@ function addDiasUteis(data, n) {
   return d;
 }
 
-function emPeriodoSuspensao(dataBaixa, diasUteis) {
+// Regra 05: o adiantamento é bloqueado entre o fim da quinzena da lista e a
+// data de pagamento (N dias úteis depois do fim da quinzena). Fora desse
+// intervalo a lista segue o fluxo normal. Exportada para os testes de virada.
+export function emPeriodoSuspensao(dataBaixa, diasUteis, hojeRef = null) {
   const quinzenaFim = calcQuinzenaFim(dataBaixa);
+  if (!quinzenaFim) return false;
   const pagamentoDate = addDiasUteis(quinzenaFim, diasUteis);
-  const hoje = new Date();
+  const hoje = hojeRef ? new Date(hojeRef) : new Date();
   hoje.setUTCHours(0, 0, 0, 0);
   const qf = new Date(quinzenaFim);
   qf.setUTCHours(0, 0, 0, 0);
@@ -324,23 +376,176 @@ function emPeriodoSuspensao(dataBaixa, diasUteis) {
   return hoje >= qf && hoje <= pd;
 }
 
+// Mesma data civil (ignora hora e fuso) — base da regra "Aguarde 24h após a
+// última baixa". Trabalha com datas em UTC para não depender do fuso.
+function mesmaDataCivil(a, b) {
+  const ca = civilDate(a);
+  const cb = civilDate(b);
+  return ca !== null && cb !== null && ca === cb;
+}
+
+// Quantos dias faltam (mínimo 1) até o fechamento da quinzena da lista.
 function calcDiasAteFechamento(dataBaixa) {
-  const d = new Date(dataBaixa);
-  const dia = d.getUTCDate();
-  let fechamento;
-  if (dia <= 15) {
-    fechamento = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 14));
-  } else {
-    fechamento = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
-  }
+  const fechamento = calcQuinzenaFim(dataBaixa);
+  if (!fechamento) return 14;
   const hoje = new Date();
   hoje.setUTCHours(0, 0, 0, 0);
   const diffMs = fechamento.getTime() - hoje.getTime();
-  return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+  return Math.max(1, Math.min(14, Math.ceil(diffMs / (1000 * 60 * 60 * 24))));
 }
 
 function normalizarStatusSolicitacao(st) {
   return String(st || '').trim().toLowerCase();
+}
+
+// ── Fonte única de elegibilidade do adiantamento ────────────────────────────
+// Regras 01–08. O painel (getDriverTrips) e o pedido real (solicitarPagamento)
+// passam TODOS por avaliarElegibilidade, para que o botão do motorista nunca
+// divirja do que o servidor aceita. Cada regra vira um motivo legível; a
+// lista é elegível quando não há nenhum motivo.
+
+const JANELA_RECLAMACOES_HORAS = 4;
+const MAX_DIAS_TAXA = 14;
+
+// Eficiência dos últimos 30 dias: entregas ÷ eventos × 100 (sem arredondar,
+// como a tela mostra) e o limiar efetivo do motorista (override ou global).
+async function getEficiencia30d(matricula, config) {
+  const { rows } = await pool.query(`
+    SELECT
+      COUNT(*) FILTER (WHERE LOWER(re."Evento") = 'entrega') AS entregas,
+      COUNT(*) AS total,
+      (SELECT m.eficiencia_minima_adiantamento FROM matriculos_jad m
+         WHERE m."OperadorMatricula"::bigint = $1) AS eficiencia_override
+    FROM relatorioentrega_export re
+    WHERE re."OperadorMatricula"::bigint = $1
+      AND re."Data"::date >= (CURRENT_DATE - INTERVAL '30 days')::date
+  `, [matricula]);
+  const ef = rows[0] || {};
+  const total = Number(ef.total || 0);
+  const entregas = Number(ef.entregas || 0);
+  const pct = total > 0 ? (entregas / total) * 100 : 0;
+  const minimo = eficienciaMinimaEfetiva(ef.eficiencia_override, config);
+  return { pct, minimo };
+}
+
+// Valor de cada lista (mesma deduplicação de getDriverTripsFaixas, para que o
+// total do servidor bata com o que a tela soma). Mapa lista → valor.
+async function getValorListas(matricula) {
+  const { rows } = await pool.query(`
+    WITH entregas_raw AS (
+      SELECT
+        re."NCTE" AS ncte,
+        re."Lista" AS lista,
+        COALESCE(fb.valor_peso, 0) AS valor_peso
+      FROM relatorioentrega_export re
+      LEFT JOIN ceps_especificos ce
+        ON ce.cep = NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '')
+      LEFT JOIN faixas_peso_entrega_bairro fb
+        ON re."Peso"::numeric BETWEEN fb.peso_de AND fb.peso_ate
+        AND fb.nome_tabela = ce.nome_tabela
+      JOIN lista_entregas le ON le."Número"::text = re."Lista"
+      WHERE re."OperadorMatricula"::bigint = $1
+        AND LOWER(re."Evento") = 'entrega'
+        AND le.status = 'Finalizado'
+    ),
+    dedup AS (
+      SELECT DISTINCT ON (ncte, lista) lista, valor_peso
+      FROM entregas_raw
+      ORDER BY ncte, lista,
+        CASE WHEN valor_peso > 0 THEN 0 ELSE 1 END,
+        valor_peso ASC
+    )
+    SELECT lista, SUM(valor_peso)::numeric(12,2) AS valor_total
+    FROM dedup
+    GROUP BY lista
+  `, [matricula]);
+  const mapa = new Map();
+  for (const r of rows) mapa.set(r.lista, Number(r.valor_total || 0));
+  return mapa;
+}
+
+// A janela de 4h desde a última importação de reclamações é global (não por
+// lista): vale o mesmo para todos. Devolve os motivos prontos.
+async function motivosReclamacoesDesatualizadas() {
+  const { rows } = await pool.query(`SELECT MAX(importado_em) AS ultima FROM acareacaojad`);
+  const ultima = rows[0]?.ultima;
+  if (!ultima) return ['Nenhuma reclamação importada ainda'];
+  const horas = (Date.now() - new Date(ultima).getTime()) / (1000 * 60 * 60);
+  if (horas > JANELA_RECLAMACOES_HORAS) {
+    return [`Reclamações desatualizadas — última importação há mais de ${JANELA_RECLAMACOES_HORAS} horas`];
+  }
+  return [];
+}
+
+// Status de solicitação que bloqueia um novo pedido. Compartilhado por painel
+// e pedido para não divergirem.
+function motivoSolicitacaoExistente(statusSolicitacao) {
+  const st = normalizarStatusSolicitacao(statusSolicitacao);
+  if (st === 'aprovado' || st === 'pre_aprovado') {
+    return 'Esta lista já teve o adiantamento aprovado';
+  }
+  if (st === 'pendente') {
+    return 'Já existe uma solicitação pendente para esta lista';
+  }
+  if (st === 'erro_webhook') {
+    return 'O Pix desta lista está com falha de envio e em aberto — aguarde o administrador reenviar';
+  }
+  if (st === 'processando_pix' || st === 'pix_rejeitado') {
+    return 'Adiantamento em processamento';
+  }
+  return null;
+}
+
+// Avalia as regras de elegibilidade de UMA lista. `ctx` traz os dados já
+// calculados uma vez (config, eficiência, valor, janela de reclamações) para
+// não repetir consulta. Devolve { elegivel, motivos, em_suspensao }.
+export function avaliarElegibilidade({ dataBaixa, status, pago, solicitacaoStatus, temReclamacao, valorLista, ctx }) {
+  const { config, pct, minimo, motivosReclamacoes, suspensao } = ctx;
+  const motivos = [];
+
+  if (pago) motivos.push('Esta lista já foi paga');
+
+  const motivoSol = motivoSolicitacaoExistente(solicitacaoStatus);
+  if (motivoSol) motivos.push(motivoSol);
+
+  if (suspensao) motivos.push('Quinzena em processamento');
+
+  if (pct < minimo) {
+    motivos.push(`Eficiência abaixo de ${minimo}% nos últimos 30 dias`);
+  }
+
+  motivos.push(...motivosReclamacoes);
+
+  if (status !== 'Finalizado') {
+    motivos.push('Lista não finalizada');
+  }
+
+  // Regra 02: a baixa tem de ser de um dia anterior ao de hoje.
+  if (!dataBaixa || mesmaDataCivil(dataBaixa, new Date())) {
+    motivos.push('Aguarde 24h após a última baixa da lista');
+  }
+
+  if (temReclamacao) motivos.push('Lista possui reclamação');
+
+  const maximo = Number(config.valor_maximo_adiantamento) || 400;
+  if (valorLista <= 0) {
+    motivos.push('Valor da lista é zero');
+  } else if (valorLista > maximo) {
+    motivos.push(`Valor excede R$ ${maximo.toFixed(2)}`);
+  }
+
+  return { elegivel: motivos.length === 0, motivos, em_suspensao: suspensao };
+}
+
+// Monta o contexto compartilhado (insumos que não dependem da lista) uma vez
+// por requisição: config, eficiência 30d e a janela de reclamações.
+async function montarContextoAdiantamento(matricula) {
+  const config = await getConfig();
+  const [eficiencia, motivosReclamacoes] = await Promise.all([
+    getEficiencia30d(matricula, config),
+    motivosReclamacoesDesatualizadas(),
+  ]);
+  return { config, pct: eficiencia.pct, minimo: eficiencia.minimo, motivosReclamacoes };
 }
 
 export async function solicitarPagamento(matricula, listaNumero, valorSolicitado, chaveNfse = null) {
@@ -356,34 +561,9 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
     return { success: false, motivo: 'Lista não encontrada' };
   }
 
-  const l = lista[0];
-
-  if (l.pago) {
-    return { success: false, motivo: 'Esta lista já foi paga' };
-  }
-
-  const { rows: solicitacaoExistente } = await pool.query(`
-    SELECT status FROM solicitacoes_pagamento
-    WHERE matricula = $1 AND lista_numero = $2
-  `, [matricula, listaNumero]);
-
-  if (solicitacaoExistente.length > 0) {
-    const st = normalizarStatusSolicitacao(solicitacaoExistente[0].status);
-    if (st === 'aprovado') {
-      return { success: false, motivo: 'Esta lista já teve o adiantamento aprovado' };
-    }
-    if (st === 'pendente') {
-      return { success: false, motivo: 'Já existe uma solicitação pendente para esta lista' };
-    }
-    if (st === 'erro_webhook') {
-      return { success: false, motivo: 'O Pix desta lista está com falha de envio e em aberto — aguarde o administrador reenviar' };
-    }
-  }
+const l = lista[0];
 
   const dataBaixa = l['Data Baixa'] ? new Date(l['Data Baixa']) : null;
-  if (dataBaixa && emPeriodoSuspensao(dataBaixa, config.dias_uteis_pagamento)) {
-    return { success: false, motivo: 'Período de pagamento da quinzena em processamento — adiantamentos suspensos' };
-  }
 
   const { rows: ctes } = await pool.query(`
     SELECT 1 FROM relatorioentrega_export re
@@ -397,43 +577,10 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
     return { success: false, motivo: 'Lista não pertence a este motorista' };
   }
 
-  const { rows: eficienciaData } = await pool.query(`
-    SELECT
-      COUNT(*) FILTER (WHERE LOWER(re."Evento") = 'entrega') AS entregas,
-      COUNT(*) AS total,
-      (SELECT m.eficiencia_minima_adiantamento FROM matriculos_jad m
-         WHERE m."OperadorMatricula"::bigint = $1) AS eficiencia_override
-    FROM relatorioentrega_export re
-    WHERE re."OperadorMatricula"::bigint = $1
-      AND re."Data"::date >= (CURRENT_DATE - INTERVAL '30 days')::date
-  `, [matricula]);
-
-  const ef = eficienciaData[0];
-  const pctEf = ef.total > 0 ? Math.round((Number(ef.entregas) / Number(ef.total)) * 100) : 0;
-  // Limiar do próprio motorista quando ele tiver um valor próprio; senão o padrão global.
-  const eficienciaMinima = eficienciaMinimaEfetiva(ef.eficiencia_override, config);
-
-  const { rows: ultimaImport } = await pool.query(`SELECT MAX(importado_em) AS ultima FROM acareacaojad`);
-  const ultima = ultimaImport[0]?.ultima;
-  if (!ultima) {
-    return { success: false, motivo: 'Nenhuma reclamação importada ainda' };
-  }
-  const horasDesdeImport = (Date.now() - new Date(ultima).getTime()) / (1000 * 60 * 60);
-  if (horasDesdeImport > 4) {
-    return { success: false, motivo: 'Reclamações desatualizadas — última importação há mais de 4 horas' };
-  }
-
-  if (pctEf < eficienciaMinima) {
-    return { success: false, motivo: `Eficiência abaixo de ${eficienciaMinima}% nos últimos 30 dias` };
-  }
-
-  if (l.status !== 'Finalizado') {
-    return { success: false, motivo: 'Lista não está finalizada' };
-  }
-
-  if (!dataBaixa || dataBaixa.toDateString() === new Date().toDateString()) {
-    return { success: false, motivo: 'Aguarde 24h após a última baixa da lista' };
-  }
+  const { rows: solicitacaoExistente } = await pool.query(`
+    SELECT status FROM solicitacoes_pagamento
+    WHERE matricula = $1 AND lista_numero = $2
+  `, [matricula, listaNumero]);
 
   const { rows: reclamacoes } = await pool.query(`
     SELECT 1 FROM acareacaojad a
@@ -443,19 +590,38 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
     LIMIT 1
   `, [listaNumero, matricula]);
 
-  if (reclamacoes.length > 0) {
-    return { success: false, motivo: 'Lista possui reclamações abertas' };
+  const ctx = await montarContextoAdiantamento(matricula);
+  // O valor da lista é calculado no servidor (fonte única com o painel) em vez
+  // de vir do app: o cliente não decide quanto vai adiantar.
+  const valores = await getValorListas(matricula);
+  const valorLista = valores.get(String(listaNumero)) ?? 0;
+
+  const avaliacao = avaliarElegibilidade({
+    dataBaixa,
+    status: l.status,
+    pago: l.pago,
+    solicitacaoStatus: solicitacaoExistente[0]?.status,
+    temReclamacao: reclamacoes.length > 0,
+    valorLista,
+    ctx: { ...ctx, suspensao: dataBaixa ? emPeriodoSuspensao(dataBaixa, config.dias_uteis_pagamento) : false },
+  });
+
+  if (!avaliacao.elegivel) {
+    return { success: false, motivo: avaliacao.motivos.join(' — ') };
   }
 
+  // O app manda o valor, mas quem manda é o servidor.
+  const valor = valorLista;
   const maximo = Number(config.valor_maximo_adiantamento) || 400;
-  if (valorSolicitado <= 0 || valorSolicitado > maximo) {
+  if (valor <= 0 || valor > maximo) {
     return { success: false, motivo: `Valor da lista deve ser entre R$ 0,01 e R$ ${maximo.toFixed(2)}` };
   }
+  valorSolicitado = valor;
 
-  const dias = l['Data Baixa'] ? calcDiasAteFechamento(l['Data Baixa']) : 14;
+  const dias = l['Data Baixa'] ? calcDiasAteFechamento(l['Data Baixa']) : MAX_DIAS_TAXA;
   const { rows: taxaRow } = await pool.query(`
     SELECT taxa FROM taxas_adiantamento WHERE dias_ate_fechamento = $1
-  `, [Math.min(dias, 14)]);
+  `, [Math.min(dias, MAX_DIAS_TAXA)]);
   const taxaAplicadaBase = Number(taxaRow[0]?.taxa) || 0;
 
   const { rows: totalCtes } = await pool.query(`
@@ -606,7 +772,15 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
       }
     }
 
-    return { success: true, motivo: 'Solicitação registrada com sucesso', beneficio_sem_taxa: todosEntreguesD0, pix_estado: pixEstado };
+    // Devolvemos o valor que o servidor registrou (o da lista, calculado aqui):
+    // o app pode ter enviado outro número e é este que vale.
+    return {
+      success: true,
+      motivo: 'Solicitação registrada com sucesso',
+      valor_solicitado: Number(valorSolicitado),
+      beneficio_sem_taxa: todosEntreguesD0,
+      pix_estado: pixEstado,
+    };
   } catch (err) {
     if (err.code === '23505') {
       return { success: false, motivo: 'Solicitação já existe para esta lista' };

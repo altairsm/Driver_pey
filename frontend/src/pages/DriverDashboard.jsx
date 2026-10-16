@@ -45,27 +45,13 @@ function calcPagamento(endDate, diasUteis) {
   return d;
 }
 
-function calcQuinzenaFim(dataStr) {
-  const d = new Date(dataStr.slice(0, 10));
-  const dia = d.getUTCDate();
-  if (dia <= 15) return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 14));
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
-}
-
-function calcDiasAteFechamento(dataBaixa) {
-  const d = new Date(dataBaixa.slice(0, 10));
-  const dia = d.getUTCDate();
-  let fechamento;
-  if (dia <= 15) {
-    fechamento = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 14));
-  } else {
-    fechamento = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
-  }
-  const hoje = new Date();
-  hoje.setUTCHours(0, 0, 0, 0);
-  const diffMs = fechamento.getTime() - hoje.getTime();
-  return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-}
+// Regra 05 (período de suspensão), a elegibilidade e a faixa de taxa NÃO são
+// calculadas aqui: o backend já devolve em_suspensao, elegivel, motivos,
+// valor_lista e dias_ate_fechamento por lista em getDriverTrips. Recalcular no
+// app fazia o botão discordar do servidor (a.quinzena fechava dia 14 aqui e
+// dia 15 no servidor, e o fuzo do navegador empurrava mais um dia).
+// calcPagamento continua: serve só para exibir a data prevista de pagamento da
+// quinzena selecionada, que vem do SQL (quinzenas[].fim).
 
 // ─── Tab navigation ───────────────────────────────────────────────────────────
 const TABS = [
@@ -841,54 +827,22 @@ export default function DriverDashboard() {
                     const lista = t.numero_lista;
                     const faixasLista = faixas[lista] || [];
                     const totalEntregasLista = faixasLista.reduce((s2, f) => s2 + Number(f.entregas), 0);
-                    const totalValorLista = faixasLista.reduce((s2, f) => s2 + Number(f.total_valor), 0);
                     const status = t.pago ? 'Pago' : t.status === 'Finalizado' ? 'Finalizado' : 'Em aberto';
                     const statusColor = t.pago ? '#5ab4ff' : t.status === 'Finalizado' ? '#3de8a0' : '#6b7280';
 
-                    const db = t.data_baixa ? new Date(t.data_baixa.slice(0, 10)) : null;
-                    const hoje = new Date(); hoje.setHours(0,0,0,0);
-                    const dataBaixaOk = db && db < hoje;
-
-                    const emSuspensao = t.data_baixa
-                      ? (() => {
-                          const qf = calcQuinzenaFim(t.data_baixa);
-                          qf.setHours(0,0,0,0);
-                          const pd = calcPagamento(qf.toISOString().slice(0, 10), config?.dias_uteis_pagamento || 4);
-                          pd.setHours(0,0,0,0);
-                          return hoje.getTime() >= qf.getTime() && hoje.getTime() <= pd.getTime();
-                        })()
-                      : false;
-
-                    const temSolicitacao = t.solicitacao_status && t.solicitacao_status !== 'recusado';
+                    // Elegibilidade, motivos, valor e taxa vêm prontos do backend
+                    // (fonte única). Aqui só renderizamos: recalcular no app era o
+                    // que fazia o botão discordar do servidor nas regras 01, 02 e 05.
+                    const motivos = t.motivos || [];
+                    const elegivel = t.elegivel === true;
+                    const totalValorLista = Number(t.valor_lista) || 0;
                     const solicitacaoStatus = t.solicitacao_status || null;
-                    // O backend já resolve o limiar no /driver/me (override do motorista ou padrão global);
-// o config só entra como rede de segurança caso o /me venha sem o campo.
-const eficienciaMinima = Number(driver?.eficiencia_minima_efetiva ?? config?.eficiencia_minima_adiantamento) || 98;
-                    const maximoAdiantamento = Number(config?.valor_maximo_adiantamento) || 400;
-                    const diasAteFech = t.data_baixa ? calcDiasAteFechamento(t.data_baixa) : 14;
+                    const diasAteFech = Number(t.dias_ate_fechamento) || 14;
                     const taxaRow = taxas.find(tx => tx.dias_ate_fechamento === Math.min(diasAteFech, 14));
                     const taxaBase = Number(taxaRow?.taxa) || 0;
                     const lista100pct = Number(t.ctes_total) > 0 && Number(t.ctes_d0) === Number(t.ctes_total);
                     const taxaAdiantamento = lista100pct ? 0 : taxaBase;
                     const valorLiquido = totalValorLista * (1 - taxaAdiantamento / 100);
-                    const elegivel = !t.pago && pctEficiencia30dias >= eficienciaMinima && dataBaixaOk && !t.tem_reclamacao_aberta && totalValorLista > 0 && totalValorLista <= maximoAdiantamento && !emSuspensao && !temSolicitacao && !reclamacoesDesatualizadas && t.status === 'Finalizado';
-                    const motivos = [];
-                    if (pctEficiencia30dias < eficienciaMinima) motivos.push(`Eficiência abaixo de ${eficienciaMinima}% nos últimos 30 dias`);
-                    if (!dataBaixaOk) motivos.push('Aguarde 23h após a última baixa da lista');
-                    if (t.tem_reclamacao_aberta) motivos.push('Lista possui reclamação');
-                    if (totalValorLista <= 0) motivos.push('Valor da lista é zero');
-                    if (totalValorLista > maximoAdiantamento) motivos.push(`Valor excede R$ ${maximoAdiantamento.toFixed(2)}`);
-                    if (emSuspensao) motivos.push('Quinzena em processamento');
-                    if (t.status !== 'Finalizado') motivos.push('Lista não finalizada');
-                    if (t.pago) motivos.push('Já paga');
-                    if (temSolicitacao) {
-                      if (solicitacaoStatus === 'pendente') motivos.push('Adiantamento pendente');
-                      else if (solicitacaoStatus === 'erro_webhook') motivos.push('Adiantamento em aberto — falha no envio do Pix');
-                      else if (solicitacaoStatus === 'processando_pix' || solicitacaoStatus === 'pre_aprovado') motivos.push('Adiantamento em processamento');
-                      else if (solicitacaoStatus === 'pix_rejeitado') motivos.push('Adiantamento rejeitado pelo Pix');
-                      else motivos.push('Adiantamento aprovado');
-                    }
-                    if (reclamacoesDesatualizadas) motivos.push('Reclamações em análise');
 
                     return (
                       <div key={lista} style={s.listaCard}>
