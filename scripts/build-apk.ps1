@@ -12,6 +12,11 @@ Set-Location $FRONTEND
 npm run prebuild
 if (-not $?) { throw "prebuild failed" }
 
+# 1.5 Remove APKs antigos para nao empacotar dentro do novo
+Write-Host "`n[1.5/5] Limpando APKs antigos..." -ForegroundColor Green
+Remove-Item (Join-Path $FRONTEND "public\DriverPix.apk") -Force -ErrorAction SilentlyContinue
+Remove-Item (Join-Path $FRONTEND "dist\DriverPix.apk")   -Force -ErrorAction SilentlyContinue
+
 # 2. Build do frontend
 Write-Host "`n[2/5] Build Vite..." -ForegroundColor Green
 npm run build
