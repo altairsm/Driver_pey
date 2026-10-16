@@ -862,7 +862,9 @@ export default function DriverDashboard() {
                     const temSolicitacao = t.solicitacao_status && t.solicitacao_status !== 'recusado';
                     const solicitacaoStatus = t.solicitacao_status || null;
                     const reclamacoesDesatualizadas = !ultimaImportacao || (Date.now() - new Date(ultimaImportacao).getTime()) > 4 * 60 * 60 * 1000;
-                    const eficienciaMinima = Number(config?.eficiencia_minima_adiantamento) || 98;
+                    // O backend já resolve o limiar no /driver/me (override do motorista ou padrão global);
+// o config só entra como rede de segurança caso o /me venha sem o campo.
+const eficienciaMinima = Number(driver?.eficiencia_minima_efetiva ?? config?.eficiencia_minima_adiantamento) || 98;
                     const maximoAdiantamento = Number(config?.valor_maximo_adiantamento) || 400;
                     const diasAteFech = t.data_baixa ? calcDiasAteFechamento(t.data_baixa) : 14;
                     const taxaRow = taxas.find(tx => tx.dias_ate_fechamento === Math.min(diasAteFech, 14));

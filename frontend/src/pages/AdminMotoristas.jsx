@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { getMotoristas, createMotorista, updateMotorista, deleteMotorista } from '../services/api';
 import Topbar from '../components/Topbar';
 
-const FORM_VAZIO = { matricula: '', nome_completo: '', cpf: '', cnpj_mei: '', telefone: '', auto_aprovado: false, bonus_d0_motorista: false, bonus_d0_valor: 0, pix_tipo: 'CPF', pix_chave: '' };
+const FORM_VAZIO = { matricula: '', nome_completo: '', cpf: '', cnpj_mei: '', telefone: '', auto_aprovado: false, bonus_d0_motorista: false, bonus_d0_valor: 0, pix_tipo: 'CPF', pix_chave: '', eficiencia_minima_adiantamento: '' };
 
 function formatCNPJ(v) {
   const d = String(v || '').replace(/\D/g, '').slice(0, 14);
@@ -51,6 +51,7 @@ export default function AdminMotoristas() {
       bonus_d0_valor: m.bonus_d0_valor || 0,
       pix_tipo: m.pix_tipo || 'CPF',
       pix_chave: m.pix_chave || '',
+      eficiencia_minima_adiantamento: m.eficiencia_minima_adiantamento ?? '',
     });
     setError('');
     setModalAberto(true);
@@ -146,6 +147,7 @@ export default function AdminMotoristas() {
                     <th style={s.th}>Nome</th>
                     <th style={s.th}>CPF</th>
                     <th style={s.th}>CNPJ MEI</th>
+                    <th style={s.th}>Efic. mín.</th>
                     <th style={s.th}>Telefone</th>
                     <th style={s.th}>Ações</th>
                   </tr></thead>
@@ -156,6 +158,9 @@ export default function AdminMotoristas() {
                         <td style={s.td}>{m.nome_completo}</td>
                         <td style={s.td}>{m.cpf}</td>
                         <td style={s.td}>{m.cnpj_mei ? formatCNPJ(m.cnpj_mei) : <span style={{ color: '#ff9f40' }}>pendente</span>}</td>
+                        <td style={s.td}>{m.eficiencia_minima_adiantamento != null
+                          ? `${Number(m.eficiencia_minima_adiantamento).toFixed(2).replace('.', ',')}%`
+                          : <span style={{ color: '#6b7280' }}>padrão</span>}</td>
                         <td style={s.td}>{m.telefone || '—'}</td>
                         <td style={{ ...s.td, whiteSpace: 'nowrap' }}>
                           <button style={s.btnSm('#ffc107', '#0d0f14')} onClick={() => abrirEditar(m)}>Editar</button>
@@ -225,6 +230,19 @@ export default function AdminMotoristas() {
                   <input style={s.input} name="pix_chave" value={form.pix_chave}
                     onChange={handleChange} placeholder="Chave PIX para recebimento" />
                 </div>
+                <div style={s.field}>
+                  <label style={s.label}>Eficiência mínima (%)</label>
+                  <input style={s.input} name="eficiencia_minima_adiantamento" type="number"
+                    step="0.01" min="0" max="100"
+                    value={form.eficiencia_minima_adiantamento}
+                    onChange={handleChange}
+                    placeholder="Padrão do sistema" />
+                  <div style={{ fontSize: '0.65rem', color: '#6b7280', marginTop: 2 }}>
+                    Deixe vazio para usar o padrão das Configurações. Se definido, este valor
+                    substitui o padrão apenas para este motorista.
+                  </div>
+                </div>
+
                 <div style={s.field}>
                   <label style={{ ...s.label, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                     <input type="checkbox" name="auto_aprovado" checked={form.auto_aprovado}

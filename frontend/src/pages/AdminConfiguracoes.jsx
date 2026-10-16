@@ -154,6 +154,10 @@ export default function AdminConfiguracoes() {
               onChange={e => handleChange('eficiencia_minima_adiantamento', e.target.value)}
               style={s.input}
             />
+            <div style={{ fontSize: '0.65rem', color: '#6b7280', marginTop: 2 }}>
+              Valor padrão. Motoristas com eficiência própria definida no cadastro usam o valor
+              deles no lugar deste.
+            </div>
           </div>
 
           <div style={{ ...s.field, borderTop: '1px solid #2a2f3e', paddingTop: 16 }}>

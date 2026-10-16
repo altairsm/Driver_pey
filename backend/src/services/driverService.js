@@ -2,16 +2,25 @@ import { pool } from '../db/index.js';
 import { getConfig } from './configuracaoService.js';
 import { enviarWebhookDriverPix, decidirStatus, chaveEstavel } from './webhookService.js';
 import { validarEregistrar, notaAtende, mensagemParaMotorista } from './nfseService.js';
-import { normalizaCnpjMei } from './paymentService.js';
+import { normalizaCnpjMei, eficienciaMinimaEfetiva } from './paymentService.js';
 
 export async function getDriverData(matricula) {
   const result = await pool.query(`
     SELECT "OperadorMatricula"::bigint AS matricula, nome_completo, cpf, telefone,
-           leu_regras, cnpj_mei, pix_tipo, pix_chave
+           leu_regras, cnpj_mei, pix_tipo, pix_chave,
+           eficiencia_minima_adiantamento
     FROM matriculos_jad
     WHERE "OperadorMatricula"::bigint = $1
   `, [matricula]);
-  return result.rows[0] || null;
+  const driver = result.rows[0] || null;
+  if (!driver) return null;
+  // O app precisa do limiar que vale para este motorista, já resolvido: o seu
+  // próprio quando definido, o padrão global quando não.
+  driver.eficiencia_minima_efetiva = eficienciaMinimaEfetiva(
+    driver.eficiencia_minima_adiantamento,
+    await getConfig()
+  );
+  return driver;
 }
 
 export async function getDriverDashboard(matricula, inicio = null, fim = null) {
@@ -391,7 +400,9 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
   const { rows: eficienciaData } = await pool.query(`
     SELECT
       COUNT(*) FILTER (WHERE LOWER(re."Evento") = 'entrega') AS entregas,
-      COUNT(*) AS total
+      COUNT(*) AS total,
+      (SELECT m.eficiencia_minima_adiantamento FROM matriculos_jad m
+         WHERE m."OperadorMatricula"::bigint = $1) AS eficiencia_override
     FROM relatorioentrega_export re
     WHERE re."OperadorMatricula"::bigint = $1
       AND re."Data"::date >= (CURRENT_DATE - INTERVAL '30 days')::date
@@ -399,6 +410,8 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
 
   const ef = eficienciaData[0];
   const pctEf = ef.total > 0 ? Math.round((Number(ef.entregas) / Number(ef.total)) * 100) : 0;
+  // Limiar do próprio motorista quando ele tiver um valor próprio; senão o padrão global.
+  const eficienciaMinima = eficienciaMinimaEfetiva(ef.eficiencia_override, config);
 
   const { rows: ultimaImport } = await pool.query(`SELECT MAX(importado_em) AS ultima FROM acareacaojad`);
   const ultima = ultimaImport[0]?.ultima;
@@ -410,8 +423,8 @@ export async function solicitarPagamento(matricula, listaNumero, valorSolicitado
     return { success: false, motivo: 'Reclamações desatualizadas — última importação há mais de 4 horas' };
   }
 
-  if (pctEf < Number(config.eficiencia_minima_adiantamento)) {
-    return { success: false, motivo: `Eficiência abaixo de ${config.eficiencia_minima_adiantamento}% nos últimos 30 dias` };
+  if (pctEf < eficienciaMinima) {
+    return { success: false, motivo: `Eficiência abaixo de ${eficienciaMinima}% nos últimos 30 dias` };
   }
 
   if (l.status !== 'Finalizado') {

@@ -689,7 +689,9 @@ export async function runMigrations() {
     await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS auto_aprovado BOOLEAN DEFAULT false');
     await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS bonus_d0_motorista BOOLEAN DEFAULT false');
     await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS bonus_d0_valor NUMERIC(10,2) DEFAULT 0');
-    console.log('  matriculos_jad columns expanded (leu_regras, cnpj_mei, pix_tipo, auto_aprovado, bonus_d0_motorista, bonus_d0_valor)');
+    // NULL = usa o padrao global de configuracoes.eficiencia_minima_adiantamento
+    await pool.query('ALTER TABLE matriculos_jad ADD COLUMN IF NOT EXISTS eficiencia_minima_adiantamento NUMERIC(5,2)');
+    console.log('  matriculos_jad columns expanded (leu_regras, cnpj_mei, pix_tipo, auto_aprovado, bonus_d0_motorista, bonus_d0_valor, eficiencia_minima_adiantamento)');
 
     // ── Step 8: Seeds ──
     console.log('Migrations: checking seed data...');

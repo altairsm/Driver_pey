@@ -517,7 +517,8 @@ export async function listarMotoristas() {
       pix_chave,
       auto_aprovado,
       bonus_d0_motorista,
-      bonus_d0_valor
+      bonus_d0_valor,
+      eficiencia_minima_adiantamento
     FROM matriculos_jad
     ORDER BY nome_completo
   `);
@@ -619,24 +620,45 @@ export function normalizaCnpjMei(valor) {
   return digitos;
 }
 
+// Eficiência mínima do adiantamento pode ser definida por motorista. Vazio = null,
+// que faz o cálculo cair no padrão global das Configurações.
+export function normalizaEficienciaMinima(valor) {
+  const bruto = String(valor ?? '').trim();
+  if (bruto === '') return null;
+  const num = Number(bruto.replace(',', '.'));
+  if (!Number.isFinite(num) || num < 0 || num > 100) {
+    throw new Error('Eficiência mínima deve estar entre 0 e 100');
+  }
+  return num;
+}
+
+// Fonte única do limiar: override do motorista > configuração global > 98.
+export function eficienciaMinimaEfetiva(override, config) {
+  const candidato = override ?? config?.eficiencia_minima_adiantamento ?? 98;
+  const num = Number(candidato);
+  return Number.isFinite(num) ? num : 98;
+}
+
 export async function criarMotorista(dados) {
-  const { matricula, nome_completo, cpf, cnpj_mei, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor, pix_tipo, pix_chave } = dados;
+  const { matricula, nome_completo, cpf, cnpj_mei, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor, pix_tipo, pix_chave, eficiencia_minima_adiantamento } = dados;
   const cnpjMei = normalizaCnpjMei(cnpj_mei);
+  const eficienciaMinima = normalizaEficienciaMinima(eficiencia_minima_adiantamento);
   await pool.query(`
-    INSERT INTO matriculos_jad ("OperadorMatricula", nome_completo, cpf, cnpj_mei, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor, pix_tipo, pix_chave)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-  `, [matricula, nome_completo, cpf, cnpjMei, telefone || null, pgto || null, auto_aprovado === true, bonus_d0_motorista === true, bonus_d0_valor || 0, pix_tipo || null, pix_chave || null]);
-  return { matricula, nome_completo, cpf, cnpj_mei: cnpjMei, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor };
+    INSERT INTO matriculos_jad ("OperadorMatricula", nome_completo, cpf, cnpj_mei, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor, pix_tipo, pix_chave, eficiencia_minima_adiantamento)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+  `, [matricula, nome_completo, cpf, cnpjMei, telefone || null, pgto || null, auto_aprovado === true, bonus_d0_motorista === true, bonus_d0_valor || 0, pix_tipo || null, pix_chave || null, eficienciaMinima]);
+  return { matricula, nome_completo, cpf, cnpj_mei: cnpjMei, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor, eficiencia_minima_adiantamento: eficienciaMinima };
 }
 
 export async function atualizarMotorista(matricula, dados) {
-  const { nome_completo, cpf, cnpj_mei, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor, pix_tipo, pix_chave } = dados;
+  const { nome_completo, cpf, cnpj_mei, telefone, pgto, auto_aprovado, bonus_d0_motorista, bonus_d0_valor, pix_tipo, pix_chave, eficiencia_minima_adiantamento } = dados;
   const cnpjMei = normalizaCnpjMei(cnpj_mei);
+  const eficienciaMinima = normalizaEficienciaMinima(eficiencia_minima_adiantamento);
   const result = await pool.query(`
     UPDATE matriculos_jad
-    SET nome_completo = $1, cpf = $2, cnpj_mei = $3, telefone = $4, pgto = $5, auto_aprovado = $6, bonus_d0_motorista = $7, bonus_d0_valor = $8, pix_tipo = $9, pix_chave = $10
-    WHERE "OperadorMatricula" = $11
-  `, [nome_completo, cpf, cnpjMei, telefone || null, pgto || null, auto_aprovado === true, bonus_d0_motorista === true, bonus_d0_valor || 0, pix_tipo || null, pix_chave || null, matricula]);
+    SET nome_completo = $1, cpf = $2, cnpj_mei = $3, telefone = $4, pgto = $5, auto_aprovado = $6, bonus_d0_motorista = $7, bonus_d0_valor = $8, pix_tipo = $9, pix_chave = $10, eficiencia_minima_adiantamento = $11
+    WHERE "OperadorMatricula" = $12
+  `, [nome_completo, cpf, cnpjMei, telefone || null, pgto || null, auto_aprovado === true, bonus_d0_motorista === true, bonus_d0_valor || 0, pix_tipo || null, pix_chave || null, eficienciaMinima, matricula]);
   return result.rowCount > 0;
 }
 

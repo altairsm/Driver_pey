@@ -69,7 +69,7 @@ router.post('/motoristas', async (req, res) => {
     if (err.code === '23505') {
       return res.status(409).json({ error: 'Matrícula já cadastrada' });
     }
-    if (err.message?.includes('CNPJ do MEI')) {
+    if (err.message?.includes('CNPJ do MEI') || err.message?.includes('Eficiência mínima')) {
       return res.status(400).json({ error: err.message });
     }
     console.error('Erro ao criar motorista:', err);
@@ -84,7 +84,7 @@ router.put('/motoristas/:matricula', async (req, res) => {
     if (!atualizado) return res.status(404).json({ error: 'Motorista não encontrado' });
     res.json({ success: true });
   } catch (err) {
-    if (err.message?.includes('CNPJ do MEI')) {
+    if (err.message?.includes('CNPJ do MEI') || err.message?.includes('Eficiência mínima')) {
       return res.status(400).json({ error: err.message });
     }
     console.error('Erro ao atualizar motorista:', err);
