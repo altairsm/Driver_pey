@@ -1,0 +1,3 @@
+# Scripts de shell precisam de LF: CRLF faz o bash abortar com
+# "syntax error near unexpected token" e impede o deploy de rodar.
+*.sh text eol=lf

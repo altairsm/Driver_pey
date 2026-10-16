@@ -19,7 +19,15 @@ const router = Router();
 const publicRouter = Router();
 
 // --- Upload config ---
-const uploadDir = path.resolve(__dirname, '..', 'uploads');
+// Diretorio do APK, resolvido a partir de __dirname (raiz do backend) e nao
+// do cwd: assim o caminho e o mesmo com o container e com o backend rodando
+// local. No container precisa cair em /app/uploads, que e onde o volume
+// nomeado 'apkdata' esta montado (docker-compose). Se o APK for gravado fora
+// do volume ele se perde a cada "docker compose up -d" e o download passa a
+// responder 404. Mismo caminho usado por upload.js/ceps.js.
+const uploadDir = process.env.UPLOAD_DIR
+  ? path.resolve(process.env.UPLOAD_DIR)
+  : path.resolve(__dirname, '..', '..', 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }

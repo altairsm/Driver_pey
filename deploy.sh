@@ -30,7 +30,7 @@ if [ ! -f frontend/.env ]; then
 fi
 
 # 2. Atualizar código
-echo -e "${YELLOW}[1/6] Atualizando código...${NC}"
+echo -e "${YELLOW}[1/7] Atualizando código...${NC}"
 git pull
 git fetch --tags --force
 
@@ -50,13 +50,13 @@ if [ "$VERSION" = "unknown" ]; then
 fi
 
 # 3. Reconstruir containers
-echo -e "${YELLOW}[2/6] Reconstruindo containers...${NC}"
+echo -e "${YELLOW}[2/7] Reconstruindo containers...${NC}"
 docker compose build --no-cache
 docker compose up -d
 
 # 4. Configurar nginx do host se existir
 if [ -f "$CONFIG_FILE" ]; then
-  echo -e "${YELLOW}[3/6] Verificando nginx do host...${NC}"
+  echo -e "${YELLOW}[3/7] Verificando nginx do host...${NC}"
   CLIENT_SIZE=$(grep -c "client_max_body_size" "$CONFIG_FILE" || true)
   if [ "$CLIENT_SIZE" = "0" ]; then
     echo -e "${YELLOW}[!] Adicionando client_max_body_size ao nginx...${NC}"
@@ -66,7 +66,7 @@ if [ -f "$CONFIG_FILE" ]; then
 fi
 
 # 5. Verificar saúde
-echo -e "${YELLOW}[4/6] Verificando saúde...${NC}"
+echo -e "${YELLOW}[4/7] Verificando saúde...${NC}"
 sleep 3
 HEALTH=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/health 2>/dev/null || echo "000")
 if [ "$HEALTH" = "200" ]; then
@@ -75,9 +75,9 @@ else
   echo -e "${RED}[FAIL] Backend não respondeu (HTTP $HEALTH). Veja: docker compose logs backend${NC}"
 fi
 
-# 6. Verificar schema do webhook Pix (migration Step 9).
+# 6. Verificar schema (migration Step 9 + versao_apk.versao).
 # Sem isso, colunas faltando só aparecem como 500 em runtime nas telas de admin.
-echo -e "${YELLOW}[5/6] Verificando schema (colunas do webhook Pix)...${NC}"
+echo -e "${YELLOW}[5/7] Verificando schema (colunas do webhook Pix)...${NC}"
 for attempt in 1 2 3 4 5 6 7 8 9 10; do
   COLS=$(docker exec driver-pey-db psql -U postgres -d jadlog -tAc \
     "SELECT count(*) FROM information_schema.columns
@@ -94,8 +94,55 @@ else
   exit 1
 fi
 
-# 7. Resumo
-echo -e "${YELLOW}[6/6] Containers rodando:${NC}"
+# versao_apk.versao e gravada no upload do APK (POST /admin/upload-apk).
+# Ausente = todo upload responde 500 e nenhum APK pode ser publicado.
+VCOL=$(docker exec driver-pey-db psql -U postgres -d jadlog -tAc \
+  "SELECT count(*) FROM information_schema.columns
+   WHERE table_name='versao_apk' AND column_name='versao'" 2>/dev/null || echo "0")
+if [ "$VCOL" = "1" ]; then
+  echo -e "${GREEN}[OK] versao_apk.versao presente${NC}"
+else
+  echo -e "${RED}[!] versao_apk.versao ausente: POST /admin/upload-apk vai responder 500.${NC}"
+  exit 1
+fi
+
+# 7. Persistencia do APK.
+# O backend grava o APK em /app/uploads, que precisa ser o volume nomeado
+# 'apkdata'. Se o volume nao estiver montado nesse caminho, o APK se perde a
+# cada "up -d" e o download passa a responder 404 sem erro visivel.
+echo -e "${YELLOW}[6/7] Verificando persistencia do APK...${NC}"
+if docker exec driver-pey-backend sh -c 'mount | grep -q " /app/uploads "' 2>/dev/null; then
+  echo -e "${GREEN}[OK] volume apkdata montado em /app/uploads${NC}"
+else
+  echo -e "${RED}[!] /app/uploads NAO e um volume montado: o APK enviado sera perdido no proximo deploy.${NC}"
+  echo -e "${RED}[!] Confira o volume do servico backend no docker-compose.yml.${NC}"
+  exit 1
+fi
+
+# O download chega em /api/download/DriverPix.apk. Se o nginx nao der
+# precedencia ao location /api/ frente a regex .apk, o pedido morre com 404
+# antes de chegar ao backend - foi exatamente o que quebrou em v3.7.1.
+if docker exec driver-pey-frontend nginx -t >/dev/null 2>&1; then
+  echo -e "${GREEN}[OK] nginx do frontend com configuracao valida${NC}"
+else
+  echo -e "${RED}[!] nginx do frontend com config invalida: docker exec driver-pey-frontend nginx -t${NC}"
+  exit 1
+fi
+
+if docker exec driver-pey-backend sh -c 'test -f /app/uploads/DriverPix.apk' 2>/dev/null; then
+  APK_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:8080/api/download/DriverPix.apk" || echo "000")
+  if [ "$APK_CODE" = "200" ]; then
+    echo -e "${GREEN}[OK] download do APK respondendo 200${NC}"
+  else
+    echo -e "${RED}[!] download do APK respondeu HTTP $APK_CODE. O motorista nao consegue atualizar o app.${NC}"
+    exit 1
+  fi
+else
+  echo -e "${YELLOW}[!] Nenhum APK em /app/uploads ainda: envie pelo Admin -> Versao.${NC}"
+fi
+
+# 8. Resumo
+echo -e "${YELLOW}[7/7] Containers rodando:${NC}"
 docker compose ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
 
 echo -e "${GREEN}=== Deploy concluído ===${NC}"
