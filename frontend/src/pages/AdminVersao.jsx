@@ -3,8 +3,7 @@ import { checkVersao, setVersaoAtiva, uploadApk } from '../services/api';
 import Topbar from '../components/Topbar';
 
 export default function AdminVersao() {
-  const URL_PADRAO = 'https://driverpix.intuitiva.log.br/DriverPix.apk';
-  const [form, setForm] = useState({ commit_hash: '', url_download: URL_PADRAO });
+  const [form, setForm] = useState({ commit_hash: '', url_download: '' });
   const [versaoAtiva, setVersaoAtiva_] = useState(null);
   const [msg, setMsg] = useState('');
   const [salvando, setSalvando] = useState(false);
@@ -13,12 +12,13 @@ export default function AdminVersao() {
   const [enviando, setEnviando] = useState(false);
   const [progresso, setProgresso] = useState(0);
   const [uploadMsg, setUploadMsg] = useState('');
+  const [uploadOk, setUploadOk] = useState(false);
 
   const carregar = async () => {
     try {
       const v = await checkVersao('FORCE');
       if (v.commit_esperado) {
-        setVersaoAtiva_({ commit_hash: v.commit_esperado, url_download: v.url_download });
+        setVersaoAtiva_({ commit_hash: v.commit_esperado, url_download: v.url_download, versao: v.versao_esperada });
       } else {
         setVersaoAtiva_(null);
       }
@@ -35,7 +35,7 @@ export default function AdminVersao() {
       setMsg('Preencha o commit hash');
       return;
     }
-    const payload = { commit_hash: form.commit_hash, url_download: form.url_download || URL_PADRAO };
+    const payload = { commit_hash: form.commit_hash, url_download: form.url_download };
     setSalvando(true);
     setMsg('');
     try {
@@ -52,26 +52,31 @@ export default function AdminVersao() {
 
   const handleUpload = async () => {
     if (!arquivo) {
+      setUploadOk(false);
       setUploadMsg('Selecione um arquivo .apk');
       return;
     }
     setEnviando(true);
     setProgresso(0);
     setUploadMsg('');
+    setUploadOk(false);
     try {
       const result = await uploadApk(arquivo, (progressEvent) => {
         const pct = Math.round((progressEvent.loaded * 100) / progressEvent.total);
         setProgresso(pct);
       });
-      setUploadMsg(result.mensagem || 'APK enviado com sucesso!');
+      const detectado = result.versao ? ` Detectado no APK: ${result.versao} (${result.commit_hash}).` : '';
+      setUploadMsg((result.mensagem || 'APK enviado com sucesso!') + detectado + (result.aviso ? ` ${result.aviso}` : ''));
+      setUploadOk(!result.aviso);
       setForm({
         commit_hash: result.commit_hash || '',
-        url_download: result.url_download || URL_PADRAO,
+        url_download: result.url_download || '',
       });
       await carregar();
       setArquivo(null);
       setProgresso(0);
     } catch (err) {
+      setUploadOk(false);
       setUploadMsg(err.response?.data?.error || 'Erro ao enviar APK');
     } finally {
       setEnviando(false);
@@ -106,8 +111,19 @@ export default function AdminVersao() {
         {versaoAtiva && (
           <div style={s.infoCard}>
             <div style={s.infoLabel}>Versão Ativa</div>
-            <div style={s.infoVal}>Commit: {versaoAtiva.commit_hash}</div>
+            <div style={s.infoVal}>
+              Commit: {versaoAtiva.commit_hash}
+              {versaoAtiva.versao ? `  (${versaoAtiva.versao})` : ''}
+            </div>
             <div style={{ ...s.infoVal, fontSize: '0.75rem', color: '#6b7280', wordBreak: 'break-all' }}>URL: {versaoAtiva.url_download}</div>
+            <a
+              href={versaoAtiva.url_download}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ ...s.infoVal, color: '#f0c040', fontSize: '0.75rem', marginTop: 6, display: 'inline-block' }}
+            >
+              Testar download ↗
+            </a>
           </div>
         )}
 
@@ -123,7 +139,7 @@ export default function AdminVersao() {
           </label>
 
           {uploadMsg && (
-            <div style={{ ...s.msg, background: uploadMsg.includes('sucesso') ? '#1a3a2a' : '#2a1a1a', color: uploadMsg.includes('sucesso') ? '#3de8a0' : '#ff5a5a', border: `1px solid ${uploadMsg.includes('sucesso') ? '#3de8a0' : '#ff5a5a'}` }}>
+            <div style={{ ...s.msg, background: uploadOk ? '#1a3a2a' : '#2a1a1a', color: uploadOk ? '#3de8a0' : '#ff5a5a', border: `1px solid ${uploadOk ? '#3de8a0' : '#ff5a5a'}` }}>
               {uploadMsg}
             </div>
           )}
@@ -165,7 +181,7 @@ export default function AdminVersao() {
               <label style={s.label}>URL de Download do APK</label>
               <input style={s.input} value={form.url_download}
                 onChange={(e) => setForm({ ...form, url_download: e.target.value })}
-                placeholder="Ex: https://driverpix.intuitiva.log.br/app-release.apk" required />
+                placeholder="Vazio = usa a URL do download no servidor" />
             </div>
             <button type="submit" style={s.btn} disabled={salvando}>
               {salvando ? 'Salvando...' : 'Salvar Versão'}

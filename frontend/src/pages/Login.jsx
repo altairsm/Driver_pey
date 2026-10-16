@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import { login, adminLogin, checkVersao } from '../services/api';
 import { sendFcmTokenWithRetry } from '../services/notificationService';
 import { COMMIT_HASH } from '../version.js';
@@ -18,12 +19,21 @@ export default function Login() {
   const [versaoUrl, setVersaoUrl] = useState('');
   const [versaoAtual, setVersaoAtual] = useState('');
   const [versaoEsperada, setVersaoEsperada] = useState('');
+  const [versaoEsperadaTag, setVersaoEsperadaTag] = useState('');
   const [versaoDismissed, setVersaoDismissed] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     async function checkVersion() {
       try {
+        // A versao so interessa para quem instalou o APK. No navegador o
+        // build e o do servidor e sempre esta atualizado; comparar o commit
+        // dele com o do APK fazia o aviso de "atualizar" aparecer para todo
+        // mundo no admin, sem download possivel.
+        if (!Capacitor.isNativePlatform()) {
+          setVersaoLoading(false);
+          return;
+        }
         if (COMMIT_HASH && COMMIT_HASH !== 'DEV') {
           setVersaoAtual(COMMIT_HASH);
 
@@ -32,8 +42,9 @@ export default function Login() {
             const parsed = JSON.parse(cached);
             if (!parsed.atualizado) {
               setVersaoOutdated(true);
-              setVersaoUrl(parsed.url_download || 'https://driverpix.intuitiva.log.br/DriverPix.apk');
+              setVersaoUrl(parsed.url_download || '');
               setVersaoEsperada(parsed.commit_esperado || '');
+              setVersaoEsperadaTag(parsed.versao_esperada || '');
             }
             return;
           }
@@ -42,8 +53,9 @@ export default function Login() {
           sessionStorage.setItem('versao_check', JSON.stringify(result));
           if (!result.atualizado) {
             setVersaoOutdated(true);
-            setVersaoUrl(result.url_download || 'https://driverpix.intuitiva.log.br/DriverPix.apk');
+            setVersaoUrl(result.url_download || '');
             setVersaoEsperada(result.commit_esperado || '');
+            setVersaoEsperadaTag(result.versao_esperada || '');
           }
         }
       } catch {
@@ -240,7 +252,11 @@ export default function Login() {
                 Sua versão do aplicativo está desatualizada. Faça o download da versão mais recente.
               </div>
               {versaoAtual && <div style={s.bannerVersion}>Sua versão: {versaoAtual}</div>}
-              {versaoEsperada && <div style={s.bannerVersion}>Esperado: {versaoEsperada}</div>}
+              {versaoEsperada && (
+                <div style={s.bannerVersion}>
+                  Esperado: {versaoEsperadaTag ? `${versaoEsperadaTag} ` : ''}({versaoEsperada})
+                </div>
+              )}
               {versaoUrl ? (
                 <a href={versaoUrl} target="_blank" rel="noopener noreferrer" style={s.bannerBtn}>
                   BAIXAR NOVA VERSÃO

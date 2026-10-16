@@ -642,10 +642,16 @@ export async function runMigrations() {
       id SERIAL PRIMARY KEY,
       commit_hash VARCHAR(40) NOT NULL,
       url_download VARCHAR(500) NOT NULL,
+      versao VARCHAR(40),
       criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       ativo BOOLEAN DEFAULT true
     )`);
     console.log('  -> versao_apk');
+
+    // Colunas que surgiram depois da tabela original. IF NOT EXISTS torna
+    // a migration segura para rodar de novo.
+    await pool.query(`ALTER TABLE versao_apk
+      ADD COLUMN IF NOT EXISTS versao VARCHAR(40)`);
 
     await pool.query(`CREATE TABLE IF NOT EXISTS cobrancas (
       id SERIAL PRIMARY KEY,
