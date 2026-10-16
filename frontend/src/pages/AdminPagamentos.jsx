@@ -24,7 +24,6 @@ export default function AdminPagamentos() {
   const [quinzenas, setQuinzenas] = useState([]);
   const [qzIdx, setQzIdx] = useState(0);
   const [resumo, setResumo] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [confirmando, setConfirmando] = useState(null);
   const [config, setConfig] = useState(null);
@@ -89,15 +88,12 @@ export default function AdminPagamentos() {
   const quinzenaAberta = qzAtual && String(qzAtual.fim).slice(0, 10) >= new Date().toISOString().slice(0, 10);
 
   const fetchResumo = useCallback(async (inicio, fim) => {
-    setLoading(true);
     setError('');
     try {
       const data = await getResumo(inicio, fim);
       setResumo(data);
-    } catch (err) {
+    } catch {
       setError('Erro ao buscar pagamentos');
-    } finally {
-      setLoading(false);
     }
   }, []);
 
@@ -111,10 +107,8 @@ export default function AdminPagamentos() {
           const q = qzs[0];
           await fetchResumo(q.inicio.slice(0, 10), q.fim.slice(0, 10));
         }
-      } catch (e) {
+      } catch {
         setError('Erro ao carregar quinzenas');
-      } finally {
-        setLoading(false);
       }
     };
     init();

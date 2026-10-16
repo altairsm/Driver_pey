@@ -62,7 +62,7 @@ export default function AdminReclamacoes() {
         } else {
           await carregar();
         }
-      } catch (e) {
+      } catch {
         await carregar();
       }
     };

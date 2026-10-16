@@ -12,7 +12,7 @@ export default function AdminCepsConflitos() {
       try {
         const data = await getCepsConflitos();
         setConflitos(data);
-      } catch (e) {
+      } catch {
         setMsg('Erro ao carregar conflitos');
       } finally {
         setLoading(false);
@@ -46,7 +46,7 @@ export default function AdminCepsConflitos() {
     row: { display: 'flex', gap: 16, marginBottom: 12, alignItems: 'stretch', flexWrap: 'wrap' },
     label: { fontSize: '0.62rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 2 },
     val: { fontSize: '0.82rem', color: '#e8eaf0', fontFamily: "'IBM Plex Mono', monospace" },
-    badge: (bg, fg, txt) => ({ background: bg, color: fg, padding: '2px 10px', borderRadius: 10, fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.5px' }),
+    badge: (bg, fg) => ({ background: bg, color: fg, padding: '2px 10px', borderRadius: 10, fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.5px' }),
     msg: (c) => ({ padding: '8px 14px', borderRadius: 4, fontSize: '0.85rem', marginBottom: 12, background: c === '#ff5a5a' ? '#2a1a1a' : '#1a3a2a', border: `1px solid ${c}`, color: c }),
     link: { color: '#5ab4ff', cursor: 'pointer', fontSize: '0.72rem' },
     conflictCard: (tipo) => ({
@@ -125,7 +125,6 @@ export default function AdminCepsConflitos() {
 
   function renderConflito(c, i, tipo) {
     const grave = tipo === 'grave';
-    const mesma = (c.tab_a || null) === (c.tab_b || null);
     const badgeColor = grave ? '#ff5a5a' : '#f0c040';
     const badgeBg = grave ? '#2a0d0d' : '#2a220d';
     const badgeText = grave

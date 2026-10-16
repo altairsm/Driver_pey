@@ -13,7 +13,6 @@ export default function AdminCepsSemBairro() {
   const [buscandoViaCep, setBuscandoViaCep] = useState(false);
 
   const load = async () => {
-    setLoading(true);
     try {
       const [data, tabs] = await Promise.all([getCepsSemBairro(), getTabelas()]);
       setCeps(data);
@@ -25,7 +24,10 @@ export default function AdminCepsSemBairro() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const id = setTimeout(load, 0);
+    return () => clearTimeout(id);
+  }, []);
 
   const handleBuscarViaCep = async (cep) => {
     setBuscandoViaCep(true);

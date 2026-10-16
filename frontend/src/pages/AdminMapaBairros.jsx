@@ -59,8 +59,12 @@ export default function AdminMapaBairros() {
   }, []);
 
   useEffect(() => {
-    carregarDados();
-    carregarCeps();
+    let active = true;
+    Promise.resolve().then(async () => {
+      if (!active) return;
+      await Promise.all([carregarDados(), carregarCeps()]);
+    });
+    return () => { active = false; };
   }, [carregarDados, carregarCeps]);
 
   useEffect(() => {
@@ -104,11 +108,6 @@ export default function AdminMapaBairros() {
     }
     if (rotasSelecionadas.length > 0) {
       filtered = filtered.filter(d => rotasSelecionadas.includes(d.rota));
-    }
-
-    // Em modo edição com o conjunto inteiro, milhares de alfinetes pesam o navegador.
-    if (modo === 'ceps' && modoEdicao && !filtroBairro && ceps.length > 400) {
-      setMsg('Use o filtro para reduzir a lista antes de editar — arrastar milhares de pontos de uma vez deixa o mapa lento.');
     }
 
     if (filtered.length === 0) return;
@@ -391,6 +390,11 @@ export default function AdminMapaBairros() {
           )}
         </div>
       </div>
+      {modo === 'ceps' && modoEdicao && !filtroBairro && ceps.length > 400 && (
+        <div style={s.msg} role="status">
+          Use o filtro para reduzir a lista antes de editar — arrastar milhares de pontos de uma vez deixa o mapa lento.
+        </div>
+      )}
       {msg && <div style={s.msg}>{msg}</div>}
       <div style={s.mapWrapper}>
         <div ref={mapRef} style={s.map} />

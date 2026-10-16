@@ -15,7 +15,7 @@ function formatCNPJ(v) {
 
 export default function AdminMotoristas() {
   const [motoristas, setMotoristas] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState(null);
@@ -23,13 +23,15 @@ export default function AdminMotoristas() {
   const [salvando, setSalvando] = useState(false);
 
   const carregar = async () => {
-    setLoading(true);
     try { setMotoristas(await getMotoristas()); }
     catch { setMotoristas([]); }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { carregar(); }, []);
+  useEffect(() => {
+    const id = setTimeout(carregar, 0);
+    return () => clearTimeout(id);
+  }, []);
 
   const abrirNovo = () => {
     setEditando(null);

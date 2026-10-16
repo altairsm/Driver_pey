@@ -21,7 +21,7 @@ export default function AdminUpload() {
       setLoading(true);
       const data = await previewXLSX(selected);
       setPreview(data);
-    } catch (err) {
+    } catch {
       setError('Erro ao ler preview do arquivo');
     } finally {
       setLoading(false);

@@ -11,7 +11,6 @@ export default function AdminSolicitacoesPagamento() {
   const [nfMap, setNfMap] = useState({});
 
   const carregar = async (status) => {
-    setLoading(true);
     setError('');
     try {
       const data = await getSolicitacoes(status || undefined);
@@ -24,14 +23,17 @@ export default function AdminSolicitacoesPagamento() {
       } else {
         setNfMap({});
       }
-    } catch (err) {
+    } catch {
       setError('Erro ao carregar solicitações');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { carregar(); }, []);
+  useEffect(() => {
+    const id = setTimeout(() => carregar(), 0);
+    return () => clearTimeout(id);
+  }, []);
 
   const mostrarResultado = (result) => {
     if (result?.status === 'erro_webhook') {
@@ -119,31 +121,31 @@ export default function AdminSolicitacoesPagamento() {
         <div style={s.filterRow}>
           <span
             style={{ ...s.filterBtn, background: !filtro ? '#f0c040' : '#1e2230', color: !filtro ? '#0d0f14' : '#6b7280' }}
-            onClick={() => carregar('')}
+            onClick={() => { setLoading(true); carregar(''); }}
           >Todas</span>
           <span
             style={{ ...s.filterBtn, background: filtro === 'pendente' ? '#ff9f40' : '#1e2230', color: filtro === 'pendente' ? '#0d0f14' : '#6b7280' }}
-            onClick={() => carregar('pendente')}
+            onClick={() => { setLoading(true); carregar('pendente'); }}
           >Pendentes</span>
           <span
             style={{ ...s.filterBtn, background: filtro === 'pre_aprovado' ? '#00bcd4' : '#1e2230', color: filtro === 'pre_aprovado' ? '#0d0f14' : '#6b7280' }}
-            onClick={() => carregar('pre_aprovado')}
+            onClick={() => { setLoading(true); carregar('pre_aprovado'); }}
           >Pré-aprovadas</span>
           <span
             style={{ ...s.filterBtn, background: filtro === 'processando_pix' ? '#ff9f40' : '#1e2230', color: filtro === 'processando_pix' ? '#0d0f14' : '#6b7280' }}
-            onClick={() => carregar('processando_pix')}
+            onClick={() => { setLoading(true); carregar('processando_pix'); }}
           >Processando Pix</span>
           <span
             style={{ ...s.filterBtn, background: filtro === 'erro_webhook' ? '#f97316' : '#1e2230', color: filtro === 'erro_webhook' ? '#0d0f14' : '#6b7280' }}
-            onClick={() => carregar('erro_webhook')}
+            onClick={() => { setLoading(true); carregar('erro_webhook'); }}
           >Erro de Webhook</span>
           <span
             style={{ ...s.filterBtn, background: filtro === 'aprovado' ? '#3de8a0' : '#1e2230', color: filtro === 'aprovado' ? '#0d0f14' : '#6b7280' }}
-            onClick={() => carregar('aprovado')}
+            onClick={() => { setLoading(true); carregar('aprovado'); }}
           >Aprovadas</span>
           <span
             style={{ ...s.filterBtn, background: filtro === 'recusado' ? '#ff5a5a' : '#1e2230', color: filtro === 'recusado' ? '#0d0f14' : '#6b7280' }}
-            onClick={() => carregar('recusado')}
+            onClick={() => { setLoading(true); carregar('recusado'); }}
           >Recusadas</span>
         </div>
 

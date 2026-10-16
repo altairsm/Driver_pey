@@ -44,17 +44,22 @@ export default function AdminDespesas() {
   const [saving, setSaving] = useState(false);
 
   const qzAtual = quinzenas[qzIdx] || null;
+  const qzInicio = qzAtual?.inicio;
+  const qzFim = qzAtual?.fim;
 
   useEffect(() => {
     getAdminQuinzenas()
-      .then(setQuinzenas)
-      .catch(() => setError('Erro ao carregar quinzenas'))
-      .finally(() => setLoading(false));
+      .then((items) => {
+        setQuinzenas(items);
+        if (items.length === 0) setLoading(false);
+      })
+      .catch(() => {
+        setError('Erro ao carregar quinzenas');
+        setLoading(false);
+      });
   }, []);
 
   const fetchData = async (i, f) => {
-    setLoading(true);
-    setError('');
     try {
       const [rev, d, rd] = await Promise.all([
         getReceitaPeriodo(i, f),
@@ -72,15 +77,23 @@ export default function AdminDespesas() {
   };
 
   useEffect(() => {
-    if (!qzAtual) return;
-    fetchData(qzAtual.inicio.slice(0, 10), qzAtual.fim.slice(0, 10));
-  }, [qzAtual?.inicio, qzAtual?.fim]);
+    if (!qzInicio || !qzFim) return;
+    Promise.resolve().then(() => fetchData(qzInicio.slice(0, 10), qzFim.slice(0, 10)));
+  }, [qzInicio, qzFim]);
 
   const handlePrev = () => {
-    if (qzIdx < quinzenas.length - 1) setQzIdx(qzIdx + 1);
+    if (qzIdx < quinzenas.length - 1) {
+      setLoading(true);
+      setError('');
+      setQzIdx(qzIdx + 1);
+    }
   };
   const handleNext = () => {
-    if (qzIdx > 0) setQzIdx(qzIdx - 1);
+    if (qzIdx > 0) {
+      setLoading(true);
+      setError('');
+      setQzIdx(qzIdx - 1);
+    }
   };
 
   const abrirModal = (despesa) => {
@@ -194,9 +207,6 @@ export default function AdminDespesas() {
     textarea: { background: '#1e2230', border: '1px solid #2a2f3e', color: '#e8eaf0', padding: '8px 12px', borderRadius: 4, fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.85rem', resize: 'vertical' },
     modalBtns: { display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 },
   };
-
-  const green = '#3de8a0';
-  const red = '#ff5a5a';
 
   return (
     <div style={s.container}>

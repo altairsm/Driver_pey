@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getDriverDashboard, getDriverTrips, getDriverMe, getDriverTripsFaixas, getQuinzenas, getProdutividade, getEficiencia, getEficiencia30dias, getReclamacoes, getCobrancasDriver, solicitarPagamento, getUltimaImportacaoReclamacoes, getConfig, getTaxasAdiantamento, getBonusD0, getPendenciasNfse, enviarNfseQuinzena } from '../services/api';
 import { sendFcmTokenWithRetry } from '../services/notificationService';
@@ -98,6 +98,7 @@ export default function DriverDashboard() {
   const [msgSolicitacao, setMsgSolicitacao] = useState('');
   const [ultimaImportacao, setUltimaImportacao] = useState(null);
   const [countdown, setCountdown] = useState({ ativo: false, texto: '' });
+  const requestedCeps = useRef(new Set());
   const [cepCache, setCepCache] = useState({});
   const [config, setConfig] = useState(null);
   const [taxas, setTaxas] = useState([]);
@@ -115,6 +116,7 @@ export default function DriverDashboard() {
 
   // A obrigatoriedade vem das Configurações do sistema (colunas booleanas do Postgres).
   const exigeNfAdiantamento = config?.exigir_nfse_adiantamento === true;
+  const reclamacoesDesatualizadas = !ultimaImportacao || !countdown.ativo;
 
   const fetchQuinzenaData = useCallback(async (inicio, fim) => {
     try {
@@ -194,9 +196,10 @@ export default function DriverDashboard() {
 
   useEffect(() => {
     const cepsUnicos = [...new Set(reclamacoes.map(r => r.cep).filter(Boolean))];
-    const novos = cepsUnicos.filter(c => !cepCache[c]);
+    const novos = cepsUnicos.filter(c => !cepCache[c] && !requestedCeps.current.has(c));
     if (novos.length === 0) return;
     novos.forEach(async (c) => {
+      requestedCeps.current.add(c);
       try {
         const res = await fetch(`https://viacep.com.br/ws/${c.replace(/\D/g, '')}/json/`);
         const d = await res.json();
@@ -209,13 +212,10 @@ export default function DriverDashboard() {
         setCepCache(prev => ({ ...prev, [c]: {} }));
       }
     });
-  }, [reclamacoes]);
+  }, [cepCache, reclamacoes]);
 
   useEffect(() => {
-    if (!ultimaImportacao) {
-      setCountdown({ ativo: false, texto: '' });
-      return;
-    }
+    if (!ultimaImportacao) return;
     const notifiedKey = `notified_30min_${ultimaImportacao}`;
     const atualizar = () => {
       const fim = new Date(ultimaImportacao).getTime() + 4 * 60 * 60 * 1000;
@@ -861,7 +861,6 @@ export default function DriverDashboard() {
 
                     const temSolicitacao = t.solicitacao_status && t.solicitacao_status !== 'recusado';
                     const solicitacaoStatus = t.solicitacao_status || null;
-                    const reclamacoesDesatualizadas = !ultimaImportacao || (Date.now() - new Date(ultimaImportacao).getTime()) > 4 * 60 * 60 * 1000;
                     // O backend já resolve o limiar no /driver/me (override do motorista ou padrão global);
 // o config só entra como rede de segurança caso o /me venha sem o campo.
 const eficienciaMinima = Number(driver?.eficiencia_minima_efetiva ?? config?.eficiencia_minima_adiantamento) || 98;

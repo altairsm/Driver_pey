@@ -13,7 +13,7 @@ const faixasPadrao = [
 
 export default function AdminTabelas() {
   const [tabelas, setTabelas] = useState({});
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const [modalTipo, setModalTipo] = useState(null);
@@ -26,13 +26,15 @@ export default function AdminTabelas() {
   const [salvando, setSalvando] = useState(false);
 
   const carregar = async () => {
-    setLoading(true);
     try { setTabelas(await getTabelas()); }
     catch { setTabelas({}); }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { carregar(); }, []);
+  useEffect(() => {
+    const id = setTimeout(carregar, 0);
+    return () => clearTimeout(id);
+  }, []);
 
   const abrirNovaTabela = () => {
     setModalTipo('nova');

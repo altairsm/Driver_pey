@@ -27,7 +27,10 @@ export default function AdminVersao() {
     }
   };
 
-  useEffect(() => { carregar(); }, []);
+  useEffect(() => {
+    const id = setTimeout(carregar, 0);
+    return () => clearTimeout(id);
+  }, []);
 
   const handleSalvar = async (e) => {
     e.preventDefault();

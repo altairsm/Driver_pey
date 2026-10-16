@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Cell,
 } from 'recharts';
@@ -15,29 +15,29 @@ function formatFullDate(d) {
   return `${p[2]}/${p[1]}/${p[0]}`;
 }
 
-export default function AdminRelatorioEntregas() {
-  const defFim = new Date().toISOString().slice(0, 10);
-  const defInicio = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+const END_DATE_DEFAULT = new Date().toISOString().slice(0, 10);
+const START_DATE_DEFAULT = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
 
-  const [inicio, setInicio] = useState(defInicio);
-  const [fim, setFim] = useState(defFim);
+export default function AdminRelatorioEntregas() {
+  const [inicio, setInicio] = useState(START_DATE_DEFAULT);
+  const [fim, setFim] = useState(END_DATE_DEFAULT);
   const [dados, setDados] = useState([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
+  const initialRange = useRef({ inicio: START_DATE_DEFAULT, fim: END_DATE_DEFAULT });
 
-  const carregar = (i, f) => {
-    setLoading(true);
+  const carregar = useCallback((i, f) => {
     setErro('');
     getEntregasReclamacoes(i, f)
       .then(setDados)
       .catch(() => setErro('Erro ao buscar dados'))
       .finally(() => setLoading(false));
-  };
+  }, []);
 
   useEffect(() => {
-    carregar(inicio, fim);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const { inicio: initialInicio, fim: initialFim } = initialRange.current;
+    carregar(initialInicio, initialFim);
+  }, [carregar]);
 
   const intervalTick = useMemo(() => {
     if (dados.length <= 1) return 0;
@@ -85,7 +85,7 @@ export default function AdminRelatorioEntregas() {
             <span style={s.label}>Fim</span>
             <input style={s.input} type="date" value={fim} min={inicio} onChange={(e) => setFim(e.target.value)} />
           </div>
-          <button style={s.btn} onClick={() => carregar(inicio, fim)}>Filtrar</button>
+          <button style={s.btn} onClick={() => { setLoading(true); carregar(inicio, fim); }}>Filtrar</button>
         </div>
 
         {erro && <div style={s.errorMsg}>{erro}</div>}

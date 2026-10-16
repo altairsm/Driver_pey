@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { importarCepsPlanilha, autoDescobrirCeps, getCepsSemCadastro } from '../services/api';
+import { importarCepsPlanilha, autoDescobrirCeps } from '../services/api';
 import Topbar from '../components/Topbar';
 
 export default function AdminCepsImportar() {

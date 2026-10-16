@@ -12,7 +12,6 @@ export default function AdminBairrosSemRota() {
   const [rotaSel, setRotaSel] = useState('');
 
   const load = async () => {
-    setLoading(true);
     try {
       const [data, tabs] = await Promise.all([getBairrosSemRota(), getTabelas()]);
       setBairros(data);
@@ -24,7 +23,10 @@ export default function AdminBairrosSemRota() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const id = setTimeout(load, 0);
+    return () => clearTimeout(id);
+  }, []);
 
   const handleCriar = async (bairro) => {
     if (!tabelaSel) { setMsg('Selecione uma tabela'); return; }

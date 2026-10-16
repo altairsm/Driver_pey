@@ -99,3 +99,42 @@
     font-size: 0.95rem !important;
   }
 }
+
+:root {
+  --route-loading-bg: #0d0f14;
+  --route-loading-text: #f0c040;
+}
+
+.route-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--route-loading-bg);
+  color: var(--route-loading-text);
+  font: 600 0.85rem 'IBM Plex Mono', monospace;
+  letter-spacing: 0.08em;
+}
+
+.route-loading::before {
+  width: 1rem;
+  height: 1rem;
+  margin-right: 0.65rem;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  content: '';
+  animation: route-loading-spin 0.75s linear infinite;
+}
+
+@keyframes route-loading-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-loading::before {
+    animation: none;
+  }
+}

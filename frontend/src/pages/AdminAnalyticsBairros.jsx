@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { getAnalyticsBairros, getMotoristas, getAdminQuinzenas } from '../services/api';
 import Topbar from '../components/Topbar';
 
@@ -18,37 +18,55 @@ export default function AdminAnalyticsBairros() {
   const [error, setError] = useState('');
 
   const qzAtual = quinzenas[qzIdx] || null;
+  const qzInicio = qzAtual?.inicio;
+  const qzFim = qzAtual?.fim;
 
   useEffect(() => {
     getMotoristas().then(setMotoristas).catch(() => {});
     getAdminQuinzenas()
-      .then(setQuinzenas)
-      .catch(() => setError('Erro ao carregar quinzenas'))
-      .finally(() => setLoading(false));
+      .then((items) => {
+        setQuinzenas(items);
+        if (items.length === 0) setLoading(false);
+      })
+      .catch(() => {
+        setError('Erro ao carregar quinzenas');
+        setLoading(false);
+      });
   }, []);
 
-  const fetchData = async (i, f) => {
-    setError('');
+  const fetchData = useCallback(async (i, f) => {
     try {
       const data = await getAnalyticsBairros(i, f, matricula || undefined);
       setRows(data);
+      setError('');
     } catch (err) {
       setError(err.response?.data?.error || 'Erro ao gerar relatório');
     }
-  };
+  }, [matricula]);
 
   useEffect(() => {
-    if (!qzAtual) return;
-    setLoading(true);
-    fetchData(qzAtual.inicio.slice(0, 10), qzAtual.fim.slice(0, 10))
-      .finally(() => setLoading(false));
-  }, [qzAtual?.inicio, qzAtual?.fim, matricula]);
+    if (!qzInicio || !qzFim) return;
+    let active = true;
+    Promise.resolve().then(() => fetchData(qzInicio.slice(0, 10), qzFim.slice(0, 10)))
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
+  }, [fetchData, qzInicio, qzFim]);
 
   const handlePrev = () => {
-    if (qzIdx < quinzenas.length - 1) setQzIdx(qzIdx + 1);
+    if (qzIdx < quinzenas.length - 1) {
+      setLoading(true);
+      setError('');
+      setQzIdx(qzIdx + 1);
+    }
   };
   const handleNext = () => {
-    if (qzIdx > 0) setQzIdx(qzIdx - 1);
+    if (qzIdx > 0) {
+      setLoading(true);
+      setError('');
+      setQzIdx(qzIdx - 1);
+    }
   };
 
   let totalGeralCtes = 0;
@@ -107,7 +125,7 @@ export default function AdminAnalyticsBairros() {
           <div style={s.field}>
             <label style={s.label}>Motorista</label>
             <select style={s.input} value={matricula}
-              onChange={(e) => setMatricula(e.target.value)}>
+              onChange={(e) => { setLoading(true); setError(''); setMatricula(e.target.value); }}>
               <option value="">Todos</option>
               {motoristas.map((m) => (
                 <option key={m.matricula} value={m.matricula}>{m.nome_completo}</option>

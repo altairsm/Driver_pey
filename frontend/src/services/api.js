@@ -27,7 +27,11 @@ api.interceptors.response.use(
 
       const info = { url: err.config?.url, status: err.response?.status, data: err.response?.data };
       console.warn('🔴 Interceptor 401/403:', info);
-      try { sessionStorage.setItem('auth_error', JSON.stringify(info)); } catch {}
+      try {
+        sessionStorage.setItem('auth_error', JSON.stringify(info));
+      } catch {
+        // Continue the logout redirect when session storage is unavailable.
+      }
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       if (window.location.pathname !== '/login') {
@@ -311,7 +315,7 @@ export async function getCepsSemCadastro() {
 }
 
 export async function adicionarCepRange(dados) {
-  const { cep_ini, bairro, cidade, tabela_motorista } = dados;
+  const { cep_ini, bairro, tabela_motorista } = dados;
   const { data } = await api.post('/admin/ceps', {
     cep: cep_ini,
     bairro,

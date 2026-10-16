@@ -26,19 +26,22 @@ export default function DriverMapaQuinzena() {
   const [dados, setDados] = useState([]);
   const [quinzenas, setQuinzenas] = useState([]);
   const [qzIdx, setQzIdx] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState('');
 
   const qzAtual = quinzenas[qzIdx] || null;
 
   useEffect(() => {
-    getQuinzenas().then(setQuinzenas).catch(() => {});
+    getQuinzenas()
+      .then((items) => {
+        setQuinzenas(items);
+        if (items.length === 0) setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   useEffect(() => {
     if (!qzAtual) return;
-    setLoading(true);
-    setMsg('');
     getDriverMapaQuinzena(qzAtual.inicio.slice(0, 10), qzAtual.fim.slice(0, 10))
       .then(setDados)
       .catch(err => setMsg('Erro ao carregar dados: ' + (err.response?.data?.error || err.message)))
@@ -106,10 +109,18 @@ export default function DriverMapaQuinzena() {
   }, [dados]);
 
   const handlePrev = () => {
-    if (qzIdx < quinzenas.length - 1) setQzIdx(qzIdx + 1);
+    if (qzIdx < quinzenas.length - 1) {
+      setLoading(true);
+      setMsg('');
+      setQzIdx(qzIdx + 1);
+    }
   };
   const handleNext = () => {
-    if (qzIdx > 0) setQzIdx(qzIdx - 1);
+    if (qzIdx > 0) {
+      setLoading(true);
+      setMsg('');
+      setQzIdx(qzIdx - 1);
+    }
   };
 
   return (

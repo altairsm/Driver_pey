@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { getPagamentosHistorico, getPagamentosPendentes, reverificarPagamento } from '../services/api';
 import Topbar from '../components/Topbar';
 
@@ -9,23 +9,24 @@ export default function AdminPagamentosHistorico() {
   const [filtro, setFiltro] = useState('');
   const [reverificando, setReverificando] = useState({});
 
-  const carregar = async () => {
-    setLoading(true);
-    setError('');
+  const carregar = useCallback(async () => {
     try {
       const usaPendentes = filtro === 'processando' || filtro === 'erro_webhook';
       const data = usaPendentes
         ? await getPagamentosPendentes()
         : await getPagamentosHistorico();
       setPagamentos(filtro ? data.filter(p => p.status === filtro) : data);
-    } catch (err) {
+    } catch {
       setError('Erro ao carregar pagamentos');
     } finally {
       setLoading(false);
     }
-  };
+  }, [filtro]);
 
-  useEffect(() => { carregar(); }, [filtro]);
+  useEffect(() => {
+    const id = setTimeout(carregar, 0);
+    return () => clearTimeout(id);
+  }, [carregar]);
 
   const handleReverificar = async (id) => {
     setReverificando(prev => ({ ...prev, [id]: true }));
@@ -70,23 +71,23 @@ export default function AdminPagamentosHistorico() {
         <div style={s.filterRow}>
           <span
             style={{ ...s.filterBtn, background: !filtro ? '#f0c040' : '#1e2230', color: !filtro ? '#0d0f14' : '#6b7280' }}
-            onClick={() => setFiltro('')}
+            onClick={() => { setLoading(true); setFiltro(''); }}
           >Todos</span>
           <span
             style={{ ...s.filterBtn, background: filtro === 'confirmado' ? '#3de8a0' : '#1e2230', color: filtro === 'confirmado' ? '#0d0f14' : '#6b7280' }}
-            onClick={() => setFiltro('confirmado')}
+            onClick={() => { setLoading(true); setFiltro('confirmado'); }}
           >Confirmados</span>
           <span
             style={{ ...s.filterBtn, background: filtro === 'processando' ? '#ff9f40' : '#1e2230', color: filtro === 'processando' ? '#0d0f14' : '#6b7280' }}
-            onClick={() => setFiltro('processando')}
+            onClick={() => { setLoading(true); setFiltro('processando'); }}
           >Pendentes</span>
           <span
             style={{ ...s.filterBtn, background: filtro === 'erro_webhook' ? '#f97316' : '#1e2230', color: filtro === 'erro_webhook' ? '#0d0f14' : '#6b7280' }}
-            onClick={() => setFiltro('erro_webhook')}
+            onClick={() => { setLoading(true); setFiltro('erro_webhook'); }}
           >Erro de Webhook</span>
           <span
             style={{ ...s.filterBtn, background: filtro === 'rejeitado' ? '#ff5a5a' : '#1e2230', color: filtro === 'rejeitado' ? '#0d0f14' : '#6b7280' }}
-            onClick={() => setFiltro('rejeitado')}
+            onClick={() => { setLoading(true); setFiltro('rejeitado'); }}
           >Rejeitados</span>
         </div>
 

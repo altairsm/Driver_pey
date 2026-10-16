@@ -12,7 +12,6 @@ export default function AdminBairrosSemTabela() {
   const [tabelaSel, setTabelaSel] = useState('');
 
   const load = async () => {
-    setLoading(true);
     try {
       const [data, br, tabs] = await Promise.all([getCepsSemTabela(), getBairrosRotas(), getTabelas()]);
       setCeps(data);
@@ -25,7 +24,10 @@ export default function AdminBairrosSemTabela() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const id = setTimeout(load, 0);
+    return () => clearTimeout(id);
+  }, []);
 
   const handleDefinirTabela = async (id, bairro, rota) => {
     if (!tabelaSel) { setMsg('Selecione uma tabela'); return; }

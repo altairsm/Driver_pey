@@ -37,6 +37,8 @@ export default function AdminAnalytics() {
   const [extraLoading, setExtraLoading] = useState(false);
 
   const qzAtual = quinzenas[qzIdx] || null;
+  const qzInicio = qzAtual?.inicio;
+  const qzFim = qzAtual?.fim;
 
   useEffect(() => {
     getMotoristas().then(setMotoristas).catch(() => {});
@@ -44,18 +46,20 @@ export default function AdminAnalytics() {
 
   useEffect(() => {
     getAdminQuinzenas()
-      .then(setQuinzenas)
-      .catch(() => setError('Erro ao carregar quinzenas'))
-      .finally(() => setLoading(false));
+      .then((items) => {
+        setQuinzenas(items);
+        if (items.length === 0) setLoading(false);
+      })
+      .catch(() => {
+        setError('Erro ao carregar quinzenas');
+        setLoading(false);
+      });
   }, []);
 
   useEffect(() => {
-    if (!qzAtual) return;
-    setLoading(true);
-    setError('');
-    const i = qzAtual.inicio.slice(0, 10);
-    const f = qzAtual.fim.slice(0, 10);
-    setExtraLoading(true);
+    if (!qzInicio || !qzFim) return;
+    const i = qzInicio.slice(0, 10);
+    const f = qzFim.slice(0, 10);
     Promise.all([
       getResumo(i, f),
       getComparativoMotoristas(i, f),
@@ -66,14 +70,14 @@ export default function AdminAnalytics() {
       })
       .catch(() => setError('Erro ao buscar dados'))
       .finally(() => { setLoading(false); setExtraLoading(false); });
-  }, [qzAtual?.inicio, qzAtual?.fim]);
+  }, [qzInicio, qzFim]);
 
   useEffect(() => {
     if (evolucao.length > 0) return;
     getEvolucaoQuinzenal(8)
       .then(setEvolucao)
       .catch(() => {});
-  }, []);
+  }, [evolucao.length]);
 
   useEffect(() => {
     getEficienciaAllDrivers()
@@ -82,10 +86,18 @@ export default function AdminAnalytics() {
   }, []);
 
   const handlePrev = () => {
-    if (qzIdx < quinzenas.length - 1) setQzIdx(qzIdx + 1);
+    if (qzIdx < quinzenas.length - 1) {
+      setError('');
+      setExtraLoading(true);
+      setQzIdx(qzIdx + 1);
+    }
   };
   const handleNext = () => {
-    if (qzIdx > 0) setQzIdx(qzIdx - 1);
+    if (qzIdx > 0) {
+      setError('');
+      setExtraLoading(true);
+      setQzIdx(qzIdx - 1);
+    }
   };
 
   const kpis = useMemo(() => {

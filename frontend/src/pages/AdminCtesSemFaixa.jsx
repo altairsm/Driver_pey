@@ -12,7 +12,7 @@ export default function AdminCtesSemFaixa() {
       try {
         const data = await getCtesSemFaixa();
         setCtes(data);
-      } catch (e) {
+      } catch {
         setMsg('Erro ao carregar CTEs sem faixa');
       } finally {
         setLoading(false);

@@ -5,15 +5,32 @@ import { login, adminLogin, checkVersao } from '../services/api';
 import { sendFcmTokenWithRetry } from '../services/notificationService';
 import { COMMIT_HASH } from '../version.js';
 
+function readAuthError() {
+  try {
+    const saved = sessionStorage.getItem('auth_error');
+    if (!saved) return '';
+    const info = JSON.parse(saved);
+    return `🔴 Erro de autenticação em "${info.url}" (${info.status}). Token inválido ou expirado.`;
+  } catch {
+    return '';
+  }
+}
+
 export default function Login() {
-  const [cpf, setCpf] = useState('');
-  const [matricula, setMatricula] = useState('');
+  const [cpf, setCpf] = useState(() => {
+    const savedCpf = localStorage.getItem('savedCpf');
+    return savedCpf && localStorage.getItem('savedMatricula') ? savedCpf : '';
+  });
+  const [matricula, setMatricula] = useState(() => {
+    const savedMatricula = localStorage.getItem('savedMatricula');
+    return savedMatricula && localStorage.getItem('savedCpf') ? savedMatricula : '';
+  });
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(readAuthError);
   const [loading, setLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => Boolean(localStorage.getItem('savedCpf') && localStorage.getItem('savedMatricula')));
   const [versaoLoading, setVersaoLoading] = useState(true);
   const [versaoOutdated, setVersaoOutdated] = useState(false);
   const [versaoUrl, setVersaoUrl] = useState('');
@@ -66,24 +83,7 @@ export default function Login() {
     }
     checkVersion();
 
-    // Carregar dados salvos
-    const savedCpf = localStorage.getItem('savedCpf');
-    const savedMatricula = localStorage.getItem('savedMatricula');
-    if (savedCpf && savedMatricula) {
-      setCpf(savedCpf);
-      setMatricula(savedMatricula);
-      setRememberMe(true);
-    }
-
-    // Verificar erros de autenticação redirecionados
-    try {
-      const saved = sessionStorage.getItem('auth_error');
-      if (saved) {
-        const info = JSON.parse(saved);
-        setError(`🔴 Erro de autenticação em "${info.url}" (${info.status}). Token inválido ou expirado.`);
-        sessionStorage.removeItem('auth_error');
-      }
-    } catch {}
+    sessionStorage.removeItem('auth_error');
   }, []);
 
   const handleDriverSubmit = async (e) => {

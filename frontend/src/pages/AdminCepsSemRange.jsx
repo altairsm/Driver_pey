@@ -15,7 +15,6 @@ export default function AdminCepsSemRange() {
   const [tabelaSel, setTabelaSel] = useState('');
 
   const load = async () => {
-    setLoading(true);
     try {
       const [sem, semTab, tabs] = await Promise.all([getCepsSemCadastro(), getBairrosRotas(), getTabelas()]);
       setCepsSemCadastro(sem);
@@ -28,7 +27,10 @@ export default function AdminCepsSemRange() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const id = setTimeout(load, 0);
+    return () => clearTimeout(id);
+  }, []);
 
   const buscarViaCep = async (cep) => {
     const cepNum = cep.replace(/\D/g, '');

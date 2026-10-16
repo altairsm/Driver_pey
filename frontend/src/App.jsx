@@ -1,35 +1,36 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { initNotifications, checkNewComplaints } from './services/notificationService'
-import Login from './pages/Login'
-import DriverDashboard from './pages/DriverDashboard'
-import DriverRegrasPagamento from './pages/DriverRegrasPagamento'
-import DriverMapaQuinzena from './pages/DriverMapaQuinzena'
-import MeusDados from './pages/MeusDados'
-import AdminPagamentos from './pages/AdminPagamentos'
-import AdminUpload from './pages/AdminUpload'
-import AdminImportarListas from './pages/AdminImportarListas'
-import AdminMotoristas from './pages/AdminMotoristas'
-import AdminTabelas from './pages/AdminTabelas'
-import AdminCeps from './pages/AdminCeps'
-import AdminCepsSemRange from './pages/AdminCepsSemRange'
-import AdminCtesSemFaixa from './pages/AdminCtesSemFaixa'
-import AdminCepsImportar from './pages/AdminCepsImportar'
-import AdminCepsSemBairro from './pages/AdminCepsSemBairro'
-import AdminBairrosSemTabela from './pages/AdminBairrosSemTabela'
-import AdminBairrosSemRota from './pages/AdminBairrosSemRota'
-import AdminReclamacoes from './pages/AdminReclamacoes'
-import AdminSolicitacoesPagamento from './pages/AdminSolicitacoesPagamento'
-import AdminConfiguracoes from './pages/AdminConfiguracoes'
-import AdminAnalytics from './pages/AdminAnalytics'
-import AdminAnalyticsBairros from './pages/AdminAnalyticsBairros'
-import AdminTaxasAdiantamento from './pages/AdminTaxasAdiantamento'
-import AdminMapaBairros from './pages/AdminMapaBairros'
-import AdminRelatorioEntregas from './pages/AdminRelatorioEntregas'
-import AdminVersao from './pages/AdminVersao'
-import AdminDespesas from './pages/AdminDespesas'
-import AdminCobrancas from './pages/AdminCobrancas'
-import AdminPagamentosHistorico from './pages/AdminPagamentosHistorico'
+
+const Login = lazy(() => import('./pages/Login.jsx'))
+const DriverDashboard = lazy(() => import('./pages/DriverDashboard.jsx'))
+const DriverRegrasPagamento = lazy(() => import('./pages/DriverRegrasPagamento.jsx'))
+const DriverMapaQuinzena = lazy(() => import('./pages/DriverMapaQuinzena.jsx'))
+const MeusDados = lazy(() => import('./pages/MeusDados.jsx'))
+const AdminPagamentos = lazy(() => import('./pages/AdminPagamentos.jsx'))
+const AdminUpload = lazy(() => import('./pages/AdminUpload.jsx'))
+const AdminImportarListas = lazy(() => import('./pages/AdminImportarListas.jsx'))
+const AdminMotoristas = lazy(() => import('./pages/AdminMotoristas.jsx'))
+const AdminTabelas = lazy(() => import('./pages/AdminTabelas.jsx'))
+const AdminCeps = lazy(() => import('./pages/AdminCeps.jsx'))
+const AdminCepsSemRange = lazy(() => import('./pages/AdminCepsSemRange.jsx'))
+const AdminCtesSemFaixa = lazy(() => import('./pages/AdminCtesSemFaixa.jsx'))
+const AdminCepsImportar = lazy(() => import('./pages/AdminCepsImportar.jsx'))
+const AdminCepsSemBairro = lazy(() => import('./pages/AdminCepsSemBairro.jsx'))
+const AdminBairrosSemTabela = lazy(() => import('./pages/AdminBairrosSemTabela.jsx'))
+const AdminBairrosSemRota = lazy(() => import('./pages/AdminBairrosSemRota.jsx'))
+const AdminReclamacoes = lazy(() => import('./pages/AdminReclamacoes.jsx'))
+const AdminSolicitacoesPagamento = lazy(() => import('./pages/AdminSolicitacoesPagamento.jsx'))
+const AdminConfiguracoes = lazy(() => import('./pages/AdminConfiguracoes.jsx'))
+const AdminAnalytics = lazy(() => import('./pages/AdminAnalytics.jsx'))
+const AdminAnalyticsBairros = lazy(() => import('./pages/AdminAnalyticsBairros.jsx'))
+const AdminTaxasAdiantamento = lazy(() => import('./pages/AdminTaxasAdiantamento.jsx'))
+const AdminMapaBairros = lazy(() => import('./pages/AdminMapaBairros.jsx'))
+const AdminRelatorioEntregas = lazy(() => import('./pages/AdminRelatorioEntregas.jsx'))
+const AdminVersao = lazy(() => import('./pages/AdminVersao.jsx'))
+const AdminDespesas = lazy(() => import('./pages/AdminDespesas.jsx'))
+const AdminCobrancas = lazy(() => import('./pages/AdminCobrancas.jsx'))
+const AdminPagamentosHistorico = lazy(() => import('./pages/AdminPagamentosHistorico.jsx'))
 
 function ProtectedRoute({ children, adminOnly }) {
   const token = localStorage.getItem('token')
@@ -55,67 +56,69 @@ function App() {
   }, []);
 
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route
-        path="/driver"
-        element={
-          <ProtectedRoute>
-            <DriverDashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/driver/regras-pagamento"
-        element={
-          <ProtectedRoute>
-            <DriverRegrasPagamento />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/driver/mapa"
-        element={
-          <ProtectedRoute>
-            <DriverMapaQuinzena />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/driver/meus-dados"
-        element={
-          <ProtectedRoute>
-            <MeusDados />
-          </ProtectedRoute>
-        }
-      />
-      <Route path="/admin/pagamentos" element={<AdminPagamentos />} />
-      <Route path="/admin/upload" element={<AdminUpload />} />
-      <Route path="/admin/listas" element={<AdminImportarListas />} />
-      <Route path="/admin/motoristas" element={<AdminMotoristas />} />
-      <Route path="/admin/tabelas" element={<AdminTabelas />} />
-      <Route path="/admin/ceps" element={<AdminCeps />} />
-      <Route path="/admin/ceps/sem-range" element={<AdminCepsSemRange />} />
-      <Route path="/admin/ceps/ctes-sem-faixa" element={<AdminCtesSemFaixa />} />
-      <Route path="/admin/ceps/importar" element={<AdminCepsImportar />} />
-      <Route path="/admin/ceps/sem-bairro" element={<AdminCepsSemBairro />} />
-      <Route path="/admin/ceps/sem-tabela" element={<AdminBairrosSemTabela />} />
-      <Route path="/admin/ceps/sem-rota" element={<AdminBairrosSemRota />} />
-      <Route path="/admin/reclamacoes" element={<AdminReclamacoes />} />
-      <Route path="/admin/solicitacoes-pagamento" element={<AdminSolicitacoesPagamento />} />
-      <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
-      <Route path="/admin/taxas-adiantamento" element={<AdminTaxasAdiantamento />} />
-      <Route path="/admin/versao" element={<AdminVersao />} />
-      <Route path="/admin/despesas" element={<AdminDespesas />} />
-      <Route path="/admin/cobrancas" element={<AdminCobrancas />} />
-      <Route path="/admin/pagamentos-historico" element={<AdminPagamentosHistorico />} />
-      <Route path="/admin/analytics" element={<AdminAnalytics />} />
-      <Route path="/admin/analytics/bairros" element={<AdminAnalyticsBairros />} />
-      <Route path="/admin/mapa" element={<AdminMapaBairros />} />
-      <Route path="/admin/relatorios/entregas" element={<AdminRelatorioEntregas />} />
-      <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="*" element={<Navigate to="/login" replace />} />
-    </Routes>
+    <Suspense fallback={<div className="route-loading" role="status" aria-live="polite">Carregando...</div>}>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route
+          path="/driver"
+          element={
+            <ProtectedRoute>
+              <DriverDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/driver/regras-pagamento"
+          element={
+            <ProtectedRoute>
+              <DriverRegrasPagamento />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/driver/mapa"
+          element={
+            <ProtectedRoute>
+              <DriverMapaQuinzena />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/driver/meus-dados"
+          element={
+            <ProtectedRoute>
+              <MeusDados />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/admin/pagamentos" element={<AdminPagamentos />} />
+        <Route path="/admin/upload" element={<AdminUpload />} />
+        <Route path="/admin/listas" element={<AdminImportarListas />} />
+        <Route path="/admin/motoristas" element={<AdminMotoristas />} />
+        <Route path="/admin/tabelas" element={<AdminTabelas />} />
+        <Route path="/admin/ceps" element={<AdminCeps />} />
+        <Route path="/admin/ceps/sem-range" element={<AdminCepsSemRange />} />
+        <Route path="/admin/ceps/ctes-sem-faixa" element={<AdminCtesSemFaixa />} />
+        <Route path="/admin/ceps/importar" element={<AdminCepsImportar />} />
+        <Route path="/admin/ceps/sem-bairro" element={<AdminCepsSemBairro />} />
+        <Route path="/admin/ceps/sem-tabela" element={<AdminBairrosSemTabela />} />
+        <Route path="/admin/ceps/sem-rota" element={<AdminBairrosSemRota />} />
+        <Route path="/admin/reclamacoes" element={<AdminReclamacoes />} />
+        <Route path="/admin/solicitacoes-pagamento" element={<AdminSolicitacoesPagamento />} />
+        <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
+        <Route path="/admin/taxas-adiantamento" element={<AdminTaxasAdiantamento />} />
+        <Route path="/admin/versao" element={<AdminVersao />} />
+        <Route path="/admin/despesas" element={<AdminDespesas />} />
+        <Route path="/admin/cobrancas" element={<AdminCobrancas />} />
+        <Route path="/admin/pagamentos-historico" element={<AdminPagamentosHistorico />} />
+        <Route path="/admin/analytics" element={<AdminAnalytics />} />
+        <Route path="/admin/analytics/bairros" element={<AdminAnalyticsBairros />} />
+        <Route path="/admin/mapa" element={<AdminMapaBairros />} />
+        <Route path="/admin/relatorios/entregas" element={<AdminRelatorioEntregas />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </Suspense>
   )
 }
 
