@@ -112,11 +112,13 @@ export default function AdminMotoristas() {
     td: { padding: '6px 10px', borderBottom: '1px solid #2a2f3e', color: '#e8eaf0', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem' },
     btn: (bg, c) => ({ background: bg, color: c, border: 'none', padding: '8px 20px', borderRadius: 4, cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }),
     btnSm: (bg, c) => ({ background: bg, color: c, border: 'none', padding: '4px 10px', borderRadius: 4, cursor: 'pointer', fontSize: '0.72rem', fontWeight: 600, marginRight: 4 }),
-    overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
-    modal: { background: '#161920', border: '1px solid #2a2f3e', borderRadius: 8, width: '100%', maxWidth: 480 },
-    mh: { padding: '16px 20px', borderBottom: '1px solid #2a2f3e', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+    overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 24 },
+    modal: { background: '#161920', border: '1px solid #2a2f3e', borderRadius: 8, width: '100%', maxWidth: 920, maxHeight: '90vh', display: 'flex', flexDirection: 'column' },
+    mh: { padding: '16px 20px', borderBottom: '1px solid #2a2f3e', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 },
     mt: { fontSize: '1rem', color: '#e8eaf0', margin: 0 },
-    mb: { padding: 20 },
+    mb: { padding: 20, overflowY: 'auto', flex: 1, minHeight: 0 },
+    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', columnGap: 20, rowGap: 0 },
+    mfooter: { padding: '14px 20px', borderTop: '1px solid #2a2f3e', display: 'flex', justifyContent: 'flex-end', gap: 8, flexShrink: 0 },
     x: { background: 'transparent', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1.2rem', lineHeight: 1 },
     field: { marginBottom: 16 },
     label: { fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 4, display: 'block' },
@@ -183,103 +185,104 @@ export default function AdminMotoristas() {
               <h3 style={s.mt}>{editando ? 'Editar Motorista' : 'Novo Motorista'}</h3>
               <button style={s.x} onClick={fecharModal}>&times;</button>
             </div>
-            <form onSubmit={handleSalvar}>
+            <form onSubmit={handleSalvar} style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
               <div style={s.mb}>
                 {error && <div style={s.errorMsg}>{error}</div>}
-                <div style={s.field}>
-                  <label style={s.label}>Matrícula</label>
-                  <input style={s.input} name="matricula" type="number" value={form.matricula}
-                    onChange={handleChange} disabled={!!editando} required />
-                </div>
-                <div style={s.field}>
-                  <label style={s.label}>Nome Completo</label>
-                  <input style={s.input} name="nome_completo" value={form.nome_completo}
-                    onChange={handleChange} required />
-                </div>
-                <div style={s.field}>
-                  <label style={s.label}>CPF</label>
-                  <input style={s.input} name="cpf" value={form.cpf}
-                    onChange={(e) => setForm({...form, cpf: e.target.value.replace(/\D/g, '').substring(0, 11)})}
-                    maxLength={11} required />
-                </div>
-                <div style={s.field}>
-                  <label style={s.label}>CNPJ do MEI</label>
-                  <input style={s.input} name="cnpj_mei" value={form.cnpj_mei}
-                    onChange={(e) => setForm({ ...form, cnpj_mei: formatCNPJ(e.target.value) })}
-                    placeholder="Opcional — XX.XXX.XXX/XXXX-XX" />
-                  <div style={{ fontSize: '0.65rem', color: '#6b7280', marginTop: 2 }}>
-                    Motoristas sem MEI podem ficar sem este campo; o app avisa o motorista até ele ser informado.
-                  </div>
-                </div>
-                <div style={s.field}>
-                  <label style={s.label}>Telefone</label>
-                  <input style={s.input} name="telefone" value={form.telefone}
-                    onChange={(e) => setForm({...form, telefone: e.target.value.replace(/\D/g, '')})} />
-                </div>
-                <div style={s.field}>
-                  <label style={s.label}>Tipo de Chave PIX</label>
-                  <select style={s.select} name="pix_tipo" value={form.pix_tipo} onChange={handleChange}>
-                    <option value="CPF">CPF</option>
-                    <option value="CNPJ">CNPJ</option>
-                    <option value="E-MAIL">E-MAIL</option>
-                    <option value="TELEFONE">TELEFONE</option>
-                  </select>
-                </div>
-                <div style={s.field}>
-                  <label style={s.label}>Chave PIX</label>
-                  <input style={s.input} name="pix_chave" value={form.pix_chave}
-                    onChange={handleChange} placeholder="Chave PIX para recebimento" />
-                </div>
-                <div style={s.field}>
-                  <label style={s.label}>Eficiência mínima (%)</label>
-                  <input style={s.input} name="eficiencia_minima_adiantamento" type="number"
-                    step="0.01" min="0" max="100"
-                    value={form.eficiencia_minima_adiantamento}
-                    onChange={handleChange}
-                    placeholder="Padrão do sistema" />
-                  <div style={{ fontSize: '0.65rem', color: '#6b7280', marginTop: 2 }}>
-                    Deixe vazio para usar o padrão das Configurações. Se definido, este valor
-                    substitui o padrão apenas para este motorista.
-                  </div>
-                </div>
-
-                <div style={s.field}>
-                  <label style={{ ...s.label, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                    <input type="checkbox" name="auto_aprovado" checked={form.auto_aprovado}
-                      onChange={handleChange} style={{ width: 18, height: 18, accentColor: '#3de8a0' }} />
-                    Adiantamento automático (pré-aprovado)
-                  </label>
-                  <div style={{ fontSize: '0.65rem', color: '#6b7280', marginTop: 2 }}>
-                    Se ativo, solicitações de adiantamento serão pré-aprovadas automaticamente
-                  </div>
-                </div>
-
-                <div style={s.field}>
-                  <label style={{ ...s.label, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                    <input type="checkbox" name="bonus_d0_motorista" checked={form.bonus_d0_motorista}
-                      onChange={handleChange} style={{ width: 18, height: 18, accentColor: '#ff9f40' }} />
-                    Bônus D0 próprio (ignora bairro)
-                  </label>
-                  <div style={{ fontSize: '0.65rem', color: '#6b7280', marginTop: 2 }}>
-                    Se ativo, usa o valor abaixo em vez do bônus configurado no bairro
-                  </div>
-                </div>
-
-                {form.bonus_d0_motorista && (
+                <div style={s.grid}>
                   <div style={s.field}>
-                    <label style={s.label}>Valor do D0 (R$ por entrega)</label>
-                    <input style={s.input} name="bonus_d0_valor" type="number" step="0.01" min="0"
-                      value={form.bonus_d0_valor}
-                      onChange={(e) => setForm({...form, bonus_d0_valor: parseFloat(e.target.value) || 0})} />
+                    <label style={s.label}>Matrícula</label>
+                    <input style={s.input} name="matricula" type="number" value={form.matricula}
+                      onChange={handleChange} disabled={!!editando} required />
                   </div>
-                )}
+                  <div style={s.field}>
+                    <label style={s.label}>Nome Completo</label>
+                    <input style={s.input} name="nome_completo" value={form.nome_completo}
+                      onChange={handleChange} required />
+                  </div>
+                  <div style={s.field}>
+                    <label style={s.label}>CPF</label>
+                    <input style={s.input} name="cpf" value={form.cpf}
+                      onChange={(e) => setForm({...form, cpf: e.target.value.replace(/\D/g, '').substring(0, 11)})}
+                      maxLength={11} required />
+                  </div>
+                  <div style={s.field}>
+                    <label style={s.label}>Telefone</label>
+                    <input style={s.input} name="telefone" value={form.telefone}
+                      onChange={(e) => setForm({...form, telefone: e.target.value.replace(/\D/g, '')})} />
+                  </div>
+                  <div style={s.field}>
+                    <label style={s.label}>CNPJ do MEI</label>
+                    <input style={s.input} name="cnpj_mei" value={form.cnpj_mei}
+                      onChange={(e) => setForm({ ...form, cnpj_mei: formatCNPJ(e.target.value) })}
+                      placeholder="Opcional — XX.XXX.XXX/XXXX-XX" />
+                    <div style={{ fontSize: '0.65rem', color: '#6b7280', marginTop: 2 }}>
+                      Motoristas sem MEI podem ficar sem este campo; o app avisa o motorista até ele ser informado.
+                    </div>
+                  </div>
+                  <div style={s.field}>
+                    <label style={s.label}>Tipo de Chave PIX</label>
+                    <select style={s.select} name="pix_tipo" value={form.pix_tipo} onChange={handleChange}>
+                      <option value="CPF">CPF</option>
+                      <option value="CNPJ">CNPJ</option>
+                      <option value="E-MAIL">E-MAIL</option>
+                      <option value="TELEFONE">TELEFONE</option>
+                    </select>
+                  </div>
+                  <div style={s.field}>
+                    <label style={s.label}>Chave PIX</label>
+                    <input style={s.input} name="pix_chave" value={form.pix_chave}
+                      onChange={handleChange} placeholder="Chave PIX para recebimento" />
+                  </div>
+                  <div style={s.field}>
+                    <label style={s.label}>Eficiência mínima (%)</label>
+                    <input style={s.input} name="eficiencia_minima_adiantamento" type="number"
+                      step="0.01" min="0" max="100"
+                      value={form.eficiencia_minima_adiantamento}
+                      onChange={handleChange}
+                      placeholder="Padrão do sistema" />
+                    <div style={{ fontSize: '0.65rem', color: '#6b7280', marginTop: 2 }}>
+                      Deixe vazio para usar o padrão das Configurações. Se definido, este valor
+                      substitui o padrão apenas para este motorista.
+                    </div>
+                  </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
-                  <button type="button" style={s.btnSm('#6c757d', '#fff')} onClick={fecharModal}>Cancelar</button>
-                  <button type="submit" style={s.btnSm('#198754', '#fff')} disabled={salvando}>
-                    {salvando ? 'Salvando...' : 'Salvar'}
-                  </button>
+                  <div style={s.field}>
+                    <label style={{ ...s.label, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                      <input type="checkbox" name="auto_aprovado" checked={form.auto_aprovado}
+                        onChange={handleChange} style={{ width: 18, height: 18, accentColor: '#3de8a0' }} />
+                      Adiantamento automático (pré-aprovado)
+                    </label>
+                    <div style={{ fontSize: '0.65rem', color: '#6b7280', marginTop: 2 }}>
+                      Se ativo, solicitações de adiantamento serão pré-aprovadas automaticamente
+                    </div>
+                  </div>
+
+                  <div style={s.field}>
+                    <label style={{ ...s.label, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                      <input type="checkbox" name="bonus_d0_motorista" checked={form.bonus_d0_motorista}
+                        onChange={handleChange} style={{ width: 18, height: 18, accentColor: '#ff9f40' }} />
+                      Bônus D0 próprio (ignora bairro)
+                    </label>
+                    <div style={{ fontSize: '0.65rem', color: '#6b7280', marginTop: 2 }}>
+                      Se ativo, usa o valor abaixo em vez do bônus configurado no bairro
+                    </div>
+                  </div>
+
+                  {form.bonus_d0_motorista && (
+                    <div style={s.field}>
+                      <label style={s.label}>Valor do D0 (R$ por entrega)</label>
+                      <input style={s.input} name="bonus_d0_valor" type="number" step="0.01" min="0"
+                        value={form.bonus_d0_valor}
+                        onChange={(e) => setForm({...form, bonus_d0_valor: parseFloat(e.target.value) || 0})} />
+                    </div>
+                  )}
                 </div>
+              </div>
+              <div style={s.mfooter}>
+                <button type="button" style={{ ...s.btnSm('#6c757d', '#fff'), marginRight: 0 }} onClick={fecharModal}>Cancelar</button>
+                <button type="submit" style={{ ...s.btnSm('#198754', '#fff'), marginRight: 0 }} disabled={salvando}>
+                  {salvando ? 'Salvando...' : 'Salvar'}
+                </button>
               </div>
             </form>
           </div>
