@@ -21,7 +21,6 @@ import configuracoesRoutes from './routes/configuracoes.js';
 import taxasAdiantamentoRoutes from './routes/taxasAdiantamento.js';
 import pagamentosRoutes from './routes/pagamentos.js';
 import nfseRoutes from './routes/nfse.js';
-import versaoRoutes, { publicRouter as versaoPublicRouter } from './routes/versao.js';
 import { authenticateToken, requireAdmin } from './middleware/auth.js';
 
 const app = express();
@@ -63,8 +62,6 @@ app.get('/version', (req, res) => {
 });
 
 app.use('/auth', authRoutes);
-app.use('/driver', versaoRoutes);
-app.use('/', versaoPublicRouter);
 app.use('/driver', driverRoutes);
 app.use('/admin', authenticateToken, requireAdmin);
 app.use('/admin', adminRoutes);
@@ -80,7 +77,6 @@ app.use('/admin', despesasRoutes);
 app.use('/', cobrancasRoutes);
 app.use('/configuracoes', authenticateToken, configuracoesRoutes);
 app.use('/taxas-adiantamento', authenticateToken, taxasAdiantamentoRoutes);
-app.use('/admin', versaoRoutes);
 app.use('/admin', pagamentosRoutes);
 
 app.use((err, req, res, next) => {

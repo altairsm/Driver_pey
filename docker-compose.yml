@@ -45,10 +45,6 @@ services:
       DB_PASS: PUhgB0AZWAfhfm9qFe0sDcLzQG09hTGLkSC3eOa66e333b7b
       JWT_SECRET: 0e560c48d422acdbf0b106df4dc154c5
       GOOGLE_MAPS_API_KEY: AIzaSyArrv1bWt3ye29tPLyDkj38qc6P70jCctM
-      # Base publica do servidor. Monta a URL de download do APK que
-      # vai para a tabela versao_apk. Aponte para o dominio real quando
-      # o acesso nao for por proxy (ou https).
-      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-https://driverpix.intuitiva.log.br}
       # Chave mestra da NFS-e (AES-256-GCM). Vem do .env da VPS, fora do Git.
       # Vazia = o backend deriva de JWT_SECRET e mostra aviso na tela de Configuracoes.
       NFSE_MASTER_KEY: ${NFSE_MASTER_KEY:-}
@@ -57,10 +53,10 @@ services:
         condition: service_healthy
     volumes:
       - ./backend/firebase-service-account.json:/app/firebase-service-account.json:ro
-      # APK enviado pelo admin mora em /app/uploads. Sem este volume o
-      # "docker compose up -d" recria o container e o APK some — o que
-      # fazia o download falhar logo apos qualquer deploy. Nomeado (e nao
-      # bind mount) porque o padrao do Docker sobrevive a rm do container.
+      # Arquivos de importacao (XLSX) ficam em /app/uploads. Sem este volume
+      # o "docker compose up -d" recria o container e o arquivo em transito
+      # some. Nomeado (e nao bind mount) porque o padrao do Docker sobrevive
+      # a rm do container. O nome 'apkdata' e historico (era do APK).
       - apkdata:/app/uploads
     restart: unless-stopped
 

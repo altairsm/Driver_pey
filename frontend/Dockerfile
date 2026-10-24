@@ -12,7 +12,6 @@ COPY . .
 ENV COMMIT_HASH=$COMMIT_HASH
 ENV VERSION=$VERSION
 RUN npm run build
-RUN echo "{\"commit\":\"$COMMIT_HASH\",\"version\":\"$VERSION\",\"url_download\":\"\"}" > dist/version.json
 
 FROM nginx:alpine
 

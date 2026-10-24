@@ -8,6 +8,7 @@
     "prebuild": "node scripts/set-version.js",
     "build": "vite build",
     "build:apk": "powershell -File ../scripts/build-apk.ps1",
+    "build:play": "powershell -File ../scripts/build-play.ps1",
     "lint": "eslint .",
     "preview": "vite preview"
   },

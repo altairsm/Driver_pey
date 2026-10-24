@@ -27,10 +27,10 @@ const AdminAnalyticsBairros = lazy(() => import('./pages/AdminAnalyticsBairros.j
 const AdminTaxasAdiantamento = lazy(() => import('./pages/AdminTaxasAdiantamento.jsx'))
 const AdminMapaBairros = lazy(() => import('./pages/AdminMapaBairros.jsx'))
 const AdminRelatorioEntregas = lazy(() => import('./pages/AdminRelatorioEntregas.jsx'))
-const AdminVersao = lazy(() => import('./pages/AdminVersao.jsx'))
 const AdminDespesas = lazy(() => import('./pages/AdminDespesas.jsx'))
 const AdminCobrancas = lazy(() => import('./pages/AdminCobrancas.jsx'))
 const AdminPagamentosHistorico = lazy(() => import('./pages/AdminPagamentosHistorico.jsx'))
+const Privacidade = lazy(() => import('./pages/Privacidade.jsx'))
 
 function ProtectedRoute({ children, adminOnly }) {
   const token = localStorage.getItem('token')
@@ -59,6 +59,7 @@ function App() {
     <Suspense fallback={<div className="route-loading" role="status" aria-live="polite">Carregando...</div>}>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/privacidade" element={<Privacidade />} />
         <Route
           path="/driver"
           element={
@@ -107,7 +108,6 @@ function App() {
         <Route path="/admin/solicitacoes-pagamento" element={<AdminSolicitacoesPagamento />} />
         <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
         <Route path="/admin/taxas-adiantamento" element={<AdminTaxasAdiantamento />} />
-        <Route path="/admin/versao" element={<AdminVersao />} />
         <Route path="/admin/despesas" element={<AdminDespesas />} />
         <Route path="/admin/cobrancas" element={<AdminCobrancas />} />
         <Route path="/admin/pagamentos-historico" element={<AdminPagamentosHistorico />} />

@@ -651,16 +651,6 @@ export async function atualizarLocalizacaoCep(id, lat, lng) {
   return data;
 }
 
-export async function checkVersao(versao) {
-  const { data } = await api.get('/driver/check-versao', { params: { versao } });
-  return data;
-}
-
-export async function setVersaoAtiva(dados) {
-  const { data } = await api.post('/admin/versao', dados);
-  return data;
-}
-
 export async function listarCobrancas() {
   const { data } = await api.get('/admin/cobrancas');
   return data;
@@ -683,16 +673,6 @@ export async function desativarCobranca(id) {
 
 export async function getCobrancasDriver() {
   const { data } = await api.get('/driver/cobrancas');
-  return data;
-}
-
-export async function uploadApk(file, onProgress) {
-  const formData = new FormData();
-  formData.append('file', file);
-  const { data } = await api.post('/admin/upload-apk', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-    onUploadProgress: onProgress,
-  });
   return data;
 }
 

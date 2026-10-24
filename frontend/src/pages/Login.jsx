@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Capacitor } from '@capacitor/core';
-import { login, adminLogin, checkVersao } from '../services/api';
+import { login, adminLogin } from '../services/api';
 import { sendFcmTokenWithRetry } from '../services/notificationService';
-import { COMMIT_HASH } from '../version.js';
 
 function readAuthError() {
   try {
@@ -31,58 +29,9 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [rememberMe, setRememberMe] = useState(() => Boolean(localStorage.getItem('savedCpf') && localStorage.getItem('savedMatricula')));
-  const [versaoLoading, setVersaoLoading] = useState(true);
-  const [versaoOutdated, setVersaoOutdated] = useState(false);
-  const [versaoUrl, setVersaoUrl] = useState('');
-  const [versaoAtual, setVersaoAtual] = useState('');
-  const [versaoEsperada, setVersaoEsperada] = useState('');
-  const [versaoEsperadaTag, setVersaoEsperadaTag] = useState('');
-  const [versaoDismissed, setVersaoDismissed] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    async function checkVersion() {
-      try {
-        // A versao so interessa para quem instalou o APK. No navegador o
-        // build e o do servidor e sempre esta atualizado; comparar o commit
-        // dele com o do APK fazia o aviso de "atualizar" aparecer para todo
-        // mundo no admin, sem download possivel.
-        if (!Capacitor.isNativePlatform()) {
-          setVersaoLoading(false);
-          return;
-        }
-        if (COMMIT_HASH && COMMIT_HASH !== 'DEV') {
-          setVersaoAtual(COMMIT_HASH);
-
-          const cached = sessionStorage.getItem('versao_check');
-          if (cached) {
-            const parsed = JSON.parse(cached);
-            if (!parsed.atualizado) {
-              setVersaoOutdated(true);
-              setVersaoUrl(parsed.url_download || '');
-              setVersaoEsperada(parsed.commit_esperado || '');
-              setVersaoEsperadaTag(parsed.versao_esperada || '');
-            }
-            return;
-          }
-
-          const result = await checkVersao(COMMIT_HASH);
-          sessionStorage.setItem('versao_check', JSON.stringify(result));
-          if (!result.atualizado) {
-            setVersaoOutdated(true);
-            setVersaoUrl(result.url_download || '');
-            setVersaoEsperada(result.commit_esperado || '');
-            setVersaoEsperadaTag(result.versao_esperada || '');
-          }
-        }
-      } catch {
-        sessionStorage.setItem('versao_check', JSON.stringify({ atualizado: true }));
-      } finally {
-        setVersaoLoading(false);
-      }
-    }
-    checkVersion();
-
     sessionStorage.removeItem('auth_error');
   }, []);
 
@@ -239,38 +188,11 @@ export default function Login() {
           <button onClick={() => { setIsAdmin(!isAdmin); setError(''); }} style={s.adminBtn}>
             {isAdmin ? 'Voltar ao Login do Motorista' : 'Acesso Administrativo'}
           </button>
+          <button onClick={() => navigate('/privacidade')} style={s.privacyLink}>
+            Política de Privacidade
+          </button>
         </div>
       </div>
-
-      {!versaoLoading && versaoOutdated && !versaoDismissed && (
-        <div style={s.banner}>
-          <div style={s.bannerContent}>
-            <div style={s.bannerIcon}>📲</div>
-            <div>
-              <div style={s.bannerTitle}>APK DESATUALIZADO</div>
-              <div style={s.bannerText}>
-                Sua versão do aplicativo está desatualizada. Faça o download da versão mais recente.
-              </div>
-              {versaoAtual && <div style={s.bannerVersion}>Sua versão: {versaoAtual}</div>}
-              {versaoEsperada && (
-                <div style={s.bannerVersion}>
-                  Esperado: {versaoEsperadaTag ? `${versaoEsperadaTag} ` : ''}({versaoEsperada})
-                </div>
-              )}
-              {versaoUrl ? (
-                <a href={versaoUrl} target="_blank" rel="noopener noreferrer" style={s.bannerBtn}>
-                  BAIXAR NOVA VERSÃO
-                </a>
-              ) : (
-                <div style={{ color: '#ff5a5a', fontSize: '0.75rem' }}>
-                  URL de download não disponível. Contate o administrador.
-                </div>
-              )}
-            </div>
-          </div>
-          <button style={s.bannerClose} onClick={() => setVersaoDismissed(true)} aria-label="Fechar">✕</button>
-        </div>
-      )}
     </div>
   );
 }
@@ -396,83 +318,14 @@ const s = {
     cursor: 'pointer',
     userSelect: 'none',
   },
-  overlay: {
-    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-    background: 'rgba(0,0,0,0.85)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    zIndex: 9999, padding: 24,
-  },
-  modal: {
-    background: '#161920', border: '1px solid #2a2f3e', borderRadius: 8,
-    padding: '40px 32px', maxWidth: 380, width: '100%',
-    textAlign: 'center',
-  },
-  modalIcon: { fontSize: '3rem', marginBottom: 12 },
-  btnDownload: {
-    display: 'inline-block',
-    background: '#f0c040', color: '#0d0f14',
-    padding: '14px 28px', borderRadius: 4,
-    textDecoration: 'none', fontWeight: 600,
-    fontSize: '0.85rem', letterSpacing: '1px',
-    marginTop: 8,
-  },
-  banner: {
-    position: 'fixed', top: 0, left: 0, right: 0,
-    background: '#1e2230',
-    borderBottom: '2px solid #f0c040',
-    padding: '12px 40px 12px 16px',
-    zIndex: 9999,
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  bannerContent: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: 12,
-    flex: 1,
-  },
-  bannerIcon: { fontSize: '1.5rem', flexShrink: 0 },
-  bannerTitle: {
-    fontFamily: "'Bebas Neue', sans-serif",
-    fontSize: '1rem',
-    color: '#f0c040',
-    letterSpacing: '2px',
-    marginBottom: 4,
-  },
-  bannerText: {
-    color: '#9ca3af',
-    fontSize: '0.75rem',
-    lineHeight: 1.4,
-    marginBottom: 6,
-  },
-  bannerVersion: {
-    color: '#6b7280',
-    fontSize: '0.6rem',
-    fontFamily: "'IBM Plex Mono', monospace",
-    marginBottom: 2,
-  },
-  bannerBtn: {
-    display: 'inline-block',
-    background: '#f0c040',
-    color: '#0d0f14',
-    padding: '6px 14px',
-    borderRadius: 4,
-    textDecoration: 'none',
-    fontWeight: 600,
-    fontSize: '0.7rem',
-    letterSpacing: '1px',
-    marginTop: 4,
-  },
-  bannerClose: {
+  privacyLink: {
+    marginTop: 16,
     background: 'transparent',
     border: 'none',
     color: '#6b7280',
+    fontSize: '0.8rem',
     cursor: 'pointer',
-    fontSize: '1rem',
-    padding: '2px',
-    lineHeight: 1,
-    flexShrink: 0,
-    marginLeft: 'auto',
+    textDecoration: 'underline',
+    padding: 4,
   },
 };

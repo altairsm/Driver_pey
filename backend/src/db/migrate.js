@@ -10,6 +10,18 @@ const seedMatriculas = `
   (138721, 'EDUARDO HENRIQUE SILVA SOUSA',   '55566677788', '5571999999994', 'Volumoso')
   ON CONFLICT ("OperadorMatricula") DO NOTHING`;
 
+// Conta de demonstracao exigida pelo Google Play (App access). Serve apenas
+// para o revisor entrar no app; nao cria entregas nem pagamentos. ja entra
+// com as regras aceitas para cair direto no painel.
+const seedDemoPlay = `
+  INSERT INTO matriculos_jad ("OperadorMatricula", nome_completo, cpf, telefone, pgto) VALUES
+  (1234567, 'MOTORISTA DEMO PLAY STORE', '12345678909', '5571999990000', 'Por Entrega')
+  ON CONFLICT ("OperadorMatricula") DO NOTHING`;
+
+const seedDemoPlayRegras = `
+  UPDATE matriculos_jad SET leu_regras = true
+  WHERE "OperadorMatricula" = 1234567 AND cpf = '12345678909'`;
+
 const seedFaixasPeso = `
   INSERT INTO faixas_peso (peso_de, peso_ate, valor_peso) VALUES
   (0, 5, 5.00), (5.01, 10, 8.00), (10.01, 15, 12.00),
@@ -708,7 +720,9 @@ export async function runMigrations() {
       await seedIfEmpty('faixas_peso_entrega_bairro', seedFaixasBairro);
 
       await pool.query(seedMatriculas);
-      console.log('  Seed data inserted into matriculos_jad');
+      await pool.query(seedDemoPlay);
+      await pool.query(seedDemoPlayRegras);
+      console.log('  Seed data inserted into matriculos_jad (inclui conta demo do Play)');
     } catch (err) {
       console.warn('  Warning: Some initial seeds failed (might already exist with different types):', err.message);
     }

@@ -1,10 +1,9 @@
 {
   "appId": "com.driverpey.app",
-  "appName": "DriverPey",
+  "appName": "DriverPix",
   "webDir": "dist",
   "server": {
-    "androidScheme": "http",
-    "cleartext": true
+    "androidScheme": "https"
   },
   "plugins": {
     "PushNotifications": {

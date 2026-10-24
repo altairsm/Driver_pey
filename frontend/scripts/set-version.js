@@ -4,31 +4,35 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const publicDir = join(__dirname, '..', 'public');
-const srcDir = join(__dirname, '..', 'src');
+const androidDir = join(__dirname, '..', 'android');
 
-let commit = process.env.COMMIT_HASH || 'DEV';
-if (commit === 'DEV') {
+function git(cmd) {
   try {
-    commit = execSync('git rev-parse --short HEAD', { encoding: 'utf8', cwd: join(__dirname, '..', '..') }).trim();
+    return execSync(cmd, { encoding: 'utf8', cwd: join(__dirname, '..', '..') }).trim();
   } catch {
-    commit = 'DEV';
+    return '';
   }
 }
 
-let version = process.env.VERSION || '';
-if (!version) {
-  try {
-    version = execSync('git describe --tags --abbrev=0', { encoding: 'utf8', cwd: join(__dirname, '..', '..') }).trim();
-  } catch {
-    version = '';
-  }
+// versionCode precisa ser um inteiro estritamente crescente a cada envio ao
+// Play. A contagem de commits e monotona e dispensa controle manual. Pode ser
+// sobrescrita por VERSION_CODE (util para republicar sem novo commit).
+let versionCode = Number(process.env.VERSION_CODE) || 0;
+if (!versionCode) {
+  const count = Number(git('git rev-list --count HEAD'));
+  versionCode = Number.isInteger(count) && count > 0 ? count : 1;
 }
 
-const json = { commit, version, url_download: '' };
-writeFileSync(join(publicDir, 'version.json'), JSON.stringify(json, null, 2));
-console.log(`✔ version.json written: commit=${commit} version=${version}`);
+// versionName exibido na loja/dispositivo. Prefere a tag mais recente (v3.7.9
+// -> 3.7.9). No Docker (sem git) cai para 1.0.
+let versionName = (process.env.VERSION || '').replace(/^v/i, '').trim();
+if (!versionName || versionName.toLowerCase() === 'unknown') {
+  versionName = git('git describe --tags --abbrev=0').replace(/^v/i, '').trim() || '1.0';
+}
 
-mkdirSync(srcDir, { recursive: true });
-writeFileSync(join(srcDir, 'version.js'), `export const COMMIT_HASH = '${commit}';\nexport const VERSION = '${version}';\n`);
-console.log(`✔ src/version.js written: COMMIT_HASH=${commit} VERSION=${version}`);
+mkdirSync(androidDir, { recursive: true });
+writeFileSync(
+  join(androidDir, 'version.properties'),
+  `# Gerado por scripts/set-version.js. Nao editar a mao.\nversionCode=${versionCode}\nversionName=${versionName}\n`
+);
+console.log(`✔ version.properties: versionCode=${versionCode} versionName=${versionName}`);

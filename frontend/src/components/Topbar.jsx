@@ -56,7 +56,6 @@ const GRUPOS = [
     ativoPrefix: '/admin/motoristas',
     items: [
         { label: 'Motoristas', path: '/admin/motoristas' },
-        { label: 'Versão APK', path: '/admin/versao' },
         { label: 'Configurações', path: '/admin/configuracoes' },
     ],
   },

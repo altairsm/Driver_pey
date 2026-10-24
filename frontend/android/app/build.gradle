@@ -3,6 +3,17 @@ apply plugin: 'com.android.application'
 // Credenciais de assinatura vem de android/key.properties, que nao vai para o git.
 // Use key.properties.example como modelo. Se faltar o arquivo, o build de release
 // para aqui com mensagem explicativa em vez de falhar no meio do gradle.
+// versionCode/versionName gerados por scripts/set-version.js no prebuild.
+// O Play exige versionCode crescente a cada envio; a contagem de commits serve
+// e evita manter o numero a mao.
+def versionPropertiesFile = rootProject.file('version.properties')
+def versionProperties = new Properties()
+if (versionPropertiesFile.exists()) {
+    versionProperties.load(new FileInputStream(versionPropertiesFile))
+}
+def appVersionCode = (versionProperties['versionCode'] ?: '1').toInteger()
+def appVersionName = versionProperties['versionName'] ?: '1.0'
+
 def keystorePropertiesFile = rootProject.file('key.properties')
 def keystoreProperties = new Properties()
 if (keystorePropertiesFile.exists()) {
@@ -21,8 +32,8 @@ android {
         applicationId "com.driverpey.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode appVersionCode
+        versionName appVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

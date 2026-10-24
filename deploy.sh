@@ -75,7 +75,7 @@ else
   echo -e "${RED}[FAIL] Backend não respondeu (HTTP $HEALTH). Veja: docker compose logs backend${NC}"
 fi
 
-# 6. Verificar schema (migration Step 9 + versao_apk.versao).
+# 6. Verificar schema (migration Step 9).
 # Sem isso, colunas faltando só aparecem como 500 em runtime nas telas de admin.
 echo -e "${YELLOW}[5/8] Verificando schema (colunas do webhook Pix)...${NC}"
 for attempt in 1 2 3 4 5 6 7 8 9 10; do
@@ -94,18 +94,6 @@ else
   exit 1
 fi
 
-# versao_apk.versao e gravada no upload do APK (POST /admin/upload-apk).
-# Ausente = todo upload responde 500 e nenhum APK pode ser publicado.
-VCOL=$(docker exec driver-pey-db psql -U postgres -d jadlog -tAc \
-  "SELECT count(*) FROM information_schema.columns
-   WHERE table_name='versao_apk' AND column_name='versao'" 2>/dev/null || echo "0")
-if [ "$VCOL" = "1" ]; then
-  echo -e "${GREEN}[OK] versao_apk.versao presente${NC}"
-else
-  echo -e "${RED}[!] versao_apk.versao ausente: POST /admin/upload-apk vai responder 500.${NC}"
-  exit 1
-fi
-
 # Fuso do dia da operacao. As regras de adiantamento (regra 05, taxa e
 # "Aguarde 24h apos a baixa") usam o dia civil do Brasil; o Postgres precisa do
 # mesmo fuso para o CURRENT_DATE do SQL concordar com o calculo em JS.
@@ -120,39 +108,24 @@ else
   exit 1
 fi
 
-# 7. Persistencia do APK.
-# O backend grava o APK em /app/uploads, que precisa ser o volume nomeado
-# 'apkdata'. Se o volume nao estiver montado nesse caminho, o APK se perde a
-# cada "up -d" e o download passa a responder 404 sem erro visivel.
-echo -e "${YELLOW}[7/8] Verificando persistencia do APK...${NC}"
+# 7. Persistencia dos uploads (importacoes XLSX).
+# O backend grava os arquivos de importacao em /app/uploads, que precisa ser o
+# volume nomeado 'apkdata' (nome historico). Sem ele, um "up -d" recria o
+# container e os arquivos em transito somem.
+echo -e "${YELLOW}[7/8] Verificando persistencia de uploads...${NC}"
 if docker exec driver-pey-backend sh -c 'mount | grep -q " /app/uploads "' 2>/dev/null; then
-  echo -e "${GREEN}[OK] volume apkdata montado em /app/uploads${NC}"
+  echo -e "${GREEN}[OK] volume montado em /app/uploads${NC}"
 else
-  echo -e "${RED}[!] /app/uploads NAO e um volume montado: o APK enviado sera perdido no proximo deploy.${NC}"
+  echo -e "${RED}[!] /app/uploads NAO e um volume montado: uploads serao perdidos no proximo deploy.${NC}"
   echo -e "${RED}[!] Confira o volume do servico backend no docker-compose.yml.${NC}"
   exit 1
 fi
 
-# O download chega em /api/download/DriverPix.apk. Se o nginx nao der
-# precedencia ao location /api/ frente a regex .apk, o pedido morre com 404
-# antes de chegar ao backend - foi exatamente o que quebrou em v3.7.1.
 if docker exec driver-pey-frontend nginx -t >/dev/null 2>&1; then
   echo -e "${GREEN}[OK] nginx do frontend com configuracao valida${NC}"
 else
   echo -e "${RED}[!] nginx do frontend com config invalida: docker exec driver-pey-frontend nginx -t${NC}"
   exit 1
-fi
-
-if docker exec driver-pey-backend sh -c 'test -f /app/uploads/DriverPix.apk' 2>/dev/null; then
-  APK_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:8080/api/download/DriverPix.apk" || echo "000")
-  if [ "$APK_CODE" = "200" ]; then
-    echo -e "${GREEN}[OK] download do APK respondendo 200${NC}"
-  else
-    echo -e "${RED}[!] download do APK respondeu HTTP $APK_CODE. O motorista nao consegue atualizar o app.${NC}"
-    exit 1
-  fi
-else
-  echo -e "${YELLOW}[!] Nenhum APK em /app/uploads ainda: envie pelo Admin -> Versao.${NC}"
 fi
 
 # 8. Resumo

@@ -81,6 +81,9 @@ fastlane/readme.md
 # Version control
 vcs.xml
 
+# Gerado pelo prebuild (scripts/set-version.js) para o Gradle
+version.properties
+
 # lint
 lint/intermediates/
 lint/generated/

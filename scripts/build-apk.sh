@@ -1,43 +1,22 @@
 #!/bin/bash
 set -e
 
-# Cores
+# APK apenas para teste local. A distribuicao oficial e pelo Google Play.
+# O versionCode/versionName sao gerados em frontend/scripts/set-version.js
+# (rodado pelo "npm run build") e lidos pelo Gradle.
+
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-echo -e "${CYAN}========================================${NC}"
-echo -e "${CYAN}      BUILD COMPLETO DRIVER PIX         ${NC}"
-echo -e "${CYAN}========================================${NC}"
+cd "$(dirname "$0")/../frontend"
 
-# 1. Gera version.json com o commit atual
-echo -e "\n${GREEN}[1/4] Gerando version.json...${NC}"
-cd frontend
-npm run prebuild
-
-# 1.5 Remove APKs antigos para nao empacotar dentro do novo
-echo -e "\n${GREEN}[1.5/4] Limpando APKs antigos...${NC}"
-rm -f public/DriverPix.apk dist/DriverPix.apk
-
-# 2. Build do frontend
-echo -e "\n${GREEN}[2/4] Build Vite...${NC}"
+echo -e "${CYAN}Build APK (somente teste local)${NC}"
 npm run build
+npx cap copy
 
-# 3. Gera APK release assinado
-echo -e "\n${GREEN}[3/4] Build APK (Gradle assembleRelease)...${NC}"
 cd android
 ./gradlew assembleRelease
 cd ..
 
-# 4. Copia APK para public e dist
-echo -e "\n${GREEN}[4/4] Copiando DriverPix.apk...${NC}"
-cp android/app/build/outputs/apk/release/app-release.apk public/DriverPix.apk
-cp android/app/build/outputs/apk/release/app-release.apk dist/DriverPix.apk
-
-echo -e "\n${CYAN}========================================${NC}"
-echo -e "${CYAN}      BUILD CONCLUÍDO!                   ${NC}"
-echo -e "${CYAN}========================================${NC}"
-echo -e "  APK: public/DriverPix.apk"
-echo -e "  APK: dist/DriverPix.apk"
-echo -e "  Web: dist/ (link: /DriverPix.apk)"
-echo -e "${CYAN}========================================${NC}"
+echo -e "${GREEN}APK de teste: frontend/android/app/build/outputs/apk/release/app-release.apk${NC}"
