@@ -26,7 +26,7 @@ export default function AdminCepsImportar() {
   };
 
   const handleAutoDescobrir = async () => {
-    if (!confirm('Consultar ViaCEP para todos os CEPs sem cadastro?')) return;
+    if (!confirm('Consultar as bases de CEP para todos os CEPs sem cadastro?')) return;
     setAutoLoading(true);
     setMsg('');
     try {
@@ -98,14 +98,14 @@ export default function AdminCepsImportar() {
 
         <div style={s.card}>
           <div style={s.cardHeader('#ff9f40')}>
-            <h5 style={s.cardTitle}>Auto-Descobrir CEPs Novos (ViaCEP)</h5>
+            <h5 style={s.cardTitle}>Auto-Descobrir CEPs Novos (BrasilAPI/ViaCEP)</h5>
           </div>
           <div style={s.cardBody}>
             <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: 16 }}>
-              Consulta a API ViaCEP para CEPs do relatório de entregas que ainda não estão cadastrados.
+              Consulta as APIs BrasilAPI e ViaCEP para CEPs do relatório de entregas que ainda não estão cadastrados.
             </p>
             <button style={s.btn('#198754', '#fff')} onClick={handleAutoDescobrir} disabled={autoLoading}>
-              {autoLoading ? 'Descobrindo...' : 'Auto-Descobrir ViaCEP'}
+              {autoLoading ? 'Descobrindo...' : 'Auto-Descobrir CEPs'}
             </button>
           </div>
         </div>

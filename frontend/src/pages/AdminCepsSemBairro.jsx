@@ -36,12 +36,12 @@ export default function AdminCepsSemBairro() {
       const data = await consultarViaCep(cep);
       if (data && data.bairro) {
         setForm({ bairro: data.bairro });
-        setMsg(`✅ ViaCEP: ${data.logradouro}, ${data.bairro} - ${data.cidade}/${data.uf}`);
+        setMsg(`✅ CEP: ${data.logradouro}, ${data.bairro} - ${data.cidade}/${data.uf}`);
       } else {
-        setMsg('⚠️ CEP não encontrado no ViaCEP');
+        setMsg('⚠️ CEP não encontrado nas bases consultadas');
       }
     } catch {
-      setMsg('❌ Erro ao consultar ViaCEP');
+      setMsg('❌ Erro ao consultar o CEP');
     } finally {
       setBuscandoViaCep(false);
     }
@@ -157,7 +157,7 @@ export default function AdminCepsSemBairro() {
                                 <button style={s.btn('#6c757d', '#fff')} onClick={() => setEditId(null)}>Cancelar</button>
                               </div>
                             </div>
-                            {buscandoViaCep && <p style={{ color: '#6b7280', fontSize: '0.8rem', marginTop: 8 }}>Consultando ViaCEP...</p>}
+                            {buscandoViaCep && <p style={{ color: '#6b7280', fontSize: '0.8rem', marginTop: 8 }}>Consultando o CEP...</p>}
                           </td>
                         </tr>
                       )}

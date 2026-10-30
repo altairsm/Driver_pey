@@ -294,7 +294,7 @@ router.post('/ceps/importar-planilha', upload.single('file'), async (req, res) =
   }
 });
 
-// ==================== AUTO DESCOBRIR CEPS (VIACEP) ====================
+// ==================== AUTO DESCOBRIR CEPS (BRASILAPI / VIACEP) ====================
 
 router.post('/ceps/auto-descobrir', async (req, res) => {
   try {
@@ -306,19 +306,19 @@ router.post('/ceps/auto-descobrir', async (req, res) => {
   }
 });
 
-// ==================== CONSULTAR VIACEP AVULSO ====================
+// ==================== CONSULTAR CEP AVULSO ====================
 
 router.get('/ceps/consultar-viacep/:cep', async (req, res) => {
   try {
     const { cep } = req.params;
     const data = await consultarViaCep(cep);
     if (!data) {
-      return res.status(404).json({ error: 'CEP não encontrado no ViaCEP' });
+      return res.status(404).json({ error: 'CEP não encontrado nas bases consultadas' });
     }
     res.json(data);
   } catch (err) {
-    console.error('Erro ao consultar ViaCEP:', err);
-    res.status(500).json({ error: 'Erro ao consultar ViaCEP' });
+    console.error('Erro ao consultar CEP:', err);
+    res.status(500).json({ error: 'Erro ao consultar CEP' });
   }
 });
 

@@ -238,7 +238,7 @@ export default function AdminMapaBairros() {
         setMsg(res.message);
         await carregarDados();
       } else {
-        const res = await geocodificarCeps(100);
+        const res = await geocodificarCeps(50);
         setMsg(res.message);
         await carregarCeps();
       }

@@ -42,7 +42,7 @@ export default function AdminCepsSemRange() {
       const d = await consultarViaCep(cepNum);
       setManual({ bairro: d.bairro || '', cidade: d.cidade || '' });
     } catch {
-      setMsg('CEP não encontrado no ViaCEP. Preencha manualmente.');
+      setMsg('CEP não encontrado nas bases consultadas. Preencha manualmente.');
     } finally {
       setBuscaLoading(false);
     }
@@ -73,7 +73,7 @@ export default function AdminCepsSemRange() {
   };
 
   const handleAutoDescobrir = async () => {
-    if (!confirm('Consultar ViaCEP para todos os CEPs sem cadastro? Isso pode levar alguns minutos.')) return;
+    if (!confirm('Consultar as bases de CEP para todos os CEPs sem cadastro? Isso pode levar alguns minutos.')) return;
     setAutoLoading(true);
     setMsg('');
     try {
@@ -135,7 +135,7 @@ export default function AdminCepsSemRange() {
 
         <div style={{ ...s.row, marginBottom: 20 }}>
           <button style={s.btn('#0d6efd', '#fff')} onClick={handleAutoDescobrir} disabled={autoLoading}>
-            {autoLoading ? 'Descobrindo...' : 'Auto-Descobrir ViaCEP'}
+            {autoLoading ? 'Descobrindo...' : 'Auto-Descobrir CEPs'}
           </button>
         </div>
 
@@ -167,7 +167,7 @@ export default function AdminCepsSemRange() {
                         <td style={s.td}>{c.cidade_exemplo || '-'}</td>
                         <td style={s.td}>
                           <button style={s.btn('#0d6efd', '#fff')} onClick={() => { setCepExpandido(c.Cep); buscarViaCep(c.Cep); }}>
-                            Buscar ViaCEP
+                            Buscar CEP
                           </button>
                         </td>
                       </tr>
@@ -176,7 +176,7 @@ export default function AdminCepsSemRange() {
                           <td colSpan={5} style={{ padding: '12px 20px', background: '#1e2230', borderBottom: '1px solid #2a2f3e' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                               {buscaLoading ? (
-                                <span style={{ color: '#6b7280', fontSize: '0.82rem' }}>Consultando ViaCEP...</span>
+                                <span style={{ color: '#6b7280', fontSize: '0.82rem' }}>Consultando o CEP...</span>
                               ) : (
                                 <>
                                   <div style={s.row}>

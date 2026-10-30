@@ -346,7 +346,7 @@ export async function importarCepsPlanilha(file, onProgress) {
 }
 
 export async function autoDescobrirCeps() {
-  const { data } = await api.post('/admin/ceps/auto-descobrir');
+  const { data } = await api.post('/admin/ceps/auto-descobrir', null, { timeout: 900000 });
   return data;
 }
 
@@ -642,7 +642,7 @@ export async function geocodificarBairros() {
 }
 
 export async function geocodificarCeps(limite = 50) {
-  const { data } = await api.post('/admin/ceps/geocodificar', { limite });
+  const { data } = await api.post('/admin/ceps/geocodificar', { limite }, { timeout: 900000 });
   return data;
 }
 

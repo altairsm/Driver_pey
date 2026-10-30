@@ -1,4 +1,5 @@
 import { pool } from '../db/index.js';
+import { consultarCep, delay } from './cepLookupService.js';
 
 // ==================== BAIRROS / ROTAS ====================
 
@@ -255,27 +256,12 @@ export async function importarCepsDaPlanilha(rows) {
   }
 }
 
-// ==================== INTEGRAÇÃO VIACEP ====================
+// ==================== INTEGRAÇÃO CEP (BRASILAPI / VIACEP) ====================
 
+// Mantem o nome historico usado pela rota, mas consulta BrasilAPI primeiro e
+// ViaCEP como alternativa.
 export async function consultarViaCep(cep) {
-  const cepLimpo = cep.replace(/\D/g, '');
-  if (cepLimpo.length !== 8) return null;
-
-  try {
-    const response = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
-    if (!response.ok) return null;
-    const data = await response.json();
-    if (data.erro) return null;
-    return {
-      cep: cepLimpo,
-      logradouro: data.logradouro || '',
-      bairro: data.bairro || '',
-      cidade: data.localidade || '',
-      uf: data.uf || '',
-    };
-  } catch {
-    return null;
-  }
+  return consultarCep(cep);
 }
 
 export async function autoDescobrirCeps() {
@@ -293,7 +279,8 @@ export async function autoDescobrirCeps() {
     if (!viaCepData || !viaCepData.bairro) {
       await adicionarCep(cep, null, null, null);
       resultados.sem_bairro++;
-      resultados.detalhes.push({ cep, status: 'sem_bairro', motivo: 'ViaCEP sem bairro' });
+      resultados.detalhes.push({ cep, status: 'sem_bairro', motivo: 'Sem bairro nas bases consultadas' });
+      await delay(2000);
       continue;
     }
 
@@ -339,6 +326,8 @@ export async function autoDescobrirCeps() {
       resultados.sem_tabela++;
       resultados.detalhes.push({ cep, status: 'sem_tabela', bairro, motivo: `Bairro "${bairro}" sem tabela definida` });
     }
+
+    await delay(2000);
   }
 
   return resultados;

@@ -1,29 +1,12 @@
 import { pool } from '../db/index.js';
+import { consultarCep, viaCep, delay } from './cepLookupService.js';
 
-const VIACEP_URL = 'https://viacep.com.br/ws';
 const GMAPS_GEOCODE_URL = 'https://maps.googleapis.com/maps/api/geocode/json';
-
-function delay(ms) {
-  return new Promise(r => setTimeout(r, ms));
-}
 
 function getApiKey() {
   const key = process.env.GOOGLE_MAPS_API_KEY;
   if (!key) throw new Error('GOOGLE_MAPS_API_KEY not set');
   return key;
-}
-
-async function viaCep(cep) {
-  const url = `${VIACEP_URL}/${cep}/json/`;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (data.erro) return null;
-    return data;
-  } catch {
-    return null;
-  }
 }
 
 async function googleGeocode(address) {
@@ -38,6 +21,59 @@ async function googleGeocode(address) {
   } catch {
     return null;
   }
+}
+
+async function geocodificarEndereco({ logradouro, bairro, cidade, uf }) {
+  const parts = [logradouro, bairro, cidade, uf].filter(Boolean);
+  if (parts.length > 0) {
+    const coord = await googleGeocode(parts.join(', '));
+    if (coord) return coord;
+  }
+  if (bairro) {
+    return googleGeocode(`${bairro}, ${cidade || 'Salvador'}, ${uf || 'BA'}`);
+  }
+  return null;
+}
+
+// Resolve um CEP na ordem: BrasilAPI (endereco + coordenadas) -> ViaCEP
+// (endereco) -> Google Geocoding (coordenadas). Devolve tambem de qual API
+// vieram as coordenadas, para gravar em geocode_api.
+export async function resolverCoordenadas(cep, bairroFallback) {
+  const dados = await consultarCep(cep);
+  if (!dados) return null;
+
+  const endereco = {
+    logradouro: dados.logradouro || '',
+    bairro: dados.bairro || bairroFallback || '',
+    cidade: dados.cidade || 'Salvador',
+    uf: dados.uf || 'BA',
+  };
+
+  if (dados.lat !== null && dados.lng !== null) {
+    return { ...endereco, lat: dados.lat, lng: dados.lng, api: 'brasilapi' };
+  }
+
+  let coord = await geocodificarEndereco(endereco);
+  if (coord) return { ...endereco, ...coord, api: 'google' };
+
+  // BrasilAPI trouxe endereco mas o Google nao achou: tenta o ViaCEP antes
+  // de marcar o CEP como sem cobertura.
+  if (dados.fonte === 'brasilapi') {
+    const alternativa = await viaCep(cep);
+    if (alternativa) {
+      const alt = {
+        logradouro: alternativa.logradouro || endereco.logradouro,
+        bairro: alternativa.bairro || endereco.bairro,
+        cidade: alternativa.cidade || endereco.cidade,
+        uf: alternativa.uf || endereco.uf,
+      };
+      coord = await geocodificarEndereco(alt);
+      if (coord) return { ...alt, ...coord, api: 'google' };
+      return { ...alt, lat: null, lng: null, api: null };
+    }
+  }
+
+  return { ...endereco, lat: null, lng: null, api: null };
 }
 
 export async function geocodificarBairros() {
@@ -90,7 +126,7 @@ export async function listarBairrosRotasMapa() {
 
 export async function listarCepsMapa() {
   const { rows } = await pool.query(`
-    SELECT id, cep, bairro, rota, nome_tabela, lat, lng
+    SELECT id, cep, bairro, rota, nome_tabela, lat, lng, geocode_source, geocode_api
     FROM ceps_especificos
     WHERE lat IS NOT NULL AND lng IS NOT NULL
     ORDER BY bairro, cep
@@ -131,14 +167,14 @@ export async function atualizarLocalizacaoCep(id, lat, lng) {
 
   const { rows } = await pool.query(`
     UPDATE ceps_especificos
-    SET lat = $1, lng = $2, geocode_source = 'manual'
+    SET lat = $1, lng = $2, geocode_source = 'manual', geocode_api = 'manual'
     WHERE id = $3
-    RETURNING id, cep, bairro, rota, nome_tabela, lat, lng, geocode_source
+    RETURNING id, cep, bairro, rota, nome_tabela, lat, lng, geocode_source, geocode_api
   `, [latNum.toFixed(7), lngNum.toFixed(7), id]);
   return rows[0] || null;
 }
 
-export async function geocodificarCeps(limite = 100) {
+export async function geocodificarCeps(limite = 50) {
   const { rows: ceps } = await pool.query(`
     SELECT cep, bairro FROM ceps_especificos
     WHERE geocode_source IS DISTINCT FROM 'individual'
@@ -176,47 +212,31 @@ export async function geocodificarCeps(limite = 100) {
   let geocoded = 0;
 
   for (const { cep, bairro } of ceps) {
-    const via = await viaCep(cep);
-    if (!via) {
+    const resultado = await resolverCoordenadas(cep, bairro);
+
+    if (resultado?.lat !== null && resultado?.lat !== undefined
+        && resultado?.lng !== null && resultado?.lng !== undefined) {
       await pool.query(`
-        UPDATE ceps_especificos SET geocode_source = 'no_coverage' WHERE cep = $1
-      `, [cep]);
-      await delay(300);
-      continue;
-    }
-
-    const logradouro = via.logradouro || '';
-    const bairroVia = via.bairro || bairro || '';
-    const cidade = via.localidade || 'Salvador';
-    const uf = via.uf || 'BA';
-
-    await pool.query(`
-      UPDATE ceps_especificos SET logradouro = $1, bairro_viacep = $2 WHERE cep = $3
-    `, [logradouro || null, bairroVia || null, cep]);
-
-    const parts = [logradouro, bairroVia, cidade, uf].filter(Boolean);
-    const address = parts.join(', ');
-
-    let coord = null;
-    if (address) {
-      coord = await googleGeocode(address);
-    }
-    if (!coord && bairroVia) {
-      coord = await googleGeocode(`${bairroVia}, ${cidade}, ${uf}`);
-    }
-
-    if (coord) {
-      await pool.query(`
-        UPDATE ceps_especificos SET lat = $1, lng = $2, geocode_source = 'individual' WHERE cep = $3
-      `, [coord.lat, coord.lng, cep]);
+        UPDATE ceps_especificos
+        SET lat = $1, lng = $2, geocode_source = 'individual', geocode_api = $3,
+            logradouro = $4, bairro_viacep = $5
+        WHERE cep = $6
+      `, [
+        resultado.lat, resultado.lng, resultado.api,
+        resultado.logradouro || null, resultado.bairro || null, cep,
+      ]);
       geocoded++;
     } else {
       await pool.query(`
-        UPDATE ceps_especificos SET geocode_source = 'no_coverage' WHERE cep = $1
-      `, [cep]);
+        UPDATE ceps_especificos
+        SET geocode_source = 'no_coverage', geocode_api = NULL,
+            logradouro = COALESCE($2, logradouro),
+            bairro_viacep = COALESCE($3, bairro_viacep)
+        WHERE cep = $1
+      `, [cep, resultado?.logradouro || null, resultado?.bairro || null]);
     }
 
-    await delay(200);
+    await delay(2000);
   }
 
   const { rows: semCobertura2 } = await pool.query(
