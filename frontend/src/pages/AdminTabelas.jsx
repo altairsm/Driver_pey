@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getTabelas, createTabela, updateFaixa, deleteFaixa, deleteTabela } from '../services/api';
+import { getTabelas, createTabela, updateFaixa, deleteFaixa, deleteTabela, updateTabelaExcedente } from '../services/api';
 import Topbar from '../components/Topbar';
 
 const faixasPadrao = [
@@ -18,16 +18,26 @@ export default function AdminTabelas() {
 
   const [modalTipo, setModalTipo] = useState(null);
   const [novaTabelaNome, setNovaTabelaNome] = useState('');
+  const [novaTabelaExcedente, setNovaTabelaExcedente] = useState('');
   const [novasFaixas, setNovasFaixas] = useState(faixasPadrao.map(f => ({ ...f })));
   const [editandoFaixa, setEditandoFaixa] = useState(null);
   const [addFaixaTabela, setAddFaixaTabela] = useState('');
   const [novaFaixaForm, setNovaFaixaForm] = useState({ peso_de: '', peso_ate: '', valor_peso: '' });
+  const [excedentes, setExcedentes] = useState({});
+  const [salvandoExcedente, setSalvandoExcedente] = useState(null);
 
   const [salvando, setSalvando] = useState(false);
 
   const carregar = async () => {
-    try { setTabelas(await getTabelas()); }
-    catch { setTabelas({}); }
+    try {
+      const data = await getTabelas();
+      setTabelas(data);
+      const valores = {};
+      for (const [nome, faixas] of Object.entries(data)) {
+        valores[nome] = String(faixas[0]?.valor_excedente_kg ?? 0);
+      }
+      setExcedentes(valores);
+    } catch { setTabelas({}); }
     finally { setLoading(false); }
   };
 
@@ -39,6 +49,7 @@ export default function AdminTabelas() {
   const abrirNovaTabela = () => {
     setModalTipo('nova');
     setNovaTabelaNome('');
+    setNovaTabelaExcedente('');
     setNovasFaixas(faixasPadrao.map(f => ({ ...f })));
     setError('');
   };
@@ -59,6 +70,7 @@ export default function AdminTabelas() {
   const fecharModal = () => {
     setModalTipo(null);
     setNovaTabelaNome('');
+    setNovaTabelaExcedente('');
     setEditandoFaixa(null);
     setAddFaixaTabela('');
     setError('');
@@ -74,14 +86,34 @@ export default function AdminTabelas() {
     if (!novaTabelaNome.trim()) { setError('Nome da tabela é obrigatório'); return; }
     const vazias = novasFaixas.some(f => !f.valor_peso && f.valor_peso !== 0);
     if (vazias) { setError('Preencha o valor_peso de todas as faixas'); return; }
+    const excedenteBruto = String(novaTabelaExcedente).replace(',', '.');
+    const excedente = excedenteBruto === '' ? 0 : Number(excedenteBruto);
+    if (!Number.isFinite(excedente) || excedente < 0) {
+      setError('Adicional por kg deve ser um valor maior ou igual a zero'); return;
+    }
     setSalvando(true);
     try {
       const faixas = novasFaixas.map(f => ({ ...f, valor_peso: parseFloat(f.valor_peso) }));
-      await createTabela(novaTabelaNome.trim(), faixas);
+      await createTabela(novaTabelaNome.trim(), faixas, excedente);
       fecharModal();
       await carregar();
     } catch (err) { setError(err.response?.data?.error || 'Erro ao criar tabela'); }
     finally { setSalvando(false); }
+  };
+
+  const handleSalvarExcedente = async (nome) => {
+    const bruto = String(excedentes[nome] ?? '').replace(',', '.');
+    const excedente = bruto === '' ? 0 : Number(bruto);
+    if (!Number.isFinite(excedente) || excedente < 0) {
+      alert('Adicional por kg deve ser um valor maior ou igual a zero');
+      return;
+    }
+    setSalvandoExcedente(nome);
+    try {
+      await updateTabelaExcedente(nome, excedente);
+      await carregar();
+    } catch (err) { alert(err.response?.data?.error || 'Erro ao salvar adicional por kg'); }
+    finally { setSalvandoExcedente(null); }
   };
 
   const handleSalvarEdicao = async () => {
@@ -190,6 +222,19 @@ export default function AdminTabelas() {
                   </div>
                 </div>
                 <div style={s.cardBody}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: 12, marginBottom: 16 }}>
+                    <div style={{ flex: '1 1 260px' }}>
+                      <label style={s.label}>Adicional por kg acima de 15 kg (R$)</label>
+                      <input style={s.input} type="number" min="0" step="0.01"
+                        value={excedentes[nome] ?? ''}
+                        onChange={(e) => setExcedentes({ ...excedentes, [nome]: e.target.value })} />
+                    </div>
+                    <button style={s.btnSm('#198754', '#fff')}
+                      onClick={() => handleSalvarExcedente(nome)}
+                      disabled={salvandoExcedente === nome}>
+                      {salvandoExcedente === nome ? 'Salvando...' : 'Salvar adicional'}
+                    </button>
+                  </div>
                   <table style={s.table}>
                     <thead><tr>
                       <th style={s.th}>Peso De</th>
@@ -261,6 +306,13 @@ export default function AdminTabelas() {
                   ))}
                 </tbody>
               </table>
+              <div style={{ ...s.field, marginTop: 16 }}>
+                <label style={s.label}>Adicional por kg acima de 15 kg (R$)</label>
+                <input style={s.input} type="number" min="0" step="0.01"
+                  value={novaTabelaExcedente}
+                  onChange={(e) => setNovaTabelaExcedente(e.target.value)}
+                  placeholder="0.00" />
+              </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
                 <button style={s.btnSm('#6c757d', '#fff')} onClick={fecharModal}>Cancelar</button>
                 <button style={s.btnSm('#198754', '#fff')} onClick={handleSalvarNovaTabela} disabled={salvando}>

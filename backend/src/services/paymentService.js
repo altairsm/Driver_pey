@@ -16,7 +16,7 @@ export async function calcularPagamentos(inicio, fim) {
         re."Lista"                     AS lista,
         re."Peso"::numeric             AS peso_cte,
         re."Cep",
-        COALESCE(fb.valor_peso, 0)     AS valor_peso,
+        ROUND(COALESCE(fb.valor_peso, 0) + GREATEST(re."Peso"::numeric - 15, 0) * COALESCE(te.valor_excedente_kg, 0), 2) AS valor_peso,
         COALESCE(tf.valor_fixo + GREATEST(re."Peso"::numeric - 15, 0) * tf.valor_excedente_kg, 0) AS valor_faturamento,
         le.pago AS pago_raw
       FROM relatorioentrega_export re
@@ -26,6 +26,8 @@ export async function calcularPagamentos(inicio, fim) {
       LEFT JOIN faixas_peso_entrega_bairro fb
         ON re."Peso"::numeric BETWEEN fb.peso_de AND fb.peso_ate
         AND fb.nome_tabela = ce.nome_tabela
+      LEFT JOIN tabela_peso_excedente te
+        ON te.nome_tabela = ce.nome_tabela
       LEFT JOIN tabela_faturamento tf
         ON re."Peso"::numeric BETWEEN tf.peso_de AND tf.peso_ate
       JOIN lista_entregas le ON le."Número"::text = re."Lista"
@@ -188,12 +190,13 @@ export async function calcularValoresQuinzena(matricula, inicio, fim) {
     FROM (
       SELECT DISTINCT ON (re."NCTE", re."Lista")
         re."NCTE", re."Lista",
-        COALESCE(fb.valor_peso, 0) AS valor_peso
+        ROUND(COALESCE(fb.valor_peso, 0) + GREATEST(re."Peso"::numeric - 15, 0) * COALESCE(te.valor_excedente_kg, 0), 2) AS valor_peso
       FROM relatorioentrega_export re
       LEFT JOIN ceps_especificos ce ON ce.cep = NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '')
       LEFT JOIN faixas_peso_entrega_bairro fb
         ON re."Peso"::numeric BETWEEN fb.peso_de AND fb.peso_ate
         AND fb.nome_tabela = ce.nome_tabela
+      LEFT JOIN tabela_peso_excedente te ON te.nome_tabela = ce.nome_tabela
       JOIN lista_entregas le ON le."Número"::text = re."Lista"
       WHERE re."OperadorMatricula"::bigint = $1
         AND LOWER(re."Evento") = 'entrega'
@@ -205,8 +208,8 @@ export async function calcularValoresQuinzena(matricula, inicio, fim) {
             AND LOWER(a.assunto) IN ('acareação', 'comprovante de entrega')
         )
       ORDER BY re."NCTE", re."Lista",
-        CASE WHEN fb.valor_peso > 0 THEN 0 ELSE 1 END,
-        fb.valor_peso ASC
+        CASE WHEN valor_peso > 0 THEN 0 ELSE 1 END,
+        valor_peso ASC
     ) sub
   `, [matricula, inicio, fim]);
 
@@ -573,13 +576,15 @@ export async function getListasPendentes(matricula, inicio, fim) {
       SELECT DISTINCT ON (re."NCTE", re."Lista")
         re."NCTE",
         re."Lista" AS lista,
-        COALESCE(fb.valor_peso, 0) AS valor_peso
+        ROUND(COALESCE(fb.valor_peso, 0) + GREATEST(re."Peso"::numeric - 15, 0) * COALESCE(te.valor_excedente_kg, 0), 2) AS valor_peso
       FROM relatorioentrega_export re
       LEFT JOIN ceps_especificos ce
         ON ce.cep = NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '')
       LEFT JOIN faixas_peso_entrega_bairro fb
         ON re."Peso"::numeric BETWEEN fb.peso_de AND fb.peso_ate
         AND fb.nome_tabela = ce.nome_tabela
+      LEFT JOIN tabela_peso_excedente te
+        ON te.nome_tabela = ce.nome_tabela
       JOIN lista_entregas le ON le."Número"::text = re."Lista"
       WHERE re."OperadorMatricula"::bigint = $1
         AND LOWER(re."Evento") = 'entrega'
@@ -591,8 +596,8 @@ export async function getListasPendentes(matricula, inicio, fim) {
             AND LOWER(a.assunto) IN ('acareação', 'comprovante de entrega')
         )
       ORDER BY re."NCTE", re."Lista",
-        CASE WHEN fb.valor_peso > 0 THEN 0 ELSE 1 END,
-        fb.valor_peso ASC
+        CASE WHEN valor_peso > 0 THEN 0 ELSE 1 END,
+        valor_peso ASC
     )
     SELECT
       le."Número",

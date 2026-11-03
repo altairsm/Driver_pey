@@ -405,6 +405,13 @@ INSERT INTO faixas_peso_entrega_bairro (peso_de, peso_ate, faixas, valor_peso, n
 (15.010, 9999000,'acima de 15 kg',  12,  'Tab_5')
 ON CONFLICT DO NOTHING;
 
+-- 9b. ADICIONAL POR KG ACIMA DE 15 KG NO PAGAMENTO AO MOTORISTA
+CREATE TABLE IF NOT EXISTS tabela_peso_excedente (
+    nome_tabela VARCHAR(10) PRIMARY KEY,
+    valor_excedente_kg NUMERIC(10,2) NOT NULL DEFAULT 0,
+    atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 10. TABELA DE FATURAMENTO (o que a empresa fatura por entrega)
 CREATE TABLE IF NOT EXISTS tabela_faturamento (
     id SERIAL PRIMARY KEY,

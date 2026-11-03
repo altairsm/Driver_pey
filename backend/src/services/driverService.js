@@ -30,13 +30,15 @@ export async function getDriverDashboard(matricula, inicio = null, fim = null) {
         re."NCTE" AS ncte,
         re."Lista" AS lista,
         re."Peso"::numeric AS peso_cte,
-        COALESCE(fb.valor_peso, 0) AS valor_peso
+        ROUND(COALESCE(fb.valor_peso, 0) + GREATEST(re."Peso"::numeric - 15, 0) * COALESCE(te.valor_excedente_kg, 0), 2) AS valor_peso
       FROM relatorioentrega_export re
       LEFT JOIN ceps_especificos ce
         ON ce.cep = NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '')
       LEFT JOIN faixas_peso_entrega_bairro fb
         ON re."Peso"::numeric BETWEEN fb.peso_de AND fb.peso_ate
         AND fb.nome_tabela = ce.nome_tabela
+      LEFT JOIN tabela_peso_excedente te
+        ON te.nome_tabela = ce.nome_tabela
       JOIN lista_entregas le ON le."Número"::text = re."Lista"
       WHERE re."OperadorMatricula"::bigint = $1
         AND LOWER(re."Evento") = 'entrega'
@@ -157,7 +159,7 @@ export async function getDriverTripsFaixas(matricula, inicio = null, fim = null)
         re."Peso"::numeric AS peso_cte,
         COALESCE(ce.bairro, 'Sem bairro') AS bairro,
         COALESCE(fb.faixas, 'Sem faixa') AS faixa_desc,
-        COALESCE(fb.valor_peso, 0) AS valor_peso,
+        ROUND(COALESCE(fb.valor_peso, 0) + GREATEST(re."Peso"::numeric - 15, 0) * COALESCE(te.valor_excedente_kg, 0), 2) AS valor_peso,
         fb.peso_de
       FROM relatorioentrega_export re
       LEFT JOIN ceps_especificos ce
@@ -165,6 +167,8 @@ export async function getDriverTripsFaixas(matricula, inicio = null, fim = null)
       LEFT JOIN faixas_peso_entrega_bairro fb
         ON re."Peso"::numeric BETWEEN fb.peso_de AND fb.peso_ate
         AND fb.nome_tabela = ce.nome_tabela
+      LEFT JOIN tabela_peso_excedente te
+        ON te.nome_tabela = ce.nome_tabela
       JOIN lista_entregas le ON le."Número"::text = re."Lista"
       WHERE re."OperadorMatricula"::bigint = $1
         AND LOWER(re."Evento") = 'entrega'
@@ -225,13 +229,15 @@ export async function getProdutividade(matricula, inicio, fim) {
         re."Data"::date AS data,
         COALESCE(re."QPacotes"::int, 0) AS pacotes,
         re."Peso"::numeric AS peso,
-        COALESCE(fb.valor_peso, 0) AS valor_peso
+        ROUND(COALESCE(fb.valor_peso, 0) + GREATEST(re."Peso"::numeric - 15, 0) * COALESCE(te.valor_excedente_kg, 0), 2) AS valor_peso
       FROM relatorioentrega_export re
       LEFT JOIN ceps_especificos ce
         ON ce.cep = NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '')
       LEFT JOIN faixas_peso_entrega_bairro fb
         ON re."Peso"::numeric BETWEEN fb.peso_de AND fb.peso_ate
         AND fb.nome_tabela = ce.nome_tabela
+      LEFT JOIN tabela_peso_excedente te
+        ON te.nome_tabela = ce.nome_tabela
       JOIN lista_entregas le ON le."Número"::text = re."Lista"
       WHERE re."OperadorMatricula"::bigint = $1
         AND LOWER(re."Evento") = 'entrega'
@@ -454,13 +460,15 @@ async function getValorListas(matricula) {
       SELECT
         re."NCTE" AS ncte,
         re."Lista" AS lista,
-        COALESCE(fb.valor_peso, 0) AS valor_peso
+        ROUND(COALESCE(fb.valor_peso, 0) + GREATEST(re."Peso"::numeric - 15, 0) * COALESCE(te.valor_excedente_kg, 0), 2) AS valor_peso
       FROM relatorioentrega_export re
       LEFT JOIN ceps_especificos ce
         ON ce.cep = NULLIF(REGEXP_REPLACE(COALESCE(re."Cep", '0'), '[^0-9]', '', 'g'), '')
       LEFT JOIN faixas_peso_entrega_bairro fb
         ON re."Peso"::numeric BETWEEN fb.peso_de AND fb.peso_ate
         AND fb.nome_tabela = ce.nome_tabela
+      LEFT JOIN tabela_peso_excedente te
+        ON te.nome_tabela = ce.nome_tabela
       JOIN lista_entregas le ON le."Número"::text = re."Lista"
       WHERE re."OperadorMatricula"::bigint = $1
         AND LOWER(re."Evento") = 'entrega'

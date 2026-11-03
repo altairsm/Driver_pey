@@ -8,7 +8,7 @@ export async function getAnalyticsBairros(inicio, fim, matricula) {
         ce.nome_tabela,
         COALESCE(fb.faixas, 'SEM FAIXA') AS faixa_peso_desc,
         re."Peso"::numeric AS peso,
-        COALESCE(fb.valor_peso, 0) AS valor_peso,
+        ROUND(COALESCE(fb.valor_peso, 0) + GREATEST(re."Peso"::numeric - 15, 0) * COALESCE(te.valor_excedente_kg, 0), 2) AS valor_peso,
         COALESCE(tf.valor_fixo + GREATEST(re."Peso"::numeric - 15, 0) * tf.valor_excedente_kg, 0) AS valor_faturamento,
         mj.nome_completo AS nome_motorista
       FROM relatorioentrega_export re
@@ -17,6 +17,8 @@ export async function getAnalyticsBairros(inicio, fim, matricula) {
       LEFT JOIN faixas_peso_entrega_bairro fb
         ON re."Peso"::numeric BETWEEN fb.peso_de AND fb.peso_ate
         AND fb.nome_tabela = ce.nome_tabela
+      LEFT JOIN tabela_peso_excedente te
+        ON te.nome_tabela = ce.nome_tabela
       LEFT JOIN tabela_faturamento tf
         ON re."Peso"::numeric BETWEEN tf.peso_de AND tf.peso_ate
       JOIN matriculos_jad mj
@@ -27,8 +29,8 @@ export async function getAnalyticsBairros(inicio, fim, matricula) {
         AND le."Data Baixa"::date BETWEEN $1 AND $2
         AND ($3::bigint IS NULL OR re."OperadorMatricula"::bigint = $3)
       ORDER BY re."NCTE", re."Lista",
-        CASE WHEN fb.valor_peso > 0 THEN 0 ELSE 1 END,
-        fb.valor_peso ASC
+        CASE WHEN valor_peso > 0 THEN 0 ELSE 1 END,
+        valor_peso ASC
     )
     SELECT
       bairro,
@@ -51,7 +53,7 @@ export async function getDistribuicaoRotas(inicio, fim) {
     WITH entregas_dedup AS (
       SELECT DISTINCT ON (re."NCTE", re."Lista")
         le."Rota",
-        COALESCE(fb.valor_peso, 0) AS valor_peso
+        ROUND(COALESCE(fb.valor_peso, 0) + GREATEST(re."Peso"::numeric - 15, 0) * COALESCE(te.valor_excedente_kg, 0), 2) AS valor_peso
       FROM relatorioentrega_export re
       JOIN lista_entregas le ON le."Número"::text = re."Lista"
       LEFT JOIN ceps_especificos ce
@@ -59,11 +61,13 @@ export async function getDistribuicaoRotas(inicio, fim) {
       LEFT JOIN faixas_peso_entrega_bairro fb
         ON re."Peso"::numeric BETWEEN fb.peso_de AND fb.peso_ate
         AND fb.nome_tabela = ce.nome_tabela
+      LEFT JOIN tabela_peso_excedente te
+        ON te.nome_tabela = ce.nome_tabela
       WHERE LOWER(re."Evento") = 'entrega'
         AND le.status = 'Finalizado'
         AND le."Data Baixa"::date BETWEEN $1 AND $2
       ORDER BY re."NCTE", re."Lista",
-        CASE WHEN fb.valor_peso > 0 THEN 0 ELSE 1 END
+        CASE WHEN valor_peso > 0 THEN 0 ELSE 1 END
     )
     SELECT
       COALESCE(NULLIF("Rota", ''), 'SEM ROTA') AS rota,
@@ -102,7 +106,7 @@ export async function getEvolucaoQuinzenal(ultimasN = 12) {
     entregas_por_quinzena AS (
       SELECT DISTINCT ON (re."NCTE", re."Lista", rq.inicio)
         rq.inicio, rq.fim,
-        COALESCE(fb.valor_peso, 0) AS valor_peso,
+        ROUND(COALESCE(fb.valor_peso, 0) + GREATEST(re."Peso"::numeric - 15, 0) * COALESCE(te.valor_excedente_kg, 0), 2) AS valor_peso,
         COALESCE(tf.valor_fixo + GREATEST(re."Peso"::numeric - 15, 0) * tf.valor_excedente_kg, 0) AS valor_faturamento
       FROM ranked rq
       JOIN lista_entregas le ON le."Data Baixa"::date BETWEEN rq.inicio AND rq.fim
@@ -112,13 +116,15 @@ export async function getEvolucaoQuinzenal(ultimasN = 12) {
       LEFT JOIN faixas_peso_entrega_bairro fb
         ON re."Peso"::numeric BETWEEN fb.peso_de AND fb.peso_ate
         AND fb.nome_tabela = ce.nome_tabela
+      LEFT JOIN tabela_peso_excedente te
+        ON te.nome_tabela = ce.nome_tabela
       LEFT JOIN tabela_faturamento tf
         ON re."Peso"::numeric BETWEEN tf.peso_de AND tf.peso_ate
       WHERE LOWER(re."Evento") = 'entrega'
         AND le.status = 'Finalizado'
         AND rq.rn <= $1
       ORDER BY re."NCTE", re."Lista", rq.inicio,
-        CASE WHEN fb.valor_peso > 0 THEN 0 ELSE 1 END
+        CASE WHEN valor_peso > 0 THEN 0 ELSE 1 END
     )
     SELECT
       inicio, fim,
@@ -144,7 +150,7 @@ export async function getComparativoMotoristas(inicio, fim) {
         re."OperadorMatricula"::bigint AS matricula,
         re."NCTE" AS ncte,
         re."Lista" AS lista,
-        COALESCE(fb.valor_peso, 0) AS valor_peso,
+        ROUND(COALESCE(fb.valor_peso, 0) + GREATEST(re."Peso"::numeric - 15, 0) * COALESCE(te.valor_excedente_kg, 0), 2) AS valor_peso,
         COALESCE(tf.valor_fixo + GREATEST(re."Peso"::numeric - 15, 0) * tf.valor_excedente_kg, 0) AS valor_faturamento
       FROM relatorioentrega_export re
       CROSS JOIN quinzena_params qp
@@ -153,6 +159,8 @@ export async function getComparativoMotoristas(inicio, fim) {
       LEFT JOIN faixas_peso_entrega_bairro fb
         ON re."Peso"::numeric BETWEEN fb.peso_de AND fb.peso_ate
         AND fb.nome_tabela = ce.nome_tabela
+      LEFT JOIN tabela_peso_excedente te
+        ON te.nome_tabela = ce.nome_tabela
       LEFT JOIN tabela_faturamento tf
         ON re."Peso"::numeric BETWEEN tf.peso_de AND tf.peso_ate
       JOIN lista_entregas le ON le."Número"::text = re."Lista"

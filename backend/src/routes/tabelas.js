@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { listarTabelas, criarTabela, atualizarFaixa, deletarFaixa, deletarTabela } from '../services/tabelasService.js';
+import { listarTabelas, criarTabela, atualizarFaixa, deletarFaixa, deletarTabela, atualizarExcedente, normalizaValorExcedente } from '../services/tabelasService.js';
 
 const router = Router();
 
@@ -15,15 +15,40 @@ router.get('/tabelas', async (req, res) => {
 
 router.post('/tabelas', async (req, res) => {
   try {
-    const { nome, faixas } = req.body;
+    const { nome, faixas, valor_excedente_kg } = req.body;
     if (!nome || !faixas || !Array.isArray(faixas) || faixas.length === 0) {
       return res.status(400).json({ error: 'Nome e faixas são obrigatórios' });
     }
-    await criarTabela(nome, faixas);
+    let excedente;
+    try {
+      excedente = normalizaValorExcedente(valor_excedente_kg);
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+    await criarTabela(nome, faixas, excedente);
     res.status(201).json({ success: true, nome });
   } catch (err) {
     console.error('Erro ao criar tabela:', err);
     res.status(500).json({ error: 'Erro ao criar tabela' });
+  }
+});
+
+router.put('/tabelas/:nome/excedente', async (req, res) => {
+  try {
+    const { nome } = req.params;
+    const { valor_excedente_kg } = req.body;
+    let excedente;
+    try {
+      excedente = normalizaValorExcedente(valor_excedente_kg);
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+    const atualizado = await atualizarExcedente(nome, excedente);
+    if (!atualizado) return res.status(404).json({ error: 'Tabela não encontrada' });
+    res.json({ success: true, nome, valor_excedente_kg: excedente });
+  } catch (err) {
+    console.error('Erro ao atualizar adicional por kg:', err);
+    res.status(500).json({ error: 'Erro ao atualizar adicional por kg' });
   }
 });
 

@@ -509,6 +509,17 @@ export async function runMigrations() {
     )`);
     console.log('  -> faixas_peso_entrega_bairro');
 
+    // Adicional por kg acima de 15 kg no pagamento ao motorista. Fica separado
+    // das faixas porque é uma configuração da tabela inteira (nome_tabela), não
+    // de uma faixa específica: guardar em cada faixa permitiria valores
+    // divergentes para a mesma tabela.
+    await pool.query(`CREATE TABLE IF NOT EXISTS tabela_peso_excedente (
+      nome_tabela VARCHAR(10) PRIMARY KEY,
+      valor_excedente_kg NUMERIC(10,2) NOT NULL DEFAULT 0,
+      atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    console.log('  -> tabela_peso_excedente');
+
     await pool.query(`CREATE TABLE IF NOT EXISTS tabela_faturamento (
       id SERIAL PRIMARY KEY,
       peso_de NUMERIC(10,3) NOT NULL,

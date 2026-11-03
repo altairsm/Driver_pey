@@ -227,8 +227,13 @@ export async function getTabelas() {
   return data;
 }
 
-export async function createTabela(nome, faixas) {
-  const { data } = await api.post('/admin/tabelas', { nome, faixas });
+export async function createTabela(nome, faixas, valor_excedente_kg = 0) {
+  const { data } = await api.post('/admin/tabelas', { nome, faixas, valor_excedente_kg });
+  return data;
+}
+
+export async function updateTabelaExcedente(nome, valor_excedente_kg) {
+  const { data } = await api.put(`/admin/tabelas/${encodeURIComponent(nome)}/excedente`, { valor_excedente_kg });
   return data;
 }
 
